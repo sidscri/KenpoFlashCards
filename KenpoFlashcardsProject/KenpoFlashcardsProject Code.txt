@@ -33,6 +33,11 @@ keytool -list -v -storetype JKS -keystore ".\kenpo-release.jks" -storepass "0888
 
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\Users\Sidscri\Desktop\KenpoFlashcardsProject\kenpo-release.jks")) | Set-Clipboard
 
+git add .gitignore
+git commit -m "Add .gitignore and stop tracking Gradle cache"
+git push
+
+
 
 
 
