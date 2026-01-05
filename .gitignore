@@ -1,0 +1,55 @@
+# ---------- Gradle ----------
+.gradle/
+**/.gradle/
+build/
+**/build/
+
+# ---------- Android ----------
+**/captures/
+**/outputs/
+**/*.apk
+**/*.aab
+
+# ---------- Android Studio / IntelliJ ----------
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# ---------- Local config ----------
+local.properties
+**/local.properties
+
+# ---------- Keystores / secrets ----------
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+*.env
+
+# (Optional) If you keep a sample keystore for docs, whitelist it like this:
+# !docs/sample.keystore
+
+# ---------- Logs ----------
+*.log
+
+# ---------- OS / Editor junk ----------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ---------- Windows ----------
+*.stackdump
+
+# ---------- Node (if any tooling is added later) ----------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---------- Kotlin/Java ----------
+*.class
+*.jar
