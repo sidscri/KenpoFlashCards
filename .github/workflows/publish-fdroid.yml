@@ -12,7 +12,6 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     env:
-      # Keep Gradle caches inside the workspace
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
 
     steps:
@@ -27,14 +26,37 @@ jobs:
 
       - name: Decode keystore
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '\n' | base64 -d > release.jks
-          ls -la release.jks
+          # IMPORTANT: ANDROID_KEYSTORE_BASE64 must be the raw base64 of the .jks/.p12 file bytes (no BEGIN/END lines).
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '\n' | base64 -d > release.keystore
+          ls -la release.keystore
 
-      # Workaround for "Permission denied" executing Gradle distribution downloaded by the wrapper.
-      # Instead of running ./gradlew (which execs gradle/bin/gradle directly), we:
-      # 1) read distributionUrl from gradle-wrapper.properties
-      # 2) download + unzip
-      # 3) run it via "bash gradle/bin/gradle" (doesn't require execute bit)
+      - name: Detect keystore type (JKS vs PKCS12) and verify
+        run: |
+          set -e
+          KSTORE="release.keystore"
+
+          # Try JKS first
+          if keytool -list -keystore "$KSTORE" -storetype JKS -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >/dev/null 2>&1; then
+            echo "KS_TYPE=JKS" >> $GITHUB_ENV
+            echo "Keystore type detected: JKS"
+            exit 0
+          fi
+
+          # Then PKCS12
+          if keytool -list -keystore "$KSTORE" -storetype PKCS12 -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >/dev/null 2>&1; then
+            echo "KS_TYPE=PKCS12" >> $GITHUB_ENV
+            echo "Keystore type detected: PKCS12"
+            exit 0
+          fi
+
+          echo "ERROR: Could not open keystore as JKS or PKCS12."
+          echo "This usually means ANDROID_KEYSTORE_BASE64 is not the raw base64 of the keystore file, or the password is wrong."
+          echo ""
+          echo "Fix on Windows (PowerShell) to generate correct base64:"
+          echo "  [Convert]::ToBase64String([IO.File]::ReadAllBytes('kenpo-release.jks')) | Set-Clipboard"
+          echo ""
+          exit 1
+
       - name: Build release APK (no-wrapper exec workaround)
         run: |
           WRAPPER_PROPS="KenpoFlashcardsProject/gradle/wrapper/gradle-wrapper.properties"
@@ -45,7 +67,6 @@ jobs:
           fi
 
           DIST_URL=$(grep -E '^distributionUrl=' "$WRAPPER_PROPS" | cut -d= -f2-)
-          # gradle-wrapper.properties escapes characters like https\://
           DIST_URL=$(echo "$DIST_URL" | sed 's#\\##g')
 
           echo "Gradle distribution URL: $DIST_URL"
@@ -85,15 +106,15 @@ jobs:
       - name: Sign APK (apksigner)
         working-directory: KenpoFlashcardsProject
         run: |
-          # Auto-detect build-tools version
           BUILD_TOOLS=$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -n 1)
           APKSIGNER="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS/apksigner"
           echo "Using build-tools: $BUILD_TOOLS"
           echo "Using apksigner: $APKSIGNER"
+          echo "Using keystore type: $KS_TYPE"
 
           APK_OUT="../app-release.apk"
 
-          "$APKSIGNER" sign             --ks ../release.jks             --ks-key-alias "${{ secrets.ANDROID_KEY_ALIAS }}"             --ks-pass pass:"${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"             --key-pass pass:"${{ secrets.ANDROID_KEY_PASSWORD }}"             --out "$APK_OUT"             "$APK_IN"
+          "$APKSIGNER" sign             --ks ../release.keystore             --ks-type "$KS_TYPE"             --ks-key-alias "${{ secrets.ANDROID_KEY_ALIAS }}"             --ks-pass pass:"${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"             --key-pass pass:"${{ secrets.ANDROID_KEY_PASSWORD }}"             --out "$APK_OUT"             "$APK_IN"
 
           "$APKSIGNER" verify "$APK_OUT"
           ls -la "$APK_OUT"
