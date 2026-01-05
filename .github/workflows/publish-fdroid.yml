@@ -12,7 +12,7 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     env:
-      # Keep Gradle caches inside the workspace to avoid permission/exec-bit weirdness in ~/.gradle
+      # Keep Gradle caches inside the workspace
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
 
     steps:
@@ -30,19 +30,39 @@ jobs:
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '\n' | base64 -d > release.jks
           ls -la release.jks
 
-      - name: Make gradlew executable
-        run: chmod +x KenpoFlashcardsProject/gradlew
-
-      - name: Fix Gradle wrapper cache permissions
+      # Workaround for "Permission denied" executing Gradle distribution downloaded by the wrapper.
+      # Instead of running ./gradlew (which execs gradle/bin/gradle directly), we:
+      # 1) read distributionUrl from gradle-wrapper.properties
+      # 2) download + unzip
+      # 3) run it via "bash gradle/bin/gradle" (doesn't require execute bit)
+      - name: Build release APK (no-wrapper exec workaround)
         run: |
-          chmod +x KenpoFlashcardsProject/gradlew
-          chmod -R +x "$GRADLE_USER_HOME/wrapper/dists" || true
-          find "$GRADLE_USER_HOME/wrapper/dists" -type f -name gradle -exec chmod +x {} \; || true
-          find "$GRADLE_USER_HOME/wrapper/dists" -type f -name "*.sh" -exec chmod +x {} \; || true
+          WRAPPER_PROPS="KenpoFlashcardsProject/gradle/wrapper/gradle-wrapper.properties"
+          if [ ! -f "$WRAPPER_PROPS" ]; then
+            echo "Missing $WRAPPER_PROPS"
+            ls -la KenpoFlashcardsProject/gradle/wrapper || true
+            exit 1
+          fi
 
-      - name: Build release APK
-        working-directory: KenpoFlashcardsProject
-        run: ./gradlew assembleRelease
+          DIST_URL=$(grep -E '^distributionUrl=' "$WRAPPER_PROPS" | cut -d= -f2-)
+          # gradle-wrapper.properties escapes characters like https\://
+          DIST_URL=$(echo "$DIST_URL" | sed 's#\\##g')
+
+          echo "Gradle distribution URL: $DIST_URL"
+
+          mkdir -p /tmp/gradle_dist
+          curl -L "$DIST_URL" -o /tmp/gradle_dist/gradle.zip
+          unzip -q /tmp/gradle_dist/gradle.zip -d /tmp/gradle_dist
+
+          GRADLE_HOME=$(find /tmp/gradle_dist -maxdepth 1 -type d -name "gradle-*" | head -n 1)
+          if [ -z "$GRADLE_HOME" ]; then
+            echo "Could not find extracted gradle-* folder"
+            ls -la /tmp/gradle_dist
+            exit 1
+          fi
+
+          echo "Using GRADLE_HOME=$GRADLE_HOME"
+          bash "$GRADLE_HOME/bin/gradle" -p KenpoFlashcardsProject assembleRelease
 
       - name: Find APK to sign
         working-directory: KenpoFlashcardsProject
