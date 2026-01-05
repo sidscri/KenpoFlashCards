@@ -6,7 +6,9 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   build-and-publish:
@@ -65,7 +67,6 @@ jobs:
           echo "APK outputs (release):"
           find app/build/outputs/apk/release -type f -name "*.apk" -print
 
-          # Prefer unsigned if present, else take first apk
           APK_IN=$(find app/build/outputs/apk/release -type f -name "*unsigned*.apk" | head -n 1)
           if [ -z "$APK_IN" ]; then
             APK_IN=$(find app/build/outputs/apk/release -type f -name "*.apk" | head -n 1)
@@ -96,21 +97,21 @@ jobs:
           ls -la "$APK_OUT"
 
       - name: Build F-Droid repo index (signed)
+        env:
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           sudo apt-get update
           sudo apt-get install -y fdroidserver
 
-          # fdroid init MUST run in an empty directory
           rm -rf fdroidwork
           mkdir -p fdroidwork
           cd fdroidwork
           fdroid init
 
-          # Put the signed APK into the repo
           mkdir -p repo
           cp ../app-release.apk repo/
-
-          # Use your keystore to sign the F-Droid index (keeps repo identity stable)
           cp ../release.keystore keystore.jks
 
           cat > config.yml << EOF
@@ -123,20 +124,11 @@ jobs:
           keypass: ${ANDROID_KEY_PASSWORD}
           EOF
 
-          # Pull secrets into env-safe vars (avoid YAML quoting issues)
-        env:
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-
-      - name: Run fdroid update
-        run: |
-          cd fdroidwork
           fdroid update --create-metadata || true
           fdroid update
           ls -la repo
 
-      - name: Publish to GitHub Pages (gh-pages branch)
+      - name: Prepare Pages content
         run: |
           rm -rf public
           mkdir -p public
@@ -153,12 +145,14 @@ jobs:
           </html>
           EOF
 
-          git config user.name "github-actions"
-          git config user.email "github-actions@users.noreply.github.com"
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
 
-          git checkout --orphan gh-pages
-          git rm -rf . || true
-          cp -r public/* .
-          git add .
-          git commit -m "Publish F-Droid repo"
-          git push -f origin gh-pages
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
