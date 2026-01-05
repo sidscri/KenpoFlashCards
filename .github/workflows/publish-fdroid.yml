@@ -99,20 +99,18 @@ jobs:
           echo "APK_IN=$APK_IN" >> $GITHUB_ENV
 
       - name: Sign APK (apksigner)
-        working-directory: KenpoFlashcardsProject
         run: |
           BUILD_TOOLS=$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -n 1)
           APKSIGNER="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS/apksigner"
-          echo "Using build-tools: $BUILD_TOOLS"
-          echo "Using apksigner: $APKSIGNER"
-          echo "Using keystore type: $KS_TYPE"
 
-          APK_OUT="../app-release.apk"
-
-          "$APKSIGNER" sign             --ks ../release.keystore             --ks-type "$KS_TYPE"             --ks-key-alias "${{ secrets.ANDROID_KEY_ALIAS }}"             --ks-pass pass:"${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"             --key-pass pass:"${{ secrets.ANDROID_KEY_PASSWORD }}"             --out "$APK_OUT"             "$APK_IN"
-
-          "$APKSIGNER" verify "$APK_OUT"
-          ls -la "$APK_OUT"
+          "$APKSIGNER" sign \
+            --ks release.keystore \
+            --ks-type "$KS_TYPE" \
+            --ks-key-alias "${{ secrets.ANDROID_KEY_ALIAS }}" \
+            --ks-pass pass:"${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
+            --key-pass pass:"${{ secrets.ANDROID_KEY_PASSWORD }}" \
+            --out app-release.apk \
+            "$APK_IN"
 
       - name: Build F-Droid repo index
         run: |
