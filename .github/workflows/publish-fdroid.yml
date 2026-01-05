@@ -24,34 +24,14 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Decode keystore
+      - name: Decode keystore (JKS)
         run: |
-          # ANDROID_KEYSTORE_BASE64 must be raw base64 of keystore bytes (no BEGIN/END lines)
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '\n' | base64 -d > release.keystore
           ls -la release.keystore
+          keytool -list -keystore release.keystore -storetype JKS -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >/dev/null
+          echo "Keystore opens OK."
 
-      - name: Detect keystore type (JKS vs PKCS12) and verify
-        run: |
-          set -e
-          KSTORE="release.keystore"
-
-          # Try JKS first
-          if keytool -list -keystore "$KSTORE" -storetype JKS -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >/dev/null 2>&1; then
-            echo "KS_TYPE=JKS" >> $GITHUB_ENV
-            echo "Keystore type detected: JKS"
-            exit 0
-          fi
-
-          # Then PKCS12
-          if keytool -list -keystore "$KSTORE" -storetype PKCS12 -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >/dev/null 2>&1; then
-            echo "KS_TYPE=PKCS12" >> $GITHUB_ENV
-            echo "Keystore type detected: PKCS12"
-            exit 0
-          fi
-
-          echo "ERROR: Could not open keystore as JKS or PKCS12 (wrong base64 or password)."
-          exit 1
-
+      # Workaround for "Permission denied" executing Gradle distribution downloaded by the wrapper.
       - name: Build release APK (no-wrapper exec workaround)
         run: |
           WRAPPER_PROPS="KenpoFlashcardsProject/gradle/wrapper/gradle-wrapper.properties"
@@ -63,7 +43,6 @@ jobs:
 
           DIST_URL=$(grep -E '^distributionUrl=' "$WRAPPER_PROPS" | cut -d= -f2-)
           DIST_URL=$(echo "$DIST_URL" | sed 's#\\##g')
-
           echo "Gradle distribution URL: $DIST_URL"
 
           mkdir -p /tmp/gradle_dist
@@ -83,9 +62,10 @@ jobs:
       - name: Find APK to sign
         working-directory: KenpoFlashcardsProject
         run: |
-          echo "APK outputs:"
+          echo "APK outputs (release):"
           find app/build/outputs/apk/release -type f -name "*.apk" -print
 
+          # Prefer unsigned if present, else take first apk
           APK_IN=$(find app/build/outputs/apk/release -type f -name "*unsigned*.apk" | head -n 1)
           if [ -z "$APK_IN" ]; then
             APK_IN=$(find app/build/outputs/apk/release -type f -name "*.apk" | head -n 1)
@@ -96,21 +76,24 @@ jobs:
             exit 1
           fi
 
+          echo "Will sign: $APK_IN"
           echo "APK_IN=$APK_IN" >> $GITHUB_ENV
 
       - name: Sign APK (apksigner)
+        working-directory: KenpoFlashcardsProject
         run: |
           BUILD_TOOLS=$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -n 1)
           APKSIGNER="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS/apksigner"
+          echo "Using build-tools: $BUILD_TOOLS"
+          echo "Using apksigner: $APKSIGNER"
+          echo "Input APK: $APK_IN"
 
-          "$APKSIGNER" sign \
-            --ks release.keystore \
-            --ks-type "$KS_TYPE" \
-            --ks-key-alias "${{ secrets.ANDROID_KEY_ALIAS }}" \
-            --ks-pass pass:"${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
-            --key-pass pass:"${{ secrets.ANDROID_KEY_PASSWORD }}" \
-            --out app-release.apk \
-            "$APK_IN"
+          APK_OUT="../app-release.apk"
+
+          "$APKSIGNER" sign             --ks ../release.keystore             --ks-type JKS             --ks-key-alias "${{ secrets.ANDROID_KEY_ALIAS }}"             --ks-pass pass:"${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"             --key-pass pass:"${{ secrets.ANDROID_KEY_PASSWORD }}"             --out "$APK_OUT"             "$APK_IN"
+
+          "$APKSIGNER" verify "$APK_OUT"
+          ls -la "$APK_OUT"
 
       - name: Build F-Droid repo index
         run: |
@@ -123,7 +106,7 @@ jobs:
           cat > fdroid/config.yml << 'EOF'
           repo_url: https://sidscri.github.io/KenpoFlashCards/repo
           repo_name: Sidscri Apps
-          repo_description: "Private repo for my personal apps."
+          repo_description: "Repo for my personal apps."
           EOF
 
           cd fdroid
