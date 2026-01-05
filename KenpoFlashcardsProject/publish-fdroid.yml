@@ -1,0 +1,126 @@
+name: Build + Publish F-Droid Repo (GitHub Pages)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '\n' | base64 -d > release.jks
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      # Build the unsigned release APK (we will sign it ourselves)
+      - name: Build release APK
+        run: ./gradlew assembleRelease
+
+      - name: Sign APK (apksigner)
+        run: |
+          APK_IN="app/build/outputs/apk/release/app-release-unsigned.apk"
+          APK_OUT="app-release.apk"
+
+          if [ ! -f "$APK_IN" ]; then
+            echo "Expected unsigned release APK not found at $APK_IN"
+            find app/build/outputs -type f -maxdepth 5
+            exit 1
+          fi
+
+          $ANDROID_SDK_ROOT/build-tools/34.0.0/apksigner sign \
+            --ks release.jks \
+            --ks-key-alias "${{ secrets.ANDROID_KEY_ALIAS }}" \
+            --ks-pass pass:"${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
+            --key-pass pass:"${{ secrets.ANDROID_KEY_PASSWORD }}" \
+            --out "$APK_OUT" \
+            "$APK_IN"
+
+          $ANDROID_SDK_ROOT/build-tools/34.0.0/apksigner verify "$APK_OUT"
+
+      # Build an F-Droid repo index and publish to gh-pages
+      - name: Build F-Droid repo (index)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fdroidserver python3-pip
+
+          mkdir -p fdroid/repo
+          cp app-release.apk fdroid/repo/
+
+          # Minimal config
+          cat > fdroid/config.yml << 'EOF'
+          repo_url: https://sidscri.github.io/KenpoFlashCards/repo
+          repo_name: Sid Apps
+          repo_icon: icon.png
+          repo_description: "Private repo for my personal apps."
+          EOF
+
+          # Optional icon (can be removed if you don’t care)
+          # If you have an icon in your repo, copy it; otherwise create placeholder.
+          if [ -f "icon.png" ]; then
+            cp icon.png fdroid/icon.png
+          else
+            python3 - << 'PY'
+from PIL import Image
+img=Image.new("RGBA",(256,256),(40,40,40,255))
+img.save("fdroid/icon.png")
+PY
+          fi
+
+          # Initialize + create index
+          cd fdroid
+          fdroid init || true
+          fdroid update --create-metadata || true
+          fdroid update
+
+          # Output will be in fdroid/repo/
+          ls -la repo
+
+      - name: Publish to GitHub Pages (gh-pages branch)
+        run: |
+          rm -rf public
+          mkdir -p public
+          cp -r fdroid/repo public/repo
+
+          # Add a simple landing page
+          cat > public/index.html << 'EOF'
+...
+EOF
+          <html>
+            <head><meta charset="utf-8"><title>Sid Apps Repo</title></head>
+            <body>
+              <h1>Sid Apps Repo</h1>
+              <p>Add this repo in F-Droid:</p>
+              <pre>https://sidscri.github.io/KenpoFlashCards/repo</pre>
+            </body>
+          </html>
+          EOF
+
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+
+          # Force-publish to gh-pages
+          git fetch origin gh-pages || true
+          git checkout --orphan gh-pages
+          git rm -rf . || true
+
+          cp -r public/* .
+          git add .
+          git commit -m "Publish F-Droid repo"
+          git push -f origin gh-pages
