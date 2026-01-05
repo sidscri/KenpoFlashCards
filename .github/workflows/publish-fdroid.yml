@@ -11,6 +11,9 @@ permissions:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    env:
+      # Keep Gradle caches inside the workspace to avoid permission/exec-bit weirdness in ~/.gradle
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
 
     steps:
       - name: Checkout
@@ -29,6 +32,13 @@ jobs:
 
       - name: Make gradlew executable
         run: chmod +x KenpoFlashcardsProject/gradlew
+
+      - name: Fix Gradle wrapper cache permissions
+        run: |
+          chmod +x KenpoFlashcardsProject/gradlew
+          chmod -R +x "$GRADLE_USER_HOME/wrapper/dists" || true
+          find "$GRADLE_USER_HOME/wrapper/dists" -type f -name gradle -exec chmod +x {} \; || true
+          find "$GRADLE_USER_HOME/wrapper/dists" -type f -name "*.sh" -exec chmod +x {} \; || true
 
       - name: Build release APK
         working-directory: KenpoFlashcardsProject
@@ -52,22 +62,18 @@ jobs:
 
           echo "APK_IN=$APK_IN" >> $GITHUB_ENV
 
-      - name: Sign APK
+      - name: Sign APK (apksigner)
         working-directory: KenpoFlashcardsProject
         run: |
+          # Auto-detect build-tools version
           BUILD_TOOLS=$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -n 1)
           APKSIGNER="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS/apksigner"
           echo "Using build-tools: $BUILD_TOOLS"
+          echo "Using apksigner: $APKSIGNER"
 
           APK_OUT="../app-release.apk"
 
-          "$APKSIGNER" sign \
-            --ks ../release.jks \
-            --ks-key-alias "${{ secrets.ANDROID_KEY_ALIAS }}" \
-            --ks-pass pass:"${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
-            --key-pass pass:"${{ secrets.ANDROID_KEY_PASSWORD }}" \
-            --out "$APK_OUT" \
-            "$APK_IN"
+          "$APKSIGNER" sign             --ks ../release.jks             --ks-key-alias "${{ secrets.ANDROID_KEY_ALIAS }}"             --ks-pass pass:"${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"             --key-pass pass:"${{ secrets.ANDROID_KEY_PASSWORD }}"             --out "$APK_OUT"             "$APK_IN"
 
           "$APKSIGNER" verify "$APK_OUT"
           ls -la "$APK_OUT"
