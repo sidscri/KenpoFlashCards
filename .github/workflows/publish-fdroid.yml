@@ -26,7 +26,7 @@ jobs:
 
       - name: Decode keystore
         run: |
-          # IMPORTANT: ANDROID_KEYSTORE_BASE64 must be the raw base64 of the .jks/.p12 file bytes (no BEGIN/END lines).
+          # ANDROID_KEYSTORE_BASE64 must be raw base64 of keystore bytes (no BEGIN/END lines)
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '\n' | base64 -d > release.keystore
           ls -la release.keystore
 
@@ -49,12 +49,7 @@ jobs:
             exit 0
           fi
 
-          echo "ERROR: Could not open keystore as JKS or PKCS12."
-          echo "This usually means ANDROID_KEYSTORE_BASE64 is not the raw base64 of the keystore file, or the password is wrong."
-          echo ""
-          echo "Fix on Windows (PowerShell) to generate correct base64:"
-          echo "  [Convert]::ToBase64String([IO.File]::ReadAllBytes('kenpo-release.jks')) | Set-Clipboard"
-          echo ""
+          echo "ERROR: Could not open keystore as JKS or PKCS12 (wrong base64 or password)."
           exit 1
 
       - name: Build release APK (no-wrapper exec workaround)
