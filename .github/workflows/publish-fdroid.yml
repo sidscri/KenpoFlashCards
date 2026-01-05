@@ -95,22 +95,43 @@ jobs:
           "$APKSIGNER" verify "$APK_OUT"
           ls -la "$APK_OUT"
 
-      - name: Build F-Droid repo index
+      - name: Build F-Droid repo index (signed)
         run: |
           sudo apt-get update
           sudo apt-get install -y fdroidserver
 
-          mkdir -p fdroid/repo
-          cp app-release.apk fdroid/repo/
+          # fdroid init MUST run in an empty directory
+          rm -rf fdroidwork
+          mkdir -p fdroidwork
+          cd fdroidwork
+          fdroid init
 
-          cat > fdroid/config.yml << 'EOF'
+          # Put the signed APK into the repo
+          mkdir -p repo
+          cp ../app-release.apk repo/
+
+          # Use your keystore to sign the F-Droid index (keeps repo identity stable)
+          cp ../release.keystore keystore.jks
+
+          cat > config.yml << EOF
           repo_url: https://sidscri.github.io/KenpoFlashCards/repo
           repo_name: Sidscri Apps
           repo_description: "Repo for my personal apps."
+          repo_keyalias: ${ANDROID_KEY_ALIAS}
+          keystore: keystore.jks
+          keystorepass: ${ANDROID_KEYSTORE_PASSWORD}
+          keypass: ${ANDROID_KEY_PASSWORD}
           EOF
 
-          cd fdroid
-          fdroid init || true
+          # Pull secrets into env-safe vars (avoid YAML quoting issues)
+        env:
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Run fdroid update
+        run: |
+          cd fdroidwork
           fdroid update --create-metadata || true
           fdroid update
           ls -la repo
@@ -119,7 +140,7 @@ jobs:
         run: |
           rm -rf public
           mkdir -p public
-          cp -r fdroid/repo public/repo
+          cp -r fdroidwork/repo public/repo
 
           cat > public/index.html << 'EOF'
           <html>
