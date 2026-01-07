@@ -208,7 +208,7 @@ fun FlipCard(
 
             if (showFrontSide) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(frontText, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, color = DarkText)
+                    Text(frontText, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, color = Color.White)
                     if (!settings.reverseCards && !card.pron.isNullOrBlank()) {
                         Spacer(Modifier.height(6.dp))
                         Text("(${card.pron})", color = DarkMuted)
@@ -228,7 +228,7 @@ fun FlipCard(
             } else {
                 Box(Modifier.graphicsLayer { rotationY = 180f }, contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(backText, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, color = DarkText)
+                        Text(backText, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, color = Color.White)
                         if (settings.reverseCards && !card.pron.isNullOrBlank()) {
                             Spacer(Modifier.height(6.dp))
                             Text("(${card.pron})", color = DarkMuted)
