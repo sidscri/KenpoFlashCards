@@ -169,6 +169,7 @@ jobs:
                       background: white;
                       padding: 12px;
                       border-radius: 8px;
+                      max-width: 200px;
                   }
                   .repo-url {
                       background: #11161f;
@@ -222,7 +223,7 @@ jobs:
                   <p>Scan this QR code with F-Droid to add the repository:</p>
                   
                   <div class="qr-container">
-                      <img src="https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=https%3A%2F%2Fsidscri.github.io%2Fsidscri-apps%2Frepo&choe=UTF-8" alt="QR Code for F-Droid Repo">
+                      <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https%3A%2F%2Fsidscri.github.io%2Fsidscri-apps%2Frepo" alt="QR Code for F-Droid Repo">
                   </div>
 
                   <p>Or copy the repository URL:</p>
