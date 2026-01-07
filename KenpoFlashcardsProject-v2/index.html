@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sidscri Apps - F-Droid Repo</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #0f1217;
+            color: #eaeef7;
+            line-height: 1.6;
+        }
+        h1 { color: #fff; margin-bottom: 8px; }
+        .subtitle { color: #b7c0d4; margin-bottom: 24px; }
+        .card {
+            background: #151a22;
+            border: 1px solid #2b3140;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .qr-container {
+            text-align: center;
+            padding: 20px;
+        }
+        .qr-container img {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+        }
+        .repo-url {
+            background: #11161f;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 12px 0;
+        }
+        .copy-btn {
+            background: #1f6feb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .copy-btn:hover { background: #1a5fd4; }
+        .steps { color: #b7c0d4; }
+        .steps li { margin-bottom: 8px; }
+        .app-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: #11161f;
+            border-radius: 8px;
+            margin-top: 12px;
+        }
+        .app-icon {
+            width: 48px;
+            height: 48px;
+            background: #1f6feb;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        .app-info h3 { margin: 0; font-size: 16px; }
+        .app-info p { margin: 4px 0 0 0; font-size: 13px; color: #b7c0d4; }
+    </style>
+</head>
+<body>
+    <h1>🥋 Sidscri Apps</h1>
+    <p class="subtitle">Personal F-Droid Repository</p>
+
+    <div class="card">
+        <h2>📱 Add to F-Droid</h2>
+        <p>Scan this QR code with F-Droid to add the repository:</p>
+        
+        <div class="qr-container">
+            <!-- QR Code generated via Google Charts API -->
+            <img src="https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=https%3A%2F%2Fsidscri.github.io%2Fsidscri-apps%2Frepo&choe=UTF-8" alt="QR Code for F-Droid Repo">
+        </div>
+
+        <p>Or copy the repository URL:</p>
+        <div class="repo-url" id="repoUrl">https://sidscri.github.io/sidscri-apps/repo</div>
+        <button class="copy-btn" onclick="copyUrl()">📋 Copy URL</button>
+    </div>
+
+    <div class="card">
+        <h2>📋 How to Add</h2>
+        <ol class="steps">
+            <li>Open <strong>F-Droid</strong> on your Android device</li>
+            <li>Go to <strong>Settings</strong> → <strong>Repositories</strong></li>
+            <li>Tap <strong>+</strong> to add a new repository</li>
+            <li>Scan the QR code above, or paste the URL</li>
+            <li>Tap <strong>Add</strong> to confirm</li>
+            <li>Pull down to refresh, then search for the app</li>
+        </ol>
+    </div>
+
+    <div class="card">
+        <h2>📦 Available Apps</h2>
+        <div class="app-item">
+            <div class="app-icon">🥋</div>
+            <div class="app-info">
+                <h3>Kenpo Flashcards</h3>
+                <p>Study martial arts terminology with flashcards. Features include term breakdowns, progress tracking, and text-to-speech.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function copyUrl() {
+            const url = document.getElementById('repoUrl').textContent;
+            navigator.clipboard.writeText(url).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = '✓ Copied!';
+                setTimeout(() => btn.textContent = '📋 Copy URL', 2000);
+            });
+        }
+    </script>
+</body>
+</html>
