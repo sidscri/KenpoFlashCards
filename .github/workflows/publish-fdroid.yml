@@ -15,8 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
-      # Project folder - change this to switch between versions
-      PROJECT_DIR: KenpoFlashcardsProject-v2
 
     steps:
       - name: Checkout
@@ -38,10 +36,10 @@ jobs:
       # Workaround for "Permission denied" executing Gradle distribution downloaded by the wrapper.
       - name: Build release APK (no-wrapper exec workaround)
         run: |
-          WRAPPER_PROPS="${PROJECT_DIR}/gradle/wrapper/gradle-wrapper.properties"
+          WRAPPER_PROPS="KenpoFlashcardsProject-v2/gradle/wrapper/gradle-wrapper.properties"
           if [ ! -f "$WRAPPER_PROPS" ]; then
             echo "Missing $WRAPPER_PROPS"
-            ls -la "${PROJECT_DIR}/gradle/wrapper" || true
+            ls -la KenpoFlashcardsProject-v2/gradle/wrapper || true
             exit 1
           fi
 
@@ -61,16 +59,17 @@ jobs:
           fi
 
           echo "Using GRADLE_HOME=$GRADLE_HOME"
-          bash "$GRADLE_HOME/bin/gradle" -p "${PROJECT_DIR}" assembleRelease
+          bash "$GRADLE_HOME/bin/gradle" -p KenpoFlashcardsProject-v2 assembleRelease
 
       - name: Find APK to sign
+        working-directory: KenpoFlashcardsProject-v2
         run: |
           echo "APK outputs (release):"
-          find "${PROJECT_DIR}/app/build/outputs/apk/release" -type f -name "*.apk" -print
+          find app/build/outputs/apk/release -type f -name "*.apk" -print
 
-          APK_IN=$(find "${PROJECT_DIR}/app/build/outputs/apk/release" -type f -name "*unsigned*.apk" | head -n 1)
+          APK_IN=$(find app/build/outputs/apk/release -type f -name "*unsigned*.apk" | head -n 1)
           if [ -z "$APK_IN" ]; then
-            APK_IN=$(find "${PROJECT_DIR}/app/build/outputs/apk/release" -type f -name "*.apk" | head -n 1)
+            APK_IN=$(find app/build/outputs/apk/release -type f -name "*.apk" | head -n 1)
           fi
 
           if [ -z "$APK_IN" ]; then
@@ -82,6 +81,7 @@ jobs:
           echo "APK_IN=$APK_IN" >> $GITHUB_ENV
 
       - name: Sign APK (apksigner)
+        working-directory: KenpoFlashcardsProject-v2
         run: |
           BUILD_TOOLS=$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -n 1)
           APKSIGNER="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS/apksigner"
@@ -89,16 +89,9 @@ jobs:
           echo "Using apksigner: $APKSIGNER"
           echo "Input APK: $APK_IN"
 
-          APK_OUT="app-release.apk"
+          APK_OUT="../app-release.apk"
 
-          "$APKSIGNER" sign \
-            --ks release.keystore \
-            --ks-type JKS \
-            --ks-key-alias "${{ secrets.ANDROID_KEY_ALIAS }}" \
-            --ks-pass pass:"${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
-            --key-pass pass:"${{ secrets.ANDROID_KEY_PASSWORD }}" \
-            --out "$APK_OUT" \
-            "$APK_IN"
+          "$APKSIGNER" sign             --ks ../release.keystore             --ks-type JKS             --ks-key-alias "${{ secrets.ANDROID_KEY_ALIAS }}"             --ks-pass pass:"${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"             --key-pass pass:"${{ secrets.ANDROID_KEY_PASSWORD }}"             --out "$APK_OUT"             "$APK_IN"
 
           "$APKSIGNER" verify "$APK_OUT"
           ls -la "$APK_OUT"
@@ -122,7 +115,7 @@ jobs:
           cp ../release.keystore keystore.jks
 
           cat > config.yml << EOF
-          repo_url: https://sidscri.github.io/KenpoFlashCards/repo
+          repo_url: https://sidscri.github.io/sidscri-apps/repo
           repo_name: Sidscri Apps
           repo_description: "Repo for my personal apps."
           repo_keyalias: ${ANDROID_KEY_ALIAS}
@@ -141,29 +134,138 @@ jobs:
           mkdir -p public
           cp -r fdroidwork/repo public/repo
 
-          cat > public/index.html << 'EOF'
+          cat > public/index.html << 'HTMLEOF'
           <!DOCTYPE html>
           <html>
-            <head>
+          <head>
               <meta charset="utf-8">
-              <title>Sidscri Apps Repo</title>
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <title>Sidscri Apps - F-Droid Repo</title>
               <style>
-                body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
-                pre { background: #f4f4f4; padding: 12px; border-radius: 6px; overflow-x: auto; }
-                h1 { color: #333; }
+                  * { box-sizing: border-box; }
+                  body {
+                      font-family: system-ui, -apple-system, sans-serif;
+                      max-width: 600px;
+                      margin: 0 auto;
+                      padding: 20px;
+                      background: #0f1217;
+                      color: #eaeef7;
+                      line-height: 1.6;
+                  }
+                  h1 { color: #fff; margin-bottom: 8px; }
+                  .subtitle { color: #b7c0d4; margin-bottom: 24px; }
+                  .card {
+                      background: #151a22;
+                      border: 1px solid #2b3140;
+                      border-radius: 12px;
+                      padding: 20px;
+                      margin-bottom: 16px;
+                  }
+                  .qr-container {
+                      text-align: center;
+                      padding: 20px;
+                  }
+                  .qr-container img {
+                      background: white;
+                      padding: 12px;
+                      border-radius: 8px;
+                  }
+                  .repo-url {
+                      background: #11161f;
+                      padding: 12px;
+                      border-radius: 8px;
+                      font-family: monospace;
+                      word-break: break-all;
+                      margin: 12px 0;
+                  }
+                  .copy-btn {
+                      background: #1f6feb;
+                      color: white;
+                      border: none;
+                      padding: 10px 20px;
+                      border-radius: 6px;
+                      cursor: pointer;
+                      font-size: 14px;
+                  }
+                  .copy-btn:hover { background: #1a5fd4; }
+                  .steps { color: #b7c0d4; }
+                  .steps li { margin-bottom: 8px; }
+                  .app-item {
+                      display: flex;
+                      align-items: center;
+                      gap: 12px;
+                      padding: 12px;
+                      background: #11161f;
+                      border-radius: 8px;
+                      margin-top: 12px;
+                  }
+                  .app-icon {
+                      width: 48px;
+                      height: 48px;
+                      background: #1f6feb;
+                      border-radius: 10px;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      font-size: 24px;
+                  }
+                  .app-info h3 { margin: 0; font-size: 16px; }
+                  .app-info p { margin: 4px 0 0 0; font-size: 13px; color: #b7c0d4; }
               </style>
-            </head>
-            <body>
-              <h1>Sidscri Apps Repo</h1>
-              <p>Add this repo in F-Droid:</p>
-              <pre>https://sidscri.github.io/KenpoFlashCards/repo</pre>
-              <p><strong>Available Apps:</strong></p>
-              <ul>
-                <li>Kenpo Flashcards v2.0 - Study martial arts terminology</li>
-              </ul>
-            </body>
+          </head>
+          <body>
+              <h1>🥋 Sidscri Apps</h1>
+              <p class="subtitle">Personal F-Droid Repository</p>
+
+              <div class="card">
+                  <h2>📱 Add to F-Droid</h2>
+                  <p>Scan this QR code with F-Droid to add the repository:</p>
+                  
+                  <div class="qr-container">
+                      <img src="https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=https%3A%2F%2Fsidscri.github.io%2Fsidscri-apps%2Frepo&choe=UTF-8" alt="QR Code for F-Droid Repo">
+                  </div>
+
+                  <p>Or copy the repository URL:</p>
+                  <div class="repo-url" id="repoUrl">https://sidscri.github.io/sidscri-apps/repo</div>
+                  <button class="copy-btn" onclick="copyUrl()">📋 Copy URL</button>
+              </div>
+
+              <div class="card">
+                  <h2>📋 How to Add</h2>
+                  <ol class="steps">
+                      <li>Open <strong>F-Droid</strong> on your Android device</li>
+                      <li>Go to <strong>Settings</strong> → <strong>Repositories</strong></li>
+                      <li>Tap <strong>+</strong> to add a new repository</li>
+                      <li>Scan the QR code above, or paste the URL</li>
+                      <li>Tap <strong>Add</strong> to confirm</li>
+                      <li>Pull down to refresh, then search for the app</li>
+                  </ol>
+              </div>
+
+              <div class="card">
+                  <h2>📦 Available Apps</h2>
+                  <div class="app-item">
+                      <div class="app-icon">🥋</div>
+                      <div class="app-info">
+                          <h3>Kenpo Flashcards</h3>
+                          <p>Study martial arts terminology with flashcards. Features include term breakdowns, progress tracking, and text-to-speech.</p>
+                      </div>
+                  </div>
+              </div>
+
+              <script>
+                  function copyUrl() {
+                      const url = document.getElementById('repoUrl').textContent;
+                      navigator.clipboard.writeText(url).then(() => {
+                          const btn = document.querySelector('.copy-btn');
+                          btn.textContent = '✓ Copied!';
+                          setTimeout(() => btn.textContent = '📋 Copy URL', 2000);
+                      });
+                  }
+              </script>
+          </body>
           </html>
-          EOF
+          HTMLEOF
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
