@@ -335,7 +335,7 @@ fun StudyScreen(nav: NavHostController, repo: Repository, statusFilter: CardStat
 
     var search by remember { mutableStateOf("") }
     var showFront by remember { mutableStateOf(true) }
-    var index by remember { mutableIntStateOf(0) }
+    var index by remember { mutableStateOf(0) }
     var showBreakdown by remember { mutableStateOf(false) }
 
     val isActive = statusFilter == CardStatus.ACTIVE
@@ -442,7 +442,7 @@ fun LearnedScreen(nav: NavHostController, repo: Repository) {
     var viewMode by remember { mutableStateOf(LearnedViewMode.LIST) }
     var search by remember { mutableStateOf("") }
     var showFront by remember { mutableStateOf(true) }
-    var index by remember { mutableIntStateOf(0) }
+    var index by remember { mutableStateOf(0) }
     var showBreakdown by remember { mutableStateOf(false) }
 
     val learnedCards = remember(allCards, progress, search, viewMode, settings) {
