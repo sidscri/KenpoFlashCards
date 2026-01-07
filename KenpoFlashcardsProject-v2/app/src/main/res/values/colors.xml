@@ -15,7 +15,10 @@
     <color name="accent_danger_border">#6E2222</color>
     <color name="accent_primary">#1F6FEB</color>
     
-    <!-- Legacy colors for compatibility -->
+    <!-- Launcher icon background (REQUIRED) -->
+    <color name="ic_launcher_background">#0F1217</color>
+    
+    <!-- Legacy compatibility -->
     <color name="purple_200">#1F6FEB</color>
     <color name="purple_500">#1F6FEB</color>
     <color name="purple_700">#1564D9</color>
