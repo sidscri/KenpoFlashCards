@@ -15,8 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
-      # Project folder - change this to switch between versions
-      PROJECT_DIR: KenpoFlashcardsProject-v2
 
     steps:
       - name: Checkout
@@ -38,10 +36,10 @@ jobs:
       # Workaround for "Permission denied" executing Gradle distribution downloaded by the wrapper.
       - name: Build release APK (no-wrapper exec workaround)
         run: |
-          WRAPPER_PROPS="${PROJECT_DIR}/gradle/wrapper/gradle-wrapper.properties"
+          WRAPPER_PROPS="KenpoFlashcardsProject/gradle/wrapper/gradle-wrapper.properties"
           if [ ! -f "$WRAPPER_PROPS" ]; then
             echo "Missing $WRAPPER_PROPS"
-            ls -la "${PROJECT_DIR}/gradle/wrapper" || true
+            ls -la KenpoFlashcardsProject/gradle/wrapper || true
             exit 1
           fi
 
@@ -61,16 +59,17 @@ jobs:
           fi
 
           echo "Using GRADLE_HOME=$GRADLE_HOME"
-          bash "$GRADLE_HOME/bin/gradle" -p "${PROJECT_DIR}" assembleRelease
+          bash "$GRADLE_HOME/bin/gradle" -p KenpoFlashcardsProject assembleRelease
 
       - name: Find APK to sign
+        working-directory: KenpoFlashcardsProject
         run: |
           echo "APK outputs (release):"
-          find "${PROJECT_DIR}/app/build/outputs/apk/release" -type f -name "*.apk" -print
+          find app/build/outputs/apk/release -type f -name "*.apk" -print
 
-          APK_IN=$(find "${PROJECT_DIR}/app/build/outputs/apk/release" -type f -name "*unsigned*.apk" | head -n 1)
+          APK_IN=$(find app/build/outputs/apk/release -type f -name "*unsigned*.apk" | head -n 1)
           if [ -z "$APK_IN" ]; then
-            APK_IN=$(find "${PROJECT_DIR}/app/build/outputs/apk/release" -type f -name "*.apk" | head -n 1)
+            APK_IN=$(find app/build/outputs/apk/release -type f -name "*.apk" | head -n 1)
           fi
 
           if [ -z "$APK_IN" ]; then
@@ -82,6 +81,7 @@ jobs:
           echo "APK_IN=$APK_IN" >> $GITHUB_ENV
 
       - name: Sign APK (apksigner)
+        working-directory: KenpoFlashcardsProject
         run: |
           BUILD_TOOLS=$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -n 1)
           APKSIGNER="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS/apksigner"
@@ -89,16 +89,9 @@ jobs:
           echo "Using apksigner: $APKSIGNER"
           echo "Input APK: $APK_IN"
 
-          APK_OUT="app-release.apk"
+          APK_OUT="../app-release.apk"
 
-          "$APKSIGNER" sign \
-            --ks release.keystore \
-            --ks-type JKS \
-            --ks-key-alias "${{ secrets.ANDROID_KEY_ALIAS }}" \
-            --ks-pass pass:"${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
-            --key-pass pass:"${{ secrets.ANDROID_KEY_PASSWORD }}" \
-            --out "$APK_OUT" \
-            "$APK_IN"
+          "$APKSIGNER" sign             --ks ../release.keystore             --ks-type JKS             --ks-key-alias "${{ secrets.ANDROID_KEY_ALIAS }}"             --ks-pass pass:"${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"             --key-pass pass:"${{ secrets.ANDROID_KEY_PASSWORD }}"             --out "$APK_OUT"             "$APK_IN"
 
           "$APKSIGNER" verify "$APK_OUT"
           ls -la "$APK_OUT"
@@ -142,25 +135,12 @@ jobs:
           cp -r fdroidwork/repo public/repo
 
           cat > public/index.html << 'EOF'
-          <!DOCTYPE html>
           <html>
-            <head>
-              <meta charset="utf-8">
-              <title>Sidscri Apps Repo</title>
-              <style>
-                body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
-                pre { background: #f4f4f4; padding: 12px; border-radius: 6px; overflow-x: auto; }
-                h1 { color: #333; }
-              </style>
-            </head>
+            <head><meta charset="utf-8"><title>Sidscri Apps Repo</title></head>
             <body>
               <h1>Sidscri Apps Repo</h1>
               <p>Add this repo in F-Droid:</p>
               <pre>https://sidscri.github.io/KenpoFlashCards/repo</pre>
-              <p><strong>Available Apps:</strong></p>
-              <ul>
-                <li>Kenpo Flashcards v2.0 - Study martial arts terminology</li>
-              </ul>
             </body>
           </html>
           EOF

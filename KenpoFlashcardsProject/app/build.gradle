@@ -46,4 +46,7 @@ dependencies {
 
     // Persistence
     implementation "androidx.datastore:datastore-preferences:1.1.1"
+    
+    // Material Icons Extended (for additional icons)
+    implementation "androidx.compose.material:material-icons-extended"
 }
