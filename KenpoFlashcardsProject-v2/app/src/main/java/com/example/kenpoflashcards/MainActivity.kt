@@ -96,7 +96,7 @@ fun AppRoot() {
 @Composable
 private fun NavBar(nav: NavHostController, currentRoute: String) {
     NavigationBar(containerColor = DarkPanel) {
-        NavigationBarItem(icon = { Icon(Icons.Default.School, "Unlearned") }, label = { Text("Unlearned", fontSize = 9.sp) },
+        NavigationBarItem(icon = { Icon(Icons.Default.School, "To Study") }, label = { Text("To Study", fontSize = 9.sp) },
             selected = currentRoute == Route.Active.path, onClick = { nav.navigate(Route.Active.path) { popUpTo(Route.Active.path) { inclusive = true } } })
         NavigationBarItem(icon = { Icon(Icons.Default.Help, "Unsure") }, label = { Text("Unsure", fontSize = 9.sp) },
             selected = currentRoute == Route.Unsure.path, onClick = { nav.navigate(Route.Unsure.path) })
@@ -229,13 +229,14 @@ fun StudyScreen(nav: NavHostController, repo: Repository, statusFilter: CardStat
     val allCards by repo.allCardsFlow().collectAsState(initial = emptyList())
     val progress by repo.progressFlow().collectAsState(initial = ProgressState.EMPTY)
     val breakdowns by repo.breakdownsFlow().collectAsState(initial = emptyMap())
+    val customSet by repo.customSetFlow().collectAsState(initial = emptySet())
     val settings by repo.settingsAllFlow().collectAsState(initial = StudySettings())
     var search by remember { mutableStateOf("") }
     var showFront by remember { mutableStateOf(true) }
     var index by remember { mutableStateOf(0) }
     var showBreakdown by remember { mutableStateOf(false) }
     val isActive = statusFilter == CardStatus.ACTIVE
-    val title = if (isActive) "Unlearned" else "Unsure"
+    val title = if (isActive) "To Study" else "Unsure"
     val route = if (isActive) Route.Active.path else Route.Unsure.path
     val shouldRandomize = if (isActive) settings.randomizeUnlearned else settings.randomizeUnsure
     val filteredCards = remember(allCards, progress, search, shouldRandomize, settings.sortMode) {
@@ -246,6 +247,7 @@ fun StudyScreen(nav: NavHostController, repo: Repository, statusFilter: CardStat
     LaunchedEffect(filteredCards.size) { if (filteredCards.isEmpty()) index = 0 else index = index.coerceIn(0, filteredCards.size - 1); showFront = true }
     val current = filteredCards.getOrNull(index)
     val currentBreakdown = current?.let { breakdowns[it.id] }
+    val inCustomSet = current?.let { customSet.contains(it.id) } ?: false
     val atEnd = index >= filteredCards.size - 1 && filteredCards.isNotEmpty()
     Scaffold(topBar = { TopAppBar(title = { Text(title) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkPanel)) }, bottomBar = { NavBar(nav, route) }) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).padding(horizontal = 16.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -260,13 +262,14 @@ fun StudyScreen(nav: NavHostController, repo: Repository, statusFilter: CardStat
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                     OutlinedButton({ if (index > 0) { index--; showFront = true } }, enabled = index > 0, modifier = Modifier.weight(1f)) { Text("Prev") }
                     Spacer(Modifier.width(8.dp))
-                    Button({ tts.setRate(settings.speechRate); settings.speechVoice?.let { tts.setVoice(it) }; tts.speak(current.term + if (!current.pron.isNullOrBlank()) ", ${current.pron}" else "") }, modifier = Modifier.weight(1f)) { Icon(Icons.Default.VolumeUp, "Speak"); Spacer(Modifier.width(4.dp)); Text("Speak") }
+                    Button({ tts.setRate(settings.speechRate); settings.speechVoice?.let { tts.setVoice(it) }; tts.speak(current.term + if (!current.pron.isNullOrBlank()) ", ${current.pron}" else "") }, modifier = Modifier.weight(1f)) { Icon(Icons.Default.VolumeUp, "Speak") }
                     Spacer(Modifier.width(8.dp))
                     OutlinedButton({ if (index < filteredCards.size - 1) { index++; showFront = true } }, enabled = index < filteredCards.size - 1, modifier = Modifier.weight(1f)) { Text("Next") }
                 }
                 Spacer(Modifier.height(6.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Button({ scope.launch { repo.setStatus(current.id, CardStatus.LEARNED); if (index >= filteredCards.size - 1) index = (filteredCards.size - 2).coerceAtLeast(0); showFront = true } }, Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = AccentGood)) { Text("Got it ✓") }
+                    IconButton({ scope.launch { if (inCustomSet) repo.removeFromCustomSet(current.id) else repo.addToCustomSet(current.id) } }, modifier = Modifier.size(48.dp).background(DarkPanel2, RoundedCornerShape(8.dp))) { Icon(if (inCustomSet) Icons.Default.Star else Icons.Default.StarBorder, "Custom", tint = if (inCustomSet) Color.Yellow else DarkMuted) }
                     IconButton({ showBreakdown = true }, modifier = Modifier.size(48.dp).background(DarkPanel2, RoundedCornerShape(8.dp))) { Icon(Icons.Default.Extension, "Breakdown", tint = if (currentBreakdown?.hasContent() == true) AccentBlue else DarkMuted) }
                     OutlinedButton({ scope.launch { val newStatus = if (isActive) CardStatus.UNSURE else CardStatus.ACTIVE; repo.setStatus(current.id, newStatus); if (index >= filteredCards.size - 1) index = (filteredCards.size - 2).coerceAtLeast(0); showFront = true } }, Modifier.weight(1f)) { Text(if (isActive) "Unsure" else "Relearn") }
                 }
@@ -287,6 +290,7 @@ fun LearnedScreen(nav: NavHostController, repo: Repository) {
     val allCards by repo.allCardsFlow().collectAsState(initial = emptyList())
     val progress by repo.progressFlow().collectAsState(initial = ProgressState.EMPTY)
     val breakdowns by repo.breakdownsFlow().collectAsState(initial = emptyMap())
+    val customSet by repo.customSetFlow().collectAsState(initial = emptySet())
     val settings by repo.settingsAllFlow().collectAsState(initial = StudySettings())
     var viewMode by remember { mutableStateOf(LearnedViewMode.LIST) }
     var search by remember { mutableStateOf("") }
@@ -302,6 +306,7 @@ fun LearnedScreen(nav: NavHostController, repo: Repository) {
     LaunchedEffect(learnedCards.size) { if (learnedCards.isEmpty()) index = 0 else index = index.coerceIn(0, learnedCards.size - 1); showFront = true }
     val current = learnedCards.getOrNull(index)
     val currentBreakdown = current?.let { breakdowns[it.id] }
+    val inCustomSet = current?.let { customSet.contains(it.id) } ?: false
     val atEnd = index >= learnedCards.size - 1 && learnedCards.isNotEmpty()
     Scaffold(topBar = { TopAppBar(title = { Text("Learned") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkPanel), actions = {
         FilterChip(viewMode == LearnedViewMode.LIST, { viewMode = LearnedViewMode.LIST }, { Text("List", fontSize = 11.sp) }); Spacer(Modifier.width(4.dp))
@@ -341,12 +346,13 @@ fun LearnedScreen(nav: NavHostController, repo: Repository) {
                     Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         OutlinedButton({ if (index > 0) { index--; showFront = true } }, enabled = index > 0, modifier = Modifier.weight(1f)) { Text("Prev") }; Spacer(Modifier.width(8.dp))
-                        Button({ tts.speak(current.term) }, modifier = Modifier.weight(1f)) { Icon(Icons.Default.VolumeUp, "Speak"); Spacer(Modifier.width(4.dp)); Text("Speak") }; Spacer(Modifier.width(8.dp))
+                        Button({ tts.speak(current.term) }, modifier = Modifier.weight(1f)) { Icon(Icons.Default.VolumeUp, "Speak") }; Spacer(Modifier.width(8.dp))
                         OutlinedButton({ if (index < learnedCards.size - 1) { index++; showFront = true } }, enabled = index < learnedCards.size - 1, modifier = Modifier.weight(1f)) { Text("Next") }
                     }
                     Spacer(Modifier.height(6.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                         OutlinedButton({ scope.launch { repo.setStatus(current.id, CardStatus.ACTIVE) } }, Modifier.weight(1f)) { Text("Relearn") }
+                        IconButton({ scope.launch { if (inCustomSet) repo.removeFromCustomSet(current.id) else repo.addToCustomSet(current.id) } }, modifier = Modifier.size(48.dp).background(DarkPanel2, RoundedCornerShape(8.dp))) { Icon(if (inCustomSet) Icons.Default.Star else Icons.Default.StarBorder, "Custom", tint = if (inCustomSet) Color.Yellow else DarkMuted) }
                         IconButton({ showBreakdown = true; breakdownCard = current }, modifier = Modifier.size(48.dp).background(DarkPanel2, RoundedCornerShape(8.dp))) { Icon(Icons.Default.Extension, "Breakdown", tint = if (currentBreakdown?.hasContent() == true) AccentBlue else DarkMuted) }
                         OutlinedButton({ scope.launch { repo.setStatus(current.id, CardStatus.UNSURE) } }, Modifier.weight(1f)) { Text("Unsure") }
                     }
@@ -455,7 +461,7 @@ fun CustomSetScreen(nav: NavHostController, repo: Repository) {
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                     OutlinedButton({ if (index > 0) { index--; showFront = true } }, enabled = index > 0, modifier = Modifier.weight(1f)) { Text("Prev") }; Spacer(Modifier.width(8.dp))
-                    Button({ tts.setRate(settings.speechRate); settings.speechVoice?.let { tts.setVoice(it) }; tts.speak(current.term + if (!current.pron.isNullOrBlank()) ", ${current.pron}" else "") }, modifier = Modifier.weight(1f)) { Icon(Icons.Default.VolumeUp, "Speak"); Spacer(Modifier.width(4.dp)); Text("Speak") }; Spacer(Modifier.width(8.dp))
+                    Button({ tts.setRate(settings.speechRate); settings.speechVoice?.let { tts.setVoice(it) }; tts.speak(current.term + if (!current.pron.isNullOrBlank()) ", ${current.pron}" else "") }, modifier = Modifier.weight(1f)) { Icon(Icons.Default.VolumeUp, "Speak") }; Spacer(Modifier.width(8.dp))
                     OutlinedButton({ if (index < customCards.size - 1) { index++; showFront = true } }, enabled = index < customCards.size - 1, modifier = Modifier.weight(1f)) { Text("Next") }
                 }
                 Spacer(Modifier.height(6.dp))
