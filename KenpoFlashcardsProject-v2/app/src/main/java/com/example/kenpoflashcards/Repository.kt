@@ -24,19 +24,17 @@ class Repository(private val context: Context, private val store: Store) {
         }
     }
     
-    /**
-     * Get list of all unique groups from cards
-     */
-    fun getGroups(): List<String> {
-        return loadDefaultCards().map { it.group }.distinct().sorted()
-    }
+    fun getGroups(): List<String> = loadDefaultCards().map { it.group }.distinct().sorted()
 
     fun progressFlow(): Flow<ProgressState> = store.progressFlow()
-
     fun settingsSingleFlow(): Flow<StudySettings> = store.settingsSingleFlow()
     fun settingsAllFlow(): Flow<StudySettings> = store.settingsAllFlow()
     suspend fun saveSettingsSingle(s: StudySettings) = store.saveSettingsSingle(s)
     suspend fun saveSettingsAll(s: StudySettings) = store.saveSettingsAll(s)
+
+    // Admin settings
+    fun adminSettingsFlow(): Flow<AdminSettings> = store.adminSettingsFlow()
+    suspend fun saveAdminSettings(s: AdminSettings) = store.saveAdminSettings(s)
 
     // Status management
     suspend fun setStatus(id: String, status: CardStatus) = store.setStatus(id, status)
@@ -47,41 +45,78 @@ class Repository(private val context: Context, private val store: Store) {
     suspend fun replaceCustomCards(cards: List<FlashCard>) = store.replaceCustomCards(cards)
     suspend fun clearAllProgress() = store.clearAllProgress()
     
-    // --------------------
     // Custom Study Set
-    // --------------------
-    
     fun customSetFlow(): Flow<Set<String>> = store.customSetFlow()
     suspend fun addToCustomSet(id: String) = store.addToCustomSet(id)
     suspend fun removeFromCustomSet(id: String) = store.removeFromCustomSet(id)
     suspend fun clearCustomSet() = store.clearCustomSet()
     
-    // --------------------
     // Breakdowns
-    // --------------------
-    
     fun breakdownsFlow(): Flow<Map<String, TermBreakdown>> = store.breakdownsFlow()
-    
-    suspend fun getBreakdown(cardId: String): TermBreakdown? {
-        return store.breakdownsFlow().first()[cardId]
-    }
-    
+    suspend fun getBreakdown(cardId: String): TermBreakdown? = store.breakdownsFlow().first()[cardId]
     suspend fun saveBreakdown(breakdown: TermBreakdown) = store.saveBreakdown(breakdown)
-    
     suspend fun deleteBreakdown(cardId: String) = store.deleteBreakdown(cardId)
     
-    /**
-     * Get counts for each status
-     */
+    // Sync with web app
+    suspend fun syncLogin(username: String, password: String): WebAppSync.LoginResult {
+        val admin = adminSettingsFlow().first()
+        val serverUrl = admin.webAppUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+        return WebAppSync.login(serverUrl, username, password)
+    }
+    
+    suspend fun syncPushProgress(): WebAppSync.SyncResult {
+        val admin = adminSettingsFlow().first()
+        if (!admin.isLoggedIn || admin.authToken.isBlank()) {
+            return WebAppSync.SyncResult(false, error = "Not logged in")
+        }
+        val serverUrl = admin.webAppUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+        val progress = progressFlow().first()
+        return WebAppSync.pushProgress(serverUrl, admin.authToken, progress)
+    }
+    
+    suspend fun syncPullProgress(): WebAppSync.SyncResult {
+        val admin = adminSettingsFlow().first()
+        if (!admin.isLoggedIn || admin.authToken.isBlank()) {
+            return WebAppSync.SyncResult(false, error = "Not logged in")
+        }
+        val serverUrl = admin.webAppUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+        val (result, progress) = WebAppSync.pullProgress(serverUrl, admin.authToken)
+        if (result.success && progress != null) {
+            // Apply pulled progress
+            progress.statuses.forEach { (id, status) ->
+                store.setStatus(id, status)
+            }
+        }
+        return result
+    }
+    
+    suspend fun syncBreakdowns(): WebAppSync.SyncResult {
+        val admin = adminSettingsFlow().first()
+        val serverUrl = admin.webAppUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+        val (result, breakdowns) = WebAppSync.getBreakdowns(serverUrl)
+        if (result.success && breakdowns != null) {
+            // Merge with local breakdowns (server wins for conflicts)
+            breakdowns.forEach { (_, breakdown) ->
+                store.saveBreakdown(breakdown)
+            }
+        }
+        return result
+    }
+    
+    // Auto-fill breakdown
+    suspend fun autoFillBreakdown(cardId: String, term: String, useAI: Boolean = false): TermBreakdown {
+        val admin = adminSettingsFlow().first()
+        return if (useAI && admin.chatGptEnabled && admin.chatGptApiKey.isNotBlank()) {
+            ChatGptHelper.createAIBreakdown(admin.chatGptApiKey, cardId, term)
+        } else {
+            ChatGptHelper.createBasicBreakdown(cardId, term)
+        }
+    }
+    
     suspend fun getCounts(): StatusCounts {
         val progress = progressFlow().first()
         val allCards = allCardsFlow().first()
-        
-        var active = 0
-        var unsure = 0
-        var learned = 0
-        var deleted = 0
-        
+        var active = 0; var unsure = 0; var learned = 0; var deleted = 0
         allCards.forEach { card ->
             when (progress.getStatus(card.id)) {
                 CardStatus.ACTIVE -> active++
@@ -90,16 +125,10 @@ class Repository(private val context: Context, private val store: Store) {
                 CardStatus.DELETED -> deleted++
             }
         }
-        
         return StatusCounts(active, unsure, learned, deleted)
     }
 }
 
-data class StatusCounts(
-    val active: Int,
-    val unsure: Int,
-    val learned: Int,
-    val deleted: Int
-) {
+data class StatusCounts(val active: Int, val unsure: Int, val learned: Int, val deleted: Int) {
     val total: Int get() = active + unsure + learned + deleted
 }

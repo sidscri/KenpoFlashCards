@@ -8,21 +8,21 @@ enum class SortMode(val label: String) {
     RANDOM("Random")
 }
 
-/**
- * View mode for Learned screen - list view or study mode
- */
 enum class LearnedViewMode(val label: String) {
     LIST("List"),
     STUDY("Study")
 }
 
 /**
- * Study settings - enhanced with web app features
+ * Study settings - v4.0 with group filters and admin features
  */
 data class StudySettings(
-    // Group selection (for single-group mode)
+    // Group selection for study screens
     val selectedGroup: String? = null,
     val selectedSubgroup: String? = null,
+    
+    // Study group filter (for To Study, Unsure, Learned Study)
+    val studyFilterGroup: String? = null,  // null = All Cards
     
     // Sort mode (used when not randomized)
     val sortMode: SortMode = SortMode.JSON_ORDER,
@@ -33,16 +33,14 @@ data class StudySettings(
     val showSubgroup: Boolean = true,
     val reverseCards: Boolean = false,
     
-    // === NEW: Ported from web app ===
-    
-    // Per-tab randomization (when linked=false, each tab has its own setting)
+    // Per-tab randomization
     val randomizeUnlearned: Boolean = true,
     val randomizeUnsure: Boolean = true,
     val randomizeLearnedStudy: Boolean = true,
-    val linkRandomizeTabs: Boolean = true,  // When true, changing one changes all
+    val linkRandomizeTabs: Boolean = true,
     
     // Breakdown display
-    val showBreakdownOnDefinition: Boolean = true,  // Default to true now
+    val showBreakdownOnDefinition: Boolean = true,
     
     // List view options
     val showDefinitionsInAllList: Boolean = true,
@@ -55,9 +53,26 @@ data class StudySettings(
     val learnedViewMode: LearnedViewMode = LearnedViewMode.LIST,
     
     // Voice settings
-    val speechVoice: String? = null,  // null = system default
-    val speechRate: Float = 1.0f,     // 0.5 to 2.0
+    val speechVoice: String? = null,
+    val speechRate: Float = 1.0f,
+    val speakPronunciationOnly: Boolean = true,  // If pron exists, speak only pron
     
     // Group filter for All screen
-    val filterGroup: String? = null,  // null = All groups
+    val filterGroup: String? = null,
+)
+
+/**
+ * Admin settings - stored separately for security
+ */
+data class AdminSettings(
+    // Web app sync
+    val webAppUrl: String = "",
+    val authToken: String = "",
+    val username: String = "",
+    val isLoggedIn: Boolean = false,
+    val lastSyncTime: Long = 0,
+    
+    // ChatGPT API for breakdown autofill
+    val chatGptApiKey: String = "",
+    val chatGptEnabled: Boolean = false,
 )
