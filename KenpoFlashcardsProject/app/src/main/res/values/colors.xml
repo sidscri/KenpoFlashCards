@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Adaptive launcher icon background -->
-    <color name="ic_launcher_background">#000000</color>
-
-    <!-- Optional brand palette -->
-    <color name="brand_primary">#1B5E20</color>
-    <color name="brand_accent">#F2C200</color>
-</resources>
