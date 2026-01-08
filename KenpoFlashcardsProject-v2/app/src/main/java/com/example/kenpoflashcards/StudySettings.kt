@@ -1,9 +1,11 @@
 package com.example.kenpoflashcards
 
 enum class SortMode(val label: String) {
-    RANDOM("Random"),
-    GROUP_RANDOM("Main group (random order)"),
-    GROUP_SUBGROUP("Main group → Subgroup → Term")
+    JSON_ORDER("Original order"),
+    ALPHABETICAL("Alphabetical (A-Z)"),
+    GROUP_ALPHA("Groups (alphabetical)"),
+    GROUP_RANDOM("Groups (random order)"),
+    RANDOM("Random")
 }
 
 /**
@@ -22,8 +24,8 @@ data class StudySettings(
     val selectedGroup: String? = null,
     val selectedSubgroup: String? = null,
     
-    // Sort and randomize
-    val sortMode: SortMode = SortMode.RANDOM,
+    // Sort mode (used when not randomized)
+    val sortMode: SortMode = SortMode.JSON_ORDER,
     val randomize: Boolean = true,
     
     // Display options
@@ -40,7 +42,7 @@ data class StudySettings(
     val linkRandomizeTabs: Boolean = true,  // When true, changing one changes all
     
     // Breakdown display
-    val showBreakdownOnDefinition: Boolean = false,
+    val showBreakdownOnDefinition: Boolean = true,  // Default to true now
     
     // List view options
     val showDefinitionsInAllList: Boolean = true,
@@ -55,4 +57,7 @@ data class StudySettings(
     // Voice settings
     val speechVoice: String? = null,  // null = system default
     val speechRate: Float = 1.0f,     // 0.5 to 2.0
+    
+    // Group filter for All screen
+    val filterGroup: String? = null,  // null = All groups
 )

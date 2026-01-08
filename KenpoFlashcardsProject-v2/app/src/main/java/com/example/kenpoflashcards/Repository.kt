@@ -7,9 +7,14 @@ import kotlinx.coroutines.flow.first
 
 class Repository(private val context: Context, private val store: Store) {
 
+    private var cachedDefaults: List<FlashCard>? = null
+    
     private fun loadDefaultCards(): List<FlashCard> {
+        cachedDefaults?.let { return it }
         val json = context.assets.open("kenpo_words.json").bufferedReader().use { it.readText() }
-        return JsonUtil.readAssetCards(json)
+        val cards = JsonUtil.readAssetCards(json)
+        cachedDefaults = cards
+        return cards
     }
 
     fun allCardsFlow(): Flow<List<FlashCard>> {
@@ -17,6 +22,13 @@ class Repository(private val context: Context, private val store: Store) {
         return store.customCardsFlow().combine(progressFlow()) { custom, _ ->
             (defaults + custom).distinctBy { it.id }
         }
+    }
+    
+    /**
+     * Get list of all unique groups from cards
+     */
+    fun getGroups(): List<String> {
+        return loadDefaultCards().map { it.group }.distinct().sorted()
     }
 
     fun progressFlow(): Flow<ProgressState> = store.progressFlow()
@@ -34,6 +46,15 @@ class Repository(private val context: Context, private val store: Store) {
 
     suspend fun replaceCustomCards(cards: List<FlashCard>) = store.replaceCustomCards(cards)
     suspend fun clearAllProgress() = store.clearAllProgress()
+    
+    // --------------------
+    // Custom Study Set
+    // --------------------
+    
+    fun customSetFlow(): Flow<Set<String>> = store.customSetFlow()
+    suspend fun addToCustomSet(id: String) = store.addToCustomSet(id)
+    suspend fun removeFromCustomSet(id: String) = store.removeFromCustomSet(id)
+    suspend fun clearCustomSet() = store.clearCustomSet()
     
     // --------------------
     // Breakdowns

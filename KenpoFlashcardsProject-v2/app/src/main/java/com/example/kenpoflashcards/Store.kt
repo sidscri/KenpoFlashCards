@@ -27,6 +27,9 @@ class Store(private val context: Context) {
     // Legacy keys for migration
     private val KEY_LEARNED_JSON = stringPreferencesKey("learned_json")
     private val KEY_DELETED_JSON = stringPreferencesKey("deleted_json")
+    
+    // Custom study set
+    private val KEY_CUSTOM_SET_JSON = stringPreferencesKey("custom_set_json")
 
     /**
      * Get progress flow with full status tracking
@@ -115,6 +118,58 @@ class Store(private val context: Context) {
             prefs.remove(KEY_PROGRESS_JSON)
             prefs.remove(KEY_LEARNED_JSON)
             prefs.remove(KEY_DELETED_JSON)
+        }
+    }
+    
+    // --------------------
+    // Custom Study Set
+    // --------------------
+    
+    fun customSetFlow(): Flow<Set<String>> =
+        context.dataStore.data.map { prefs ->
+            val raw = prefs[KEY_CUSTOM_SET_JSON] ?: "[]"
+            try {
+                val arr = JSONArray(raw)
+                val set = mutableSetOf<String>()
+                for (i in 0 until arr.length()) {
+                    set.add(arr.getString(i))
+                }
+                set
+            } catch (_: Exception) { emptySet() }
+        }
+    
+    suspend fun addToCustomSet(id: String) {
+        context.dataStore.edit { prefs ->
+            val raw = prefs[KEY_CUSTOM_SET_JSON] ?: "[]"
+            val arr = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
+            // Check if already exists
+            var found = false
+            for (i in 0 until arr.length()) {
+                if (arr.getString(i) == id) { found = true; break }
+            }
+            if (!found) {
+                arr.put(id)
+                prefs[KEY_CUSTOM_SET_JSON] = arr.toString()
+            }
+        }
+    }
+    
+    suspend fun removeFromCustomSet(id: String) {
+        context.dataStore.edit { prefs ->
+            val raw = prefs[KEY_CUSTOM_SET_JSON] ?: "[]"
+            val arr = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
+            val newArr = JSONArray()
+            for (i in 0 until arr.length()) {
+                val item = arr.getString(i)
+                if (item != id) newArr.put(item)
+            }
+            prefs[KEY_CUSTOM_SET_JSON] = newArr.toString()
+        }
+    }
+    
+    suspend fun clearCustomSet() {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_CUSTOM_SET_JSON] = "[]"
         }
     }
 
@@ -251,6 +306,7 @@ class Store(private val context: Context) {
         o.put("learnedViewMode", s.learnedViewMode.name)
         o.put("speechVoice", s.speechVoice)
         o.put("speechRate", s.speechRate.toDouble())
+        o.put("filterGroup", s.filterGroup)
         
         return o.toString()
     }
@@ -263,8 +319,8 @@ class Store(private val context: Context) {
                 selectedGroup = o.optString("selectedGroup", "").takeIf { it.isNotBlank() },
                 selectedSubgroup = o.optString("selectedSubgroup", "").takeIf { it.isNotBlank() },
                 sortMode = runCatching {
-                    SortMode.valueOf(o.optString("sortMode", SortMode.RANDOM.name))
-                }.getOrDefault(SortMode.RANDOM),
+                    SortMode.valueOf(o.optString("sortMode", SortMode.JSON_ORDER.name))
+                }.getOrDefault(SortMode.JSON_ORDER),
                 randomize = o.optBoolean("randomize", true),
                 showGroup = o.optBoolean("showGroup", true),
                 showSubgroup = o.optBoolean("showSubgroup", true),
@@ -275,7 +331,7 @@ class Store(private val context: Context) {
                 randomizeUnsure = o.optBoolean("randomizeUnsure", true),
                 randomizeLearnedStudy = o.optBoolean("randomizeLearnedStudy", true),
                 linkRandomizeTabs = o.optBoolean("linkRandomizeTabs", true),
-                showBreakdownOnDefinition = o.optBoolean("showBreakdownOnDefinition", false),
+                showBreakdownOnDefinition = o.optBoolean("showBreakdownOnDefinition", true),
                 showDefinitionsInAllList = o.optBoolean("showDefinitionsInAllList", true),
                 showDefinitionsInLearnedList = o.optBoolean("showDefinitionsInLearnedList", true),
                 showLearnedListGroupLabel = o.optBoolean("showLearnedListGroupLabel", true),
@@ -285,7 +341,8 @@ class Store(private val context: Context) {
                     LearnedViewMode.valueOf(o.optString("learnedViewMode", LearnedViewMode.LIST.name))
                 }.getOrDefault(LearnedViewMode.LIST),
                 speechVoice = o.optString("speechVoice", null)?.takeIf { it.isNotBlank() },
-                speechRate = o.optDouble("speechRate", 1.0).toFloat().coerceIn(0.5f, 2.0f)
+                speechRate = o.optDouble("speechRate", 1.0).toFloat().coerceIn(0.5f, 2.0f),
+                filterGroup = o.optString("filterGroup", null)?.takeIf { it.isNotBlank() }
             )
         } catch (_: Exception) {
             StudySettings()
