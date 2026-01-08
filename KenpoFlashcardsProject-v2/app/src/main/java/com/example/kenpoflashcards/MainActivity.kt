@@ -445,7 +445,42 @@ fun LearnedScreen(nav: NavHostController, repo: Repository) {
     }
     if (showBreakdown && breakdownCard != null) { BreakdownDialog(breakdownCard!!, breakdowns[breakdownCard!!.id], adminSettings, { scope.launch { repo.saveBreakdown(it) }; showBreakdown = false }, { useAI -> scope.launch { val bd = repo.autoFillBreakdown(breakdownCard!!.id, breakdownCard!!.term, useAI); repo.saveBreakdown(bd) }; showBreakdown = false }, { showBreakdown = false }) }
 }
- = Color.White); Text(c.meaning, fontSize = 12.sp, color = Color.White); Spacer(Modifier.height(4.dp)); Button({ scope.launch { repo.setStatus(c.id, CardStatus.ACTIVE) } }) { Text("Restore") } } } } }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DeletedScreen(nav: NavHostController, repo: Repository) {
+    val scope = rememberCoroutineScope()
+    val allCards by repo.allCardsFlow().collectAsState(initial = emptyList())
+    val progress by repo.progressFlow().collectAsState(initial = ProgressState.EMPTY)
+    var search by remember { mutableStateOf("") }
+    val deletedCards = remember(allCards, progress, search) {
+        val d = allCards.filter { progress.getStatus(it.id) == CardStatus.DELETED }
+        if (search.isBlank()) d else d.filter { it.term.contains(search, true) }
+    }
+    Scaffold(
+        topBar = { TopAppBar(title = { Text("Deleted") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkPanel)) },
+        bottomBar = { NavBar(nav, Route.Deleted.path) }
+    ) { pad ->
+        Column(Modifier.fillMaxSize().padding(pad).padding(12.dp)) {
+            Text("Deleted: ${deletedCards.size}", color = DarkMuted, fontSize = 11.sp)
+            OutlinedTextField(search, { search = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Search") }, colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = DarkPanel2, focusedContainerColor = DarkPanel2))
+            Spacer(Modifier.height(8.dp))
+            if (deletedCards.isEmpty()) {
+                Text("No deleted cards.", color = DarkMuted)
+            } else {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(deletedCards, key = { it.id }) { c ->
+                        Card(colors = CardDefaults.cardColors(containerColor = DarkPanel), modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(10.dp)) {
+                                Text(c.term, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text(c.meaning, fontSize = 12.sp, color = Color.White)
+                                Spacer(Modifier.height(4.dp))
+                                Button({ scope.launch { repo.setStatus(c.id, CardStatus.ACTIVE) } }) { Text("Restore") }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
