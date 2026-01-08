@@ -448,6 +448,118 @@ fun LearnedScreen(nav: NavHostController, repo: Repository) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun AllCardsScreen(nav: NavHostController, repo: Repository) {
+    val scope = rememberCoroutineScope()
+    val allCards by repo.allCardsFlow().collectAsState(initial = emptyList())
+    val progress by repo.progressFlow().collectAsState(initial = ProgressState.EMPTY)
+    val breakdowns by repo.breakdownsFlow().collectAsState(initial = emptyMap())
+    val customSet by repo.customSetFlow().collectAsState(initial = emptySet())
+    val settings by repo.settingsAllFlow().collectAsState(initial = StudySettings())
+    val adminSettings by repo.adminSettingsFlow().collectAsState(initial = AdminSettings())
+    var search by remember { mutableStateOf("") }
+    var showBreakdown by remember { mutableStateOf(false) }
+    var breakdownCard by remember { mutableStateOf<FlashCard?>(null) }
+    var showGroupFilter by remember { mutableStateOf(false) }
+    val groups = remember(allCards) { listOf("All Groups") + allCards.map { it.group }.distinct().sorted() }
+    val displayedCards = remember(allCards, progress, search, settings.filterGroup, settings.sortMode) {
+        val visible = allCards.filter { progress.getStatus(it.id) != CardStatus.DELETED }
+        val grouped = if (settings.filterGroup != null) visible.filter { it.group == settings.filterGroup } else visible
+        val searched = if (search.isBlank()) grouped else grouped.filter { it.term.contains(search, true) || it.meaning.contains(search, true) }
+        sortCards(searched, settings.sortMode, false)
+    }
+    Scaffold(topBar = { TopAppBar(title = { Text("All Cards") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkPanel)) }, bottomBar = { NavBar(nav, Route.AllCards.path) }) { pad ->
+        Column(Modifier.fillMaxSize().padding(pad).padding(horizontal = 12.dp, vertical = 4.dp)) {
+            CountsRow(progress, allCards)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Total: ${displayedCards.size}", color = DarkMuted, fontSize = 11.sp); Spacer(Modifier.weight(1f))
+                OutlinedButton({ showGroupFilter = true }, Modifier.height(32.dp)) { Text(settings.filterGroup ?: "All Groups", fontSize = 10.sp); Icon(Icons.Default.ArrowDropDown, "Filter", Modifier.size(16.dp)) }
+                DropdownMenu(showGroupFilter, { showGroupFilter = false }) { groups.forEach { g -> DropdownMenuItem(text = { Text(g, color = Color.White, fontSize = 12.sp) }, onClick = { scope.launch { repo.saveSettingsAll(settings.copy(filterGroup = if (g == "All Groups") null else g)) }; showGroupFilter = false }) } }
+            }
+            OutlinedTextField(search, { search = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Search") }, colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = DarkPanel2, focusedContainerColor = DarkPanel2))
+            Spacer(Modifier.height(6.dp))
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                items(displayedCards, key = { it.id }) { c ->
+                    val status = progress.getStatus(c.id); val bd = breakdowns[c.id]; val inCustomSet = customSet.contains(c.id)
+                    Card(colors = CardDefaults.cardColors(containerColor = DarkPanel), modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(10.dp)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text(c.term, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                                IconButton({ scope.launch { if (inCustomSet) repo.removeFromCustomSet(c.id) else repo.addToCustomSet(c.id) } }, modifier = Modifier.size(28.dp)) { Icon(if (inCustomSet) Icons.Default.Star else Icons.Default.StarBorder, "Custom", tint = if (inCustomSet) Color.Yellow else DarkMuted, modifier = Modifier.size(18.dp)) }
+                                IconButton({ breakdownCard = c; showBreakdown = true }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Extension, "Breakdown", tint = if (bd?.hasContent() == true) AccentBlue else DarkMuted, modifier = Modifier.size(18.dp)) }
+                                AssistChip(onClick = {}, label = { Text(status.name, fontSize = 9.sp) })
+                            }
+                            if (settings.showDefinitionsInAllList) Text(c.meaning, fontSize = 12.sp, color = Color.White)
+                            Text("${c.group}${c.subgroup?.let { " • $it" } ?: ""}", fontSize = 10.sp, color = DarkMuted)
+                            if (settings.showBreakdownOnDefinition && bd?.hasContent() == true) { Spacer(Modifier.height(4.dp)); BreakdownInline(bd) }
+                            if (settings.showUnlearnedUnsureButtonsInAllList) { Spacer(Modifier.height(4.dp)); Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                if (status != CardStatus.ACTIVE) OutlinedButton({ scope.launch { repo.setStatus(c.id, CardStatus.ACTIVE) } }, Modifier.height(28.dp)) { Text("Active", fontSize = 9.sp) }
+                                if (status != CardStatus.UNSURE) OutlinedButton({ scope.launch { repo.setStatus(c.id, CardStatus.UNSURE) } }, Modifier.height(28.dp)) { Text("Unsure", fontSize = 9.sp) }
+                                if (status != CardStatus.LEARNED) Button({ scope.launch { repo.setStatus(c.id, CardStatus.LEARNED) } }, Modifier.height(28.dp), colors = ButtonDefaults.buttonColors(containerColor = AccentGood)) { Text("Learned", fontSize = 9.sp) } } }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (showBreakdown && breakdownCard != null) { BreakdownDialog(breakdownCard!!, breakdowns[breakdownCard!!.id], adminSettings, { scope.launch { repo.saveBreakdown(it) }; showBreakdown = false }, { useAI -> scope.launch { val bd = repo.autoFillBreakdown(breakdownCard!!.id, breakdownCard!!.term, useAI); repo.saveBreakdown(bd) }; showBreakdown = false }, { showBreakdown = false }) }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CustomSetScreen(nav: NavHostController, repo: Repository) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val tts = remember { TtsHelper(context) }
+    DisposableEffect(Unit) { onDispose { tts.shutdown() } }
+    val allCards by repo.allCardsFlow().collectAsState(initial = emptyList())
+    val progress by repo.progressFlow().collectAsState(initial = ProgressState.EMPTY)
+    val breakdowns by repo.breakdownsFlow().collectAsState(initial = emptyMap())
+    val customSet by repo.customSetFlow().collectAsState(initial = emptySet())
+    val settings by repo.settingsAllFlow().collectAsState(initial = StudySettings())
+    val adminSettings by repo.adminSettingsFlow().collectAsState(initial = AdminSettings())
+    var search by remember { mutableStateOf("") }
+    var showFront by remember { mutableStateOf(true) }
+    var index by remember { mutableStateOf(0) }
+    var showBreakdown by remember { mutableStateOf(false) }
+    val customCards = remember(allCards, customSet, search, settings) {
+        val inSet = allCards.filter { customSet.contains(it.id) }
+        val searched = if (search.isBlank()) inSet else inSet.filter { it.term.contains(search, true) || it.meaning.contains(search, true) }
+        sortCards(searched, settings.sortMode, settings.randomizeUnlearned)
+    }
+    LaunchedEffect(customCards.size) { if (customCards.isEmpty()) index = 0 else index = index.coerceIn(0, customCards.size - 1); showFront = true }
+    val current = customCards.getOrNull(index)
+    val currentBreakdown = current?.let { breakdowns[it.id] }
+    val atEnd = index >= customCards.size - 1 && customCards.isNotEmpty()
+    Scaffold(topBar = { TopAppBar(title = { Text("Custom Set") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkPanel), actions = { if (customSet.isNotEmpty()) { IconButton({ scope.launch { repo.clearCustomSet() } }) { Icon(Icons.Default.DeleteSweep, "Clear", tint = DarkMuted) } } }) }, bottomBar = { NavBar(nav, Route.CustomSet.path) }) { pad ->
+        Column(Modifier.fillMaxSize().padding(pad).padding(horizontal = 12.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            CountsRow(progress, allCards); Text("Custom: ${customCards.size}", color = DarkMuted, fontSize = 11.sp)
+            OutlinedTextField(search, { search = it; index = 0; showFront = true }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Search") }, colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = DarkPanel2, focusedContainerColor = DarkPanel2))
+            Spacer(Modifier.height(6.dp))
+            if (current == null) { Text("No cards in custom set.", color = DarkMuted); Text("Add from All tab via ☆", color = DarkMuted, fontSize = 11.sp) }
+            else {
+                Text("Card ${index + 1} / ${customCards.size}", color = DarkMuted, fontSize = 12.sp); Spacer(Modifier.height(4.dp))
+                FlipCard(current, currentBreakdown, showFront, settings, { showFront = !showFront }, { if (index < customCards.size - 1) { index++; showFront = true } }, { if (index > 0) { index--; showFront = true } })
+                Spacer(Modifier.height(6.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    OutlinedButton({ if (index > 0) { index--; showFront = true } }, enabled = index > 0, modifier = Modifier.weight(1f)) { Text("Prev") }; Spacer(Modifier.width(6.dp))
+                    Button({ tts.setRate(settings.speechRate); val text = if (settings.speakPronunciationOnly && !current.pron.isNullOrBlank()) current.pron else current.term; tts.speak(text) }, modifier = Modifier.weight(1f)) { Icon(Icons.Default.VolumeUp, "Speak") }; Spacer(Modifier.width(6.dp))
+                    OutlinedButton({ if (index < customCards.size - 1) { index++; showFront = true } }, enabled = index < customCards.size - 1, modifier = Modifier.weight(1f)) { Text("Next") }
+                }
+                Spacer(Modifier.height(4.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Button({ scope.launch { repo.setStatus(current.id, CardStatus.LEARNED); showFront = true } }, Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = AccentGood)) { Text("Got it ✓") }
+                    IconButton({ showBreakdown = true }, modifier = Modifier.size(44.dp).background(DarkPanel2, RoundedCornerShape(8.dp))) { Icon(Icons.Default.Extension, "Breakdown", tint = if (currentBreakdown?.hasContent() == true) AccentBlue else DarkMuted) }
+                    OutlinedButton({ scope.launch { repo.removeFromCustomSet(current.id); if (index >= customCards.size - 1) index = (customCards.size - 2).coerceAtLeast(0) } }, Modifier.weight(1f)) { Icon(Icons.Default.RemoveCircleOutline, "Remove", Modifier.size(14.dp)); Text("Remove", fontSize = 11.sp) }
+                }
+                if (atEnd) { Spacer(Modifier.height(6.dp)); OutlinedButton({ index = 0; showFront = true }, Modifier.fillMaxWidth()) { Icon(Icons.Default.KeyboardArrowUp, "Top"); Spacer(Modifier.width(4.dp)); Text("Return to Top") } }
+            }
+        }
+    }
+    if (showBreakdown && current != null) { BreakdownDialog(current, currentBreakdown, adminSettings, { scope.launch { repo.saveBreakdown(it) }; showBreakdown = false }, { useAI -> scope.launch { val bd = repo.autoFillBreakdown(current.id, current.term, useAI); repo.saveBreakdown(bd) }; showBreakdown = false }, { showBreakdown = false }) }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun DeletedScreen(nav: NavHostController, repo: Repository) {
     val scope = rememberCoroutineScope()
     val allCards by repo.allCardsFlow().collectAsState(initial = emptyList())
