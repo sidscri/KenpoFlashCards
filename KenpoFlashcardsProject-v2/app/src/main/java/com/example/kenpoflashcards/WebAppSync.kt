@@ -45,7 +45,7 @@ object WebAppSync {
     
     /**
      * Login to web app
-     * Server should check profiles.json for matching credentials
+     * Server checks profiles.json with werkzeug password hash
      */
     suspend fun login(serverUrl: String, username: String, password: String): LoginResult = withContext(Dispatchers.IO) {
         try {
@@ -72,10 +72,13 @@ object WebAppSync {
                     success = true,
                     token = json.optString("token", ""),
                     userId = json.optString("userId", ""),
-                    username = json.optString("username", username)
+                    username = json.optString("username", json.optString("displayName", username))
                 )
             } else {
-                val error = try { conn.errorStream?.bufferedReader()?.readText() ?: "Login failed" } catch (_: Exception) { "Login failed" }
+                val error = try { 
+                    val errJson = JSONObject(conn.errorStream?.bufferedReader()?.readText() ?: "{}")
+                    errJson.optString("error", "Login failed")
+                } catch (_: Exception) { "Login failed" }
                 LoginResult(success = false, error = error)
             }
         } catch (e: Exception) {
@@ -160,11 +163,11 @@ object WebAppSync {
     
     /**
      * Get shared breakdowns from server
-     * Server reads from data/breakdown.json
+     * Server reads from data/breakdowns.json
      */
     suspend fun getBreakdowns(serverUrl: String): Pair<SyncResult, Map<String, TermBreakdown>?> = withContext(Dispatchers.IO) {
         try {
-            val url = URL("$serverUrl/api/breakdowns")
+            val url = URL("$serverUrl/api/sync/breakdowns")
             val conn = url.openConnection() as HttpURLConnection
             conn.requestMethod = "GET"
             conn.connectTimeout = 10000

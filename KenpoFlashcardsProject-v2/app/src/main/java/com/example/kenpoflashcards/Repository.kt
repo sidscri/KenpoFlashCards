@@ -65,9 +65,13 @@ class Repository(private val context: Context, private val store: Store) {
     }
     
     suspend fun syncPushProgress(): WebAppSync.SyncResult {
-        val admin = adminSettingsFlow().first()
-        if (!admin.isLoggedIn || admin.authToken.isBlank()) {
+        // Re-read admin settings to ensure we have latest token
+        val admin = store.adminSettingsFlow().first()
+        if (!admin.isLoggedIn) {
             return WebAppSync.SyncResult(false, error = "Not logged in")
+        }
+        if (admin.authToken.isBlank()) {
+            return WebAppSync.SyncResult(false, error = "No auth token - please login again")
         }
         val serverUrl = admin.webAppUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
         val progress = progressFlow().first()
@@ -75,9 +79,12 @@ class Repository(private val context: Context, private val store: Store) {
     }
     
     suspend fun syncPullProgress(): WebAppSync.SyncResult {
-        val admin = adminSettingsFlow().first()
-        if (!admin.isLoggedIn || admin.authToken.isBlank()) {
+        val admin = store.adminSettingsFlow().first()
+        if (!admin.isLoggedIn) {
             return WebAppSync.SyncResult(false, error = "Not logged in")
+        }
+        if (admin.authToken.isBlank()) {
+            return WebAppSync.SyncResult(false, error = "No auth token - please login again")
         }
         val serverUrl = admin.webAppUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
         val (result, progress) = WebAppSync.pullProgress(serverUrl, admin.authToken)
