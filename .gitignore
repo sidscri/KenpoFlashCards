@@ -53,3 +53,15 @@ yarn-error.log*
 # ---------- Kotlin/Java ----------
 *.class
 *.jar
+
+# ---------- Python ----------
+__pycache__/
+*.pyc
+*.pyo
+.Python
+venv/
+.venv/
+
+# ---------- KenpoFlashcardsWeb server data ----------
+# Contains user passwords, progress, and sensitive data
+KenpoFlashcardsWeb/data/
