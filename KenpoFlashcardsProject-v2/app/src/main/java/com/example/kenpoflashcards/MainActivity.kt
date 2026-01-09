@@ -842,6 +842,7 @@ fun AdminScreen(nav: NavHostController, repo: Repository) {
                 Card(colors = CardDefaults.cardColors(containerColor = AccentGood), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp)) {
                         Text("✓ Logged in as: ${adminSettings.username}", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Token: ${if (adminSettings.authToken.isNotBlank()) adminSettings.authToken.take(8) + "..." else "MISSING!"}", color = if (adminSettings.authToken.isNotBlank()) DarkMuted else Color.Red, fontSize = 10.sp)
                         if (adminSettings.lastSyncTime > 0) {
                             Text("Last sync: ${java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(adminSettings.lastSyncTime))}", color = DarkMuted, fontSize = 11.sp)
                         }
@@ -884,7 +885,21 @@ fun AdminScreen(nav: NavHostController, repo: Repository) {
                     isLoading = true
                     scope.launch {
                         val result = repo.syncLogin(username, password)
-                        if (result.success) { repo.saveAdminSettings(adminSettings.copy(webAppUrl = serverUrl, authToken = result.token, username = result.username, isLoggedIn = true)); statusMessage = "Logged in!"; password = "" }
+                        if (result.success) { 
+                            // Save with new token
+                            val newSettings = AdminSettings(
+                                webAppUrl = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL },
+                                authToken = result.token,
+                                username = result.username,
+                                isLoggedIn = true,
+                                lastSyncTime = 0,
+                                chatGptApiKey = adminSettings.chatGptApiKey,
+                                chatGptEnabled = adminSettings.chatGptEnabled
+                            )
+                            repo.saveAdminSettings(newSettings)
+                            statusMessage = "Logged in! Token: ${result.token.take(8)}..."
+                            password = "" 
+                        }
                         else { statusMessage = "Login failed: ${result.error}" }
                         isLoading = false
                     }
