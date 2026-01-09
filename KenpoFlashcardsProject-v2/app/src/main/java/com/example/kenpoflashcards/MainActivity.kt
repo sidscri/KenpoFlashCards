@@ -849,8 +849,26 @@ fun AdminScreen(nav: NavHostController, repo: Repository) {
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button({ isLoading = true; scope.launch { val result = repo.syncPushProgress(); statusMessage = if (result.success) "Progress pushed!" else "Error: ${result.error}"; if (result.success) repo.saveAdminSettings(adminSettings.copy(lastSyncTime = System.currentTimeMillis())); isLoading = false } }, Modifier.weight(1f), enabled = !isLoading) { Text(if (isLoading) "..." else "Push") }
-                    Button({ isLoading = true; scope.launch { val result = repo.syncPullProgress(); statusMessage = if (result.success) "Progress pulled!" else "Error: ${result.error}"; if (result.success) repo.saveAdminSettings(adminSettings.copy(lastSyncTime = System.currentTimeMillis())); isLoading = false } }, Modifier.weight(1f), enabled = !isLoading) { Text(if (isLoading) "..." else "Pull") }
+                    Button({ 
+                        if (adminSettings.authToken.isBlank()) { statusMessage = "Error: No auth token"; return@Button }
+                        isLoading = true
+                        scope.launch { 
+                            val result = repo.syncPushProgressWithToken(adminSettings.authToken, adminSettings.webAppUrl)
+                            statusMessage = if (result.success) "Progress pushed!" else "Error: ${result.error}"
+                            if (result.success) repo.saveAdminSettings(adminSettings.copy(lastSyncTime = System.currentTimeMillis()))
+                            isLoading = false 
+                        } 
+                    }, Modifier.weight(1f), enabled = !isLoading) { Text(if (isLoading) "..." else "Push") }
+                    Button({ 
+                        if (adminSettings.authToken.isBlank()) { statusMessage = "Error: No auth token"; return@Button }
+                        isLoading = true
+                        scope.launch { 
+                            val result = repo.syncPullProgressWithToken(adminSettings.authToken, adminSettings.webAppUrl)
+                            statusMessage = if (result.success) "Progress pulled!" else "Error: ${result.error}"
+                            if (result.success) repo.saveAdminSettings(adminSettings.copy(lastSyncTime = System.currentTimeMillis()))
+                            isLoading = false 
+                        } 
+                    }, Modifier.weight(1f), enabled = !isLoading) { Text(if (isLoading) "..." else "Pull") }
                 }
                 Spacer(Modifier.height(4.dp))
                 OutlinedButton({ scope.launch { repo.saveAdminSettings(adminSettings.copy(isLoggedIn = false, authToken = "", username = "")); statusMessage = "Logged out" } }, Modifier.fillMaxWidth()) { Text("Logout") }

@@ -68,6 +68,8 @@ class Store(private val context: Context) {
     suspend fun clearAllProgress() { context.dataStore.edit { prefs -> prefs.remove(KEY_PROGRESS_JSON); prefs.remove(KEY_LEARNED_JSON); prefs.remove(KEY_DELETED_JSON) } }
 
     // Custom Study Set
+    private val KEY_CUSTOM_SET_STATUS_JSON = stringPreferencesKey("custom_set_status_json")
+    
     fun customSetFlow(): Flow<Set<String>> = context.dataStore.data.map { prefs ->
         val raw = prefs[KEY_CUSTOM_SET_JSON] ?: "[]"
         try { val arr = JSONArray(raw); val set = mutableSetOf<String>(); for (i in 0 until arr.length()) set.add(arr.getString(i)); set } catch (_: Exception) { emptySet() }
@@ -81,8 +83,34 @@ class Store(private val context: Context) {
         val arr = try { JSONArray(prefs[KEY_CUSTOM_SET_JSON] ?: "[]") } catch (_: Exception) { JSONArray() }
         val newArr = JSONArray(); for (i in 0 until arr.length()) { val item = arr.getString(i); if (item != id) newArr.put(item) }
         prefs[KEY_CUSTOM_SET_JSON] = newArr.toString()
+        // Also remove from custom status
+        val statusObj = try { JSONObject(prefs[KEY_CUSTOM_SET_STATUS_JSON] ?: "{}") } catch (_: Exception) { JSONObject() }
+        statusObj.remove(id)
+        prefs[KEY_CUSTOM_SET_STATUS_JSON] = statusObj.toString()
     } }
-    suspend fun clearCustomSet() { context.dataStore.edit { prefs -> prefs[KEY_CUSTOM_SET_JSON] = "[]" } }
+    suspend fun clearCustomSet() { context.dataStore.edit { prefs -> prefs[KEY_CUSTOM_SET_JSON] = "[]"; prefs[KEY_CUSTOM_SET_STATUS_JSON] = "{}" } }
+    
+    // Custom Set isolated status (separate from main deck status)
+    fun customSetStatusFlow(): Flow<Map<String, CustomCardStatus>> = context.dataStore.data.map { prefs ->
+        val raw = prefs[KEY_CUSTOM_SET_STATUS_JSON] ?: "{}"
+        try {
+            val obj = JSONObject(raw)
+            val map = mutableMapOf<String, CustomCardStatus>()
+            obj.keys().forEach { key ->
+                map[key] = when (obj.optString(key, "active").lowercase()) {
+                    "unsure" -> CustomCardStatus.UNSURE
+                    "learned" -> CustomCardStatus.LEARNED
+                    else -> CustomCardStatus.ACTIVE
+                }
+            }
+            map
+        } catch (_: Exception) { emptyMap() }
+    }
+    suspend fun setCustomSetStatus(id: String, status: CustomCardStatus) { context.dataStore.edit { prefs ->
+        val obj = try { JSONObject(prefs[KEY_CUSTOM_SET_STATUS_JSON] ?: "{}") } catch (_: Exception) { JSONObject() }
+        if (status == CustomCardStatus.ACTIVE) obj.remove(id) else obj.put(id, status.name.lowercase())
+        prefs[KEY_CUSTOM_SET_STATUS_JSON] = obj.toString()
+    } }
 
     // Breakdowns
     fun breakdownsFlow(): Flow<Map<String, TermBreakdown>> = context.dataStore.data.map { prefs -> parseBreakdowns(prefs[KEY_BREAKDOWNS_JSON] ?: "{}") }
@@ -123,6 +151,14 @@ class Store(private val context: Context) {
         o.put("showBreakdownOnDefinition", s.showBreakdownOnDefinition); o.put("showDefinitionsInAllList", s.showDefinitionsInAllList); o.put("showDefinitionsInLearnedList", s.showDefinitionsInLearnedList)
         o.put("showLearnedListGroupLabel", s.showLearnedListGroupLabel); o.put("showUnlearnedUnsureButtonsInAllList", s.showUnlearnedUnsureButtonsInAllList); o.put("showRelearnUnsureButtonsInLearnedList", s.showRelearnUnsureButtonsInLearnedList)
         o.put("learnedViewMode", s.learnedViewMode.name); o.put("speechVoice", s.speechVoice); o.put("speechRate", s.speechRate.toDouble()); o.put("speakPronunciationOnly", s.speakPronunciationOnly); o.put("filterGroup", s.filterGroup)
+        o.put("showCustomSetButton", s.showCustomSetButton)
+        // CustomSetSettings
+        val cs = s.customSetSettings
+        val cso = JSONObject()
+        cso.put("randomOrder", cs.randomOrder); cso.put("reverseCards", cs.reverseCards); cso.put("showGroupLabel", cs.showGroupLabel)
+        cso.put("showBreakdown", cs.showBreakdown); cso.put("sortMode", cs.sortMode.name); cso.put("showDefinitions", cs.showDefinitions)
+        cso.put("showActionButtons", cs.showActionButtons); cso.put("reflectInMainDecks", cs.reflectInMainDecks)
+        o.put("customSetSettings", cso)
         return o.toString()
     }
 
@@ -130,18 +166,33 @@ class Store(private val context: Context) {
         if (raw.isNullOrBlank()) return StudySettings()
         return try {
             val o = JSONObject(raw)
+            val cso = o.optJSONObject("customSetSettings")
+            val customSetSettings = if (cso != null) {
+                CustomSetSettings(
+                    randomOrder = cso.optBoolean("randomOrder", false),
+                    reverseCards = cso.optBoolean("reverseCards", false),
+                    showGroupLabel = cso.optBoolean("showGroupLabel", false),
+                    showBreakdown = cso.optBoolean("showBreakdown", true),
+                    sortMode = runCatching { SortMode.valueOf(cso.optString("sortMode", SortMode.JSON_ORDER.name)) }.getOrDefault(SortMode.JSON_ORDER),
+                    showDefinitions = cso.optBoolean("showDefinitions", true),
+                    showActionButtons = cso.optBoolean("showActionButtons", true),
+                    reflectInMainDecks = cso.optBoolean("reflectInMainDecks", false)
+                )
+            } else CustomSetSettings()
             StudySettings(
                 selectedGroup = o.optString("selectedGroup", "").takeIf { it.isNotBlank() },
                 selectedSubgroup = o.optString("selectedSubgroup", "").takeIf { it.isNotBlank() },
                 studyFilterGroup = o.optString("studyFilterGroup", "").takeIf { it.isNotBlank() },
                 sortMode = runCatching { SortMode.valueOf(o.optString("sortMode", SortMode.JSON_ORDER.name)) }.getOrDefault(SortMode.JSON_ORDER),
-                randomize = o.optBoolean("randomize", true), showGroup = o.optBoolean("showGroup", true), showSubgroup = o.optBoolean("showSubgroup", true), reverseCards = o.optBoolean("reverseCards", false),
-                randomizeUnlearned = o.optBoolean("randomizeUnlearned", true), randomizeUnsure = o.optBoolean("randomizeUnsure", true), randomizeLearnedStudy = o.optBoolean("randomizeLearnedStudy", true), linkRandomizeTabs = o.optBoolean("linkRandomizeTabs", true),
+                randomize = o.optBoolean("randomize", true), showGroup = o.optBoolean("showGroup", false), showSubgroup = o.optBoolean("showSubgroup", false), reverseCards = o.optBoolean("reverseCards", false),
+                randomizeUnlearned = o.optBoolean("randomizeUnlearned", false), randomizeUnsure = o.optBoolean("randomizeUnsure", false), randomizeLearnedStudy = o.optBoolean("randomizeLearnedStudy", false), linkRandomizeTabs = o.optBoolean("linkRandomizeTabs", true),
                 showBreakdownOnDefinition = o.optBoolean("showBreakdownOnDefinition", true), showDefinitionsInAllList = o.optBoolean("showDefinitionsInAllList", true), showDefinitionsInLearnedList = o.optBoolean("showDefinitionsInLearnedList", true),
                 showLearnedListGroupLabel = o.optBoolean("showLearnedListGroupLabel", true), showUnlearnedUnsureButtonsInAllList = o.optBoolean("showUnlearnedUnsureButtonsInAllList", true), showRelearnUnsureButtonsInLearnedList = o.optBoolean("showRelearnUnsureButtonsInLearnedList", true),
                 learnedViewMode = runCatching { LearnedViewMode.valueOf(o.optString("learnedViewMode", LearnedViewMode.LIST.name)) }.getOrDefault(LearnedViewMode.LIST),
                 speechVoice = o.optString("speechVoice", null)?.takeIf { it.isNotBlank() }, speechRate = o.optDouble("speechRate", 1.0).toFloat().coerceIn(0.5f, 2.0f),
-                speakPronunciationOnly = o.optBoolean("speakPronunciationOnly", true), filterGroup = o.optString("filterGroup", null)?.takeIf { it.isNotBlank() }
+                speakPronunciationOnly = o.optBoolean("speakPronunciationOnly", false), filterGroup = o.optString("filterGroup", null)?.takeIf { it.isNotBlank() },
+                showCustomSetButton = o.optBoolean("showCustomSetButton", true),
+                customSetSettings = customSetSettings
             )
         } catch (_: Exception) { StudySettings() }
     }

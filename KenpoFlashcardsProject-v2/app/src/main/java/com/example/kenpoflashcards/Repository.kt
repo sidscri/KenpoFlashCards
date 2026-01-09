@@ -47,9 +47,11 @@ class Repository(private val context: Context, private val store: Store) {
     
     // Custom Study Set
     fun customSetFlow(): Flow<Set<String>> = store.customSetFlow()
+    fun customSetStatusFlow(): Flow<Map<String, CustomCardStatus>> = store.customSetStatusFlow()
     suspend fun addToCustomSet(id: String) = store.addToCustomSet(id)
     suspend fun removeFromCustomSet(id: String) = store.removeFromCustomSet(id)
     suspend fun clearCustomSet() = store.clearCustomSet()
+    suspend fun setCustomSetStatus(id: String, status: CustomCardStatus) = store.setCustomSetStatus(id, status)
     
     // Breakdowns
     fun breakdownsFlow(): Flow<Map<String, TermBreakdown>> = store.breakdownsFlow()
@@ -76,6 +78,24 @@ class Repository(private val context: Context, private val store: Store) {
         val serverUrl = admin.webAppUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
         val progress = progressFlow().first()
         return WebAppSync.pushProgress(serverUrl, admin.authToken, progress)
+    }
+    
+    // Pass token directly from UI to avoid stale state issues
+    suspend fun syncPushProgressWithToken(token: String, serverUrl: String): WebAppSync.SyncResult {
+        if (token.isBlank()) return WebAppSync.SyncResult(false, error = "No auth token")
+        val url = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+        val progress = progressFlow().first()
+        return WebAppSync.pushProgress(url, token, progress)
+    }
+    
+    suspend fun syncPullProgressWithToken(token: String, serverUrl: String): WebAppSync.SyncResult {
+        if (token.isBlank()) return WebAppSync.SyncResult(false, error = "No auth token")
+        val url = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+        val (result, progress) = WebAppSync.pullProgress(url, token)
+        if (result.success && progress != null) {
+            progress.statuses.forEach { (id, status) -> store.setStatus(id, status) }
+        }
+        return result
     }
     
     suspend fun syncPullProgress(): WebAppSync.SyncResult {

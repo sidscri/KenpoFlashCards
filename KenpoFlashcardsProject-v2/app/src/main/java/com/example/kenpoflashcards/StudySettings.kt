@@ -13,8 +13,29 @@ enum class LearnedViewMode(val label: String) {
     STUDY("Study")
 }
 
+// Custom Set has its own status tracking
+enum class CustomCardStatus {
+    ACTIVE,   // In custom set, not yet studied
+    UNSURE,   // Marked unsure within custom
+    LEARNED   // Marked learned within custom
+}
+
 /**
- * Study settings - v4.0 with group filters and admin features
+ * Custom Set specific settings
+ */
+data class CustomSetSettings(
+    val randomOrder: Boolean = false,
+    val reverseCards: Boolean = false,
+    val showGroupLabel: Boolean = false,
+    val showBreakdown: Boolean = true,
+    val sortMode: SortMode = SortMode.JSON_ORDER,
+    val showDefinitions: Boolean = true,
+    val showActionButtons: Boolean = true,
+    val reflectInMainDecks: Boolean = false,  // If true, status changes affect main decks too
+)
+
+/**
+ * Study settings - v4.0.3 with Custom Set isolation
  */
 data class StudySettings(
     // Group selection for study screens
@@ -29,14 +50,14 @@ data class StudySettings(
     val randomize: Boolean = true,
     
     // Display options
-    val showGroup: Boolean = true,
-    val showSubgroup: Boolean = true,
+    val showGroup: Boolean = false,
+    val showSubgroup: Boolean = false,
     val reverseCards: Boolean = false,
     
     // Per-tab randomization
-    val randomizeUnlearned: Boolean = true,
-    val randomizeUnsure: Boolean = true,
-    val randomizeLearnedStudy: Boolean = true,
+    val randomizeUnlearned: Boolean = false,
+    val randomizeUnsure: Boolean = false,
+    val randomizeLearnedStudy: Boolean = false,
     val linkRandomizeTabs: Boolean = true,
     
     // Breakdown display
@@ -55,10 +76,16 @@ data class StudySettings(
     // Voice settings
     val speechVoice: String? = null,
     val speechRate: Float = 1.0f,
-    val speakPronunciationOnly: Boolean = true,  // If pron exists, speak only pron
+    val speakPronunciationOnly: Boolean = false,  // Default OFF per screenshot
     
     // Group filter for All screen
     val filterGroup: String? = null,
+    
+    // Custom Set settings (isolated)
+    val customSetSettings: CustomSetSettings = CustomSetSettings(),
+    
+    // Show Custom Set button (star icon) in study screens
+    val showCustomSetButton: Boolean = true,
 )
 
 /**
