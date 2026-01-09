@@ -34,7 +34,8 @@ object WebAppSync {
         val token: String = "",
         val userId: String = "",
         val username: String = "",
-        val error: String = ""
+        val error: String = "",
+        val debugInfo: String = ""
     )
     
     data class SyncResult(
@@ -68,11 +69,16 @@ object WebAppSync {
             if (responseCode == 200) {
                 val response = conn.inputStream.bufferedReader().readText()
                 val json = JSONObject(response)
+                val token = json.optString("token", "")
+                val userId = json.optString("userId", "")
+                val uname = json.optString("username", json.optString("displayName", username))
+                // Debug: include raw response info
                 LoginResult(
                     success = true,
-                    token = json.optString("token", ""),
-                    userId = json.optString("userId", ""),
-                    username = json.optString("username", json.optString("displayName", username))
+                    token = token,
+                    userId = userId,
+                    username = uname,
+                    debugInfo = "raw token length: ${token.length}, response: ${response.take(100)}"
                 )
             } else {
                 val error = try { 

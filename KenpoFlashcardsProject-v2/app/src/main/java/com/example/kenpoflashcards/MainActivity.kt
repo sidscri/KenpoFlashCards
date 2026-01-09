@@ -897,7 +897,7 @@ fun AdminScreen(nav: NavHostController, repo: Repository) {
                                 chatGptEnabled = adminSettings.chatGptEnabled
                             )
                             repo.saveAdminSettings(newSettings)
-                            statusMessage = "Logged in! Token: ${result.token.take(8)}..."
+                            statusMessage = "Token(${result.token.length}): ${result.token.take(16)}... Debug: ${result.debugInfo}"
                             password = "" 
                         }
                         else { statusMessage = "Login failed: ${result.error}" }
