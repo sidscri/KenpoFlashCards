@@ -1,0 +1,21 @@
+If breakdawn data is present I want a small icon on all cards with data to show it present. Maybe under the Status: or definition on definition page. With a quick view if pressed with auto closing.
+
+"Saved breakdown" text below "Select group..." dropdown does not change on changing cards
+
+Dont change color (white background, light grey text) of study/group dropdown list when changing from a group, cant see options.
+
+As admin to see who is actively/recently logged in and studying
+
+Notes to be added to cards, to view if selected.  Option to share and collaberate with others.
+
+
+
+Next thing is to add png image and to change the color a little to match the company colors 
+
+and to have an icon for it to show with the other apps running in the background i.e. wifi, bluetooth, Windows security, etc.
+
+Run as service
+
+Turn this back into github to re-build the android app APK
+
+KenpoFlashCardsAndroidApp.zip with data, design, features from KenpoFlashcardsWeb.zip.  So I may create a better version of the KenpoFlashcardsProject android app

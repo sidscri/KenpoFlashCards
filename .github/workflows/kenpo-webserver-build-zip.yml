@@ -1,0 +1,20 @@
+name: KenpoFlashcardsWebServer (Build ZIP)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  zip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create ZIP (project folder only)
+        run: |
+          cd KenpoFlashcardsWebServer
+          zip -r ../KenpoFlashcardsWebServer.zip .             -x "**/.venv/**" "**/venv/**" "**/__pycache__/**" "**/*.pyc" "**/*.pyo" "**/*.log" "**/*.db" "**/*.sqlite"
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KenpoFlashcardsWebServer
+          path: KenpoFlashcardsWebServer.zip

@@ -1,0 +1,14 @@
+The Fix
+
+You need to give the Android login a different URL. Change line 1272 from:
+@app.post("/api/login")
+to:
+@app.post("/api/sync/login")
+Then update the Android app to call /api/sync/login instead of /api/login.
+Quick fix for your server (app.py line 1272):
+python@app.post("/api/sync/login")  # Changed from /api/login
+def api_android_login():
+Then in the Android app (WebAppSync.kt), change the login URL from:
+val url = URL("$baseUrl/api/login")
+to:
+val url = URL("$baseUrl/api/sync/login")

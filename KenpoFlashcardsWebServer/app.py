@@ -1,0 +1,1425 @@
+import os
+import json
+import time
+import hashlib
+import re
+import uuid
+from pathlib import Path
+from typing import Any, Dict, List, Tuple, Optional
+
+import requests
+
+from flask import Flask, jsonify, request, send_from_directory, session
+from werkzeug.security import generate_password_hash, check_password_hash
+
+# =========================================================
+# Kenpo Flashcards Web (Multi-user with Username/Password Auth)
+# - Users create a profile with username/password
+# - Progress + settings are stored per user on the server
+# - Login from any device with the same credentials
+# =========================================================
+
+DEFAULT_KENPO_ROOT = r"C:\Users\Sidscri\Documents\GitHub\sidscri-apps"
+# Fallback (only used if auto-discovery fails)
+DEFAULT_KENPO_JSON_FALLBACK = r"C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v2\app\src\main\assets\kenpo_words.json"
+
+def _resolve_kenpo_json_path() -> str:
+    """Resolve the kenpo_words.json path.
+
+    Priority:
+      1) KENPO_JSON_PATH (explicit)
+      2) Auto-discover under KENPO_ROOT (or DEFAULT_KENPO_ROOT)
+      3) DEFAULT_KENPO_JSON_FALLBACK
+
+    Auto-discovery picks the most recently modified match.
+    """
+    explicit = (os.getenv("KENPO_JSON_PATH") or "").strip()
+    if explicit and os.path.exists(explicit):
+        return explicit
+
+    root = (os.getenv("KENPO_ROOT") or DEFAULT_KENPO_ROOT).strip() or DEFAULT_KENPO_ROOT
+    try:
+        root_path = Path(root)
+        if root_path.exists():
+            candidates = list(root_path.rglob("app/src/main/assets/kenpo_words.json"))
+            if candidates:
+                candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+                return str(candidates[0])
+    except Exception:
+        # fall through to fallback
+        pass
+
+    return DEFAULT_KENPO_JSON_FALLBACK
+
+
+KENPO_JSON_PATH = _resolve_kenpo_json_path()
+
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+
+DATA_DIR = os.path.join(APP_DIR, "data")
+
+BREAKDOWNS_PATH = os.path.join(DATA_DIR, "breakdowns.json")
+
+# Optional AI provider (server-side) for breakdown auto-fill.
+# IMPORTANT: Keep API keys on the server (environment variables). Never put them in client-side JS.
+OPENAI_API_KEY = (os.environ.get("OPENAI_API_KEY") or "").strip()
+OPENAI_MODEL = (os.environ.get("OPENAI_MODEL") or "gpt-4o-mini").strip()
+OPENAI_API_BASE = (os.environ.get("OPENAI_API_BASE") or "https://api.openai.com").rstrip("/")
+
+# Gemini (Google AI) optional provider for breakdown autofill
+GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
+GEMINI_MODEL = (os.environ.get("GEMINI_MODEL") or "gemini-1.5-flash").strip()
+GEMINI_API_BASE = (os.environ.get("GEMINI_API_BASE") or "https://generativelanguage.googleapis.com").rstrip("/")
+
+# -------- Shared Breakdowns (global across all user profiles) --------
+def _load_breakdowns() -> Dict[str, Any]:
+    """
+    Returns a dict keyed by card id (string) with breakdown payloads.
+    Stored globally so all profiles can review the same saved breakdowns.
+    """
+    try:
+        if not os.path.exists(BREAKDOWNS_PATH):
+            return {}
+        with open(BREAKDOWNS_PATH, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+        if isinstance(raw, dict):
+            return raw
+    except Exception:
+        pass
+    return {}
+
+def _save_breakdowns(data: Dict[str, Any]) -> None:
+    os.makedirs(DATA_DIR, exist_ok=True)
+    tmp = BREAKDOWNS_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, BREAKDOWNS_PATH)
+
+# A small curated set of auto-suggestions (optional) – users can edit and save.
+AUTO_BREAKDOWNS: Dict[str, Dict[str, Any]] = {
+    "taekwondo": {
+        "parts": [
+            {"part": "Tae", "meaning": "Foot"},
+            {"part": "Kwon", "meaning": "Hand / Fist"},
+            {"part": "Do", "meaning": "Way"},
+        ],
+        "literal": "The Way of the Foot and Fist"
+    },
+    "aikido": {
+        "parts": [
+            {"part": "Ai", "meaning": "Harmony"},
+            {"part": "Ki", "meaning": "Energy / Spirit"},
+            {"part": "Do", "meaning": "Way"},
+        ],
+        "literal": "The Way of Harmonizing Energy"
+    },
+    "judo": {
+        "parts": [
+            {"part": "Ju", "meaning": "Gentle / Yielding"},
+            {"part": "Do", "meaning": "Way"},
+        ],
+        "literal": "The Gentle Way"
+    },
+    "karate": {
+        "parts": [
+            {"part": "Kara", "meaning": "Empty"},
+            {"part": "Te", "meaning": "Hand"},
+        ],
+        "literal": "Empty Hand"
+    }
+}
+
+
+
+def _extract_json_object(text: str) -> Optional[Dict[str, Any]]:
+    """Best-effort extraction of a JSON object from a model response.
+
+    Handles common cases like code fences and extra surrounding text.
+    Uses a small brace-matching scanner so we don't accidentally capture
+    multiple objects with a greedy regex.
+    """
+    if not text:
+        return None
+    text = text.strip()
+
+    # Strip common code fences
+    if "```" in text:
+        # remove leading/trailing fences while keeping inner content
+        text = re.sub(r"```(?:json)?", "", text, flags=re.IGNORECASE).replace("```", "").strip()
+
+    # First try: whole string
+    try:
+        obj = json.loads(text)
+        if isinstance(obj, dict):
+            return obj
+    except Exception:
+        pass
+
+    # Brace-matching scan for first balanced {...}
+    start = text.find("{")
+    if start == -1:
+        return None
+
+    in_str = False
+    esc = False
+    depth = 0
+    end = None
+    for i in range(start, len(text)):
+        ch = text[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        else:
+            if ch == '"':
+                in_str = True
+                continue
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+
+    if end is None:
+        return None
+
+    snippet = text[start:end]
+    try:
+        obj = json.loads(snippet)
+        if isinstance(obj, dict):
+            return obj
+    except Exception:
+        return None
+    return None
+
+
+def _responses_output_text(data: dict) -> str:
+    """Best-effort extraction of plain text from an OpenAI /v1/responses payload."""
+    if not isinstance(data, dict):
+        return ""
+    if isinstance(data.get("output_text"), str):
+        return data.get("output_text")
+    out = []
+    for item in (data.get("output") or []):
+        if not isinstance(item, dict):
+            continue
+        for c in (item.get("content") or []):
+            if not isinstance(c, dict):
+                continue
+            # Common shapes: {type:"output_text", text:"..."} or {type:"text", text:"..."}
+            t = c.get("text")
+            if isinstance(t, str) and t.strip():
+                out.append(t)
+    return "\n".join(out).strip()
+
+
+def _openai_breakdown(term: str, meaning: str = "", group: str = "") -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    """Call OpenAI server-side to propose a compound-term breakdown.
+
+    Returns (result, error). result shape: {parts:[{part,meaning}], literal:"..."}
+    error shape: {provider:"openai", status:int|None, message:str}
+    """
+    if not OPENAI_API_KEY:
+        return None, {"provider": "openai", "status": None, "message": "OPENAI_API_KEY not set on server"}
+
+    term = (term or "").strip()
+    if not term:
+        return None, {"provider": "openai", "status": None, "message": "missing term"}
+
+    instructions = (
+        "You are a martial-arts terminology assistant. "
+        "Given a romanized term (often Japanese/Korean/Chinese), break it into meaningful components "
+        "and provide brief English glosses. If you are uncertain about a component, leave its meaning empty "
+        "rather than guessing. Output ONLY valid JSON with this shape: "
+        "{\"parts\":[{\"part\":string,\"meaning\":string}],\"literal\":string}."
+    )
+
+    user_obj = {
+        "term": term,
+        "group": (group or "").strip(),
+        "existing_meaning": (meaning or "").strip(),
+        "instructions": "Return only JSON. Prefer 2-6 parts. Use title-case parts as written in the term when possible."
+    }
+
+    # Prefer the Responses API per current OpenAI guidance.
+    url = f"{OPENAI_API_BASE}/v1/responses"
+    payload = {
+        "model": OPENAI_MODEL,
+        "instructions": instructions,
+        "input": json.dumps(user_obj, ensure_ascii=False),
+        "max_output_tokens": 250,
+    }
+
+    try:
+        r = requests.post(
+            url,
+            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+            json=payload,
+            timeout=25,
+        )
+        if r.status_code != 200:
+            # Try to parse a helpful error message
+            msg = ""
+            try:
+                j = r.json()
+                if isinstance(j, dict):
+                    err = j.get("error")
+                    if isinstance(err, dict):
+                        msg = str(err.get("message") or "")
+                    else:
+                        msg = str(j.get("message") or "")
+            except Exception:
+                msg = ""
+            if not msg:
+                msg = f"OpenAI request failed (HTTP {r.status_code})"
+            return None, {"provider": "openai", "status": r.status_code, "message": msg}
+
+        data = r.json() if r.content else {}
+        content = _responses_output_text(data)
+        obj = _extract_json_object(content or "")
+        if not obj:
+            return None, {"provider": "openai", "status": 200, "message": "Could not parse JSON from model output"}
+
+        parts = obj.get("parts")
+        if not isinstance(parts, list):
+            return None, {"provider": "openai", "status": 200, "message": "Model output missing 'parts' list"}
+
+        norm_parts = []
+        for p2 in parts[:10]:
+            if not isinstance(p2, dict):
+                continue
+            part = str(p2.get("part") or "").strip()
+            mean = str(p2.get("meaning") or "").strip()
+            if part or mean:
+                norm_parts.append({"part": part, "meaning": mean})
+
+        literal = str(obj.get("literal") or "").strip()
+        return {"parts": norm_parts, "literal": literal}, None
+
+    except Exception as e:
+        return None, {"provider": "openai", "status": None, "message": f"OpenAI error: {e.__class__.__name__}"}
+
+
+def _gemini_breakdown(term: str, meaning: str = "", group: str = "") -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    """Call Gemini server-side to propose a compound-term breakdown.
+
+    Returns (result, error). result shape: {parts:[{part,meaning}], literal:"..."}
+    error shape: {provider:"gemini", status:int|None, message:str}
+    """
+    if not GEMINI_API_KEY:
+        return None, {"provider": "gemini", "status": None, "message": "GEMINI_API_KEY not set on server"}
+
+    term = (term or "").strip()
+    if not term:
+        return None, {"provider": "gemini", "status": None, "message": "missing term"}
+
+    instructions = (
+        "You are a martial-arts terminology assistant. "
+        "Given a romanized term (often Japanese/Korean/Chinese), break it into meaningful components "
+        "and provide brief English glosses. If you are uncertain about a component, leave its meaning empty "
+        "rather than guessing. Output ONLY valid JSON with this shape: "
+        '{"parts":[{"part":"<string>","meaning":"<string>"}],"literal":"<string>"}.'
+    )
+
+    user_obj = {
+        "term": term,
+        "group": (group or "").strip(),
+        "existing_meaning": (meaning or "").strip(),
+        "instructions": "Return only JSON. Prefer 2-6 parts. Use title-case parts as written in the term when possible."
+    }
+
+    # Gemini REST: generateContent
+    url = f"{GEMINI_API_BASE}/v1beta/models/{GEMINI_MODEL}:generateContent"
+    payload = {
+        "contents": [{
+            "role": "user",
+            "parts": [{"text": instructions + "\n\nINPUT:\n" + json.dumps(user_obj, ensure_ascii=False)}]
+        }]
+    }
+
+    try:
+        r = requests.post(
+            url,
+            headers={"Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY},
+            json=payload,
+            timeout=25,
+        )
+        if r.status_code != 200:
+            msg = ""
+            try:
+                j = r.json()
+                if isinstance(j, dict):
+                    err = j.get("error")
+                    if isinstance(err, dict):
+                        msg = str(err.get("message") or "")
+                    else:
+                        msg = str(j.get("message") or "")
+            except Exception:
+                msg = ""
+            if not msg:
+                msg = f"Gemini request failed (HTTP {r.status_code})"
+            return None, {"provider": "gemini", "status": r.status_code, "message": msg}
+
+        data = r.json() if r.content else {}
+        text = ""
+        try:
+            cands = data.get("candidates") or []
+            if cands and isinstance(cands[0], dict):
+                content = cands[0].get("content") or {}
+                parts = content.get("parts") or []
+                if parts and isinstance(parts[0], dict):
+                    text = str(parts[0].get("text") or "")
+        except Exception:
+            text = ""
+
+        obj = _extract_json_object(text or "")
+        if not obj:
+            return None, {"provider": "gemini", "status": 200, "message": "Could not parse JSON from model output"}
+
+        parts = obj.get("parts")
+        if not isinstance(parts, list):
+            return None, {"provider": "gemini", "status": 200, "message": "Model output missing 'parts' list"}
+
+        norm_parts = []
+        for p2 in parts[:10]:
+            if not isinstance(p2, dict):
+                continue
+            part = str(p2.get("part") or "").strip()
+            mean = str(p2.get("meaning") or "").strip()
+            if part or mean:
+                norm_parts.append({"part": part, "meaning": mean})
+
+        literal = str(obj.get("literal") or "").strip()
+        return {"parts": norm_parts, "literal": literal}, None
+
+    except Exception as e:
+        return None, {"provider": "gemini", "status": None, "message": f"Gemini error: {e.__class__.__name__}"}
+
+USERS_DIR = os.path.join(DATA_DIR, "users")
+PROFILES_PATH = os.path.join(DATA_DIR, "profiles.json")
+SECRET_PATH = os.path.join(DATA_DIR, "secret_key.txt")
+
+PORT = int(os.environ.get("KENPO_WEB_PORT", "8009"))
+app = Flask(__name__, static_folder="static")
+
+os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(USERS_DIR, exist_ok=True)
+
+
+def _load_or_create_secret() -> str:
+    if os.path.exists(SECRET_PATH):
+        try:
+            with open(SECRET_PATH, "r", encoding="utf-8") as f:
+                s = f.read().strip()
+                if s:
+                    return s
+        except Exception:
+            pass
+    s = uuid.uuid4().hex + uuid.uuid4().hex
+    with open(SECRET_PATH, "w", encoding="utf-8") as f:
+        f.write(s)
+    return s
+
+
+app.secret_key = os.environ.get("KENPO_SECRET_KEY", "") or _load_or_create_secret()
+
+_cards_cache: List[Dict[str, Any]] = []
+_cards_cache_mtime: float = -1.0
+
+
+def _now() -> str:
+    return time.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _stable_id(group: str, subgroup: str, term: str, meaning: str, pron: str) -> str:
+    base = f"{group}||{subgroup}||{term}||{meaning}||{pron}".encode("utf-8")
+    return hashlib.sha1(base).hexdigest()[:16]
+
+
+def _load_json_file(path: str) -> Any:
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _get_first(d: Dict[str, Any], keys: List[str]) -> Any:
+    for k in keys:
+        if k in d and d[k] is not None:
+            return d[k]
+    return None
+
+
+def _normalize_cards(raw: Any) -> List[Dict[str, Any]]:
+    cards: List[Dict[str, Any]] = []
+
+    def add_card(group: str, item: Dict[str, Any]):
+        term = _get_first(item, ["term", "word", "vocab", "name", "kenpo", "title", "front"])
+        meaning = _get_first(item, ["meaning", "definition", "desc", "description", "english", "translation", "details", "back"])
+        pron = _get_first(item, ["pron", "pronunciation", "phonetic"]) or ""
+        subgroup = _get_first(item, ["subgroup", "sub_group", "subCategory", "subcategory", "subSection", "subsection"]) or ""
+        if not term or not meaning:
+            return
+
+        group_s = str(group).strip()
+        subgroup_s = str(subgroup).strip()
+        term_s = str(term).strip()
+        meaning_s = str(meaning).strip()
+        pron_s = str(pron).strip()
+
+        cid = item.get("id") or _stable_id(group_s, subgroup_s, term_s, meaning_s, pron_s)
+
+        cards.append({
+            "id": str(cid),
+            "group": group_s,
+            "subgroup": subgroup_s,
+            "term": term_s,
+            "meaning": meaning_s,
+            "pron": pron_s
+        })
+
+    if isinstance(raw, list):
+        for item in raw:
+            if isinstance(item, dict):
+                group = _get_first(item, ["group", "section", "category", "stack"]) or "General"
+                add_card(group, item)
+        return cards
+
+    if isinstance(raw, dict):
+        if isinstance(raw.get("groups"), list):
+            for g in raw["groups"]:
+                if not isinstance(g, dict):
+                    continue
+                gname = _get_first(g, ["name", "group", "section", "category", "title"]) or "General"
+                gcards = g.get("cards") or g.get("items") or g.get("words") or []
+                if isinstance(gcards, list):
+                    for item in gcards:
+                        if isinstance(item, dict):
+                            add_card(gname, item)
+            return cards
+
+        if isinstance(raw.get("sections"), dict):
+            for gname, arr in raw["sections"].items():
+                if isinstance(arr, list):
+                    for item in arr:
+                        if isinstance(item, dict):
+                            add_card(gname, item)
+            return cards
+
+        dict_like_groups = 0
+        for _, v in raw.items():
+            if isinstance(v, list) and v and isinstance(v[0], dict):
+                dict_like_groups += 1
+        if dict_like_groups > 0:
+            for gname, arr in raw.items():
+                if isinstance(arr, list):
+                    for item in arr:
+                        if isinstance(item, dict):
+                            add_card(gname, item)
+            return cards
+
+    return cards
+
+
+def load_cards_cached() -> Tuple[List[Dict[str, Any]], str]:
+    global _cards_cache, _cards_cache_mtime
+    if not os.path.exists(KENPO_JSON_PATH):
+        return [], f"kenpo_words.json not found at: {KENPO_JSON_PATH}"
+
+    mtime = os.path.getmtime(KENPO_JSON_PATH)
+    if mtime != _cards_cache_mtime:
+        raw = _load_json_file(KENPO_JSON_PATH)
+        _cards_cache = _normalize_cards(raw)
+        _cards_cache_mtime = mtime
+    return _cards_cache, "ok"
+
+
+def _default_settings() -> Dict[str, Any]:
+    return {
+        "all": {
+            "randomize": False,
+        # Default OFF (user can enable to link Unlearned/Unsure/Learned study tabs)
+        "link_randomize_study_tabs": False,
+            "randomize_unlearned": False,
+            "randomize_unsure": False,
+            "randomize_learned_study": False,
+        "show_group_label": False,
+            "show_subgroup_label": False,
+            "reverse_faces": False,
+            # When enabled, study cards will show a saved term breakdown (parts + literal meaning)
+            # on the definition side (meaning side). If a card has no saved breakdown, nothing is shown.
+            "breakdown_apply_all_tabs": False,
+            "breakdown_remove_all_tabs": False,
+            "breakdown_remove_unlearned": False,
+            "breakdown_remove_unsure": False,
+            "breakdown_remove_learned_study": False,
+            "show_definitions_all_list": True,
+            "show_definitions_learned_list": True,
+            "all_list_show_unlearned_unsure_buttons": True,
+            "learned_list_show_relearn_unsure_buttons": False,
+            "learned_list_show_group_label": False,
+            "all_mode": "flat",
+            "group_order": "alpha",
+            "card_order": "json",
+            # Default to OpenAI only (Gemini optional)
+            "breakdown_ai_provider": "openai"
+        },
+        "groups": {}
+    }
+
+
+# -------- Profiles / Users --------
+def _load_profiles() -> Dict[str, Any]:
+    if not os.path.exists(PROFILES_PATH):
+        return {"users": {}}
+    try:
+        with open(PROFILES_PATH, "r", encoding="utf-8") as f:
+            p = json.load(f)
+        if not isinstance(p, dict):
+            return {"users": {}}
+        p.setdefault("users", {})
+        # Remove old ip_map if present (no longer used)
+        p.pop("ip_map", None)
+        return p
+    except Exception:
+        return {"users": {}}
+
+
+def _migrate_settings_obj(obj: Dict[str, Any]) -> Dict[str, Any]:
+    """Migrate older settings keys to the current schema (in-place-ish)."""
+    if not isinstance(obj, dict):
+        return obj
+    # Legacy: show_breakdown_on_definition (bool) -> new inverted per-tab remove flags
+    if "show_breakdown_on_definition" in obj and "breakdown_apply_all_tabs" not in obj:
+        show = bool(obj.get("show_breakdown_on_definition"))
+        # Preserve legacy behavior: if it was OFF (False), hide breakdown everywhere; if ON, show everywhere.
+        obj["breakdown_apply_all_tabs"] = True
+        obj["breakdown_remove_all_tabs"] = (not show)
+        obj["breakdown_remove_unlearned"] = (not show)
+        obj["breakdown_remove_unsure"] = (not show)
+        obj["breakdown_remove_learned_study"] = (not show)
+        obj.pop("show_breakdown_on_definition", None)
+    return obj
+
+
+def _migrate_settings(settings: Dict[str, Any]) -> Dict[str, Any]:
+    """Migrate stored __settings__ structure."""
+    if not isinstance(settings, dict):
+        return settings
+    if "all" in settings and isinstance(settings["all"], dict):
+        settings["all"] = _migrate_settings_obj(settings["all"])
+    if "groups" in settings and isinstance(settings["groups"], dict):
+        for k, v in list(settings["groups"].items()):
+            if isinstance(v, dict):
+                settings["groups"][k] = _migrate_settings_obj(v)
+    return settings
+
+
+def _save_profiles(p: Dict[str, Any]) -> None:
+    with open(PROFILES_PATH, "w", encoding="utf-8") as f:
+        json.dump(p, f, ensure_ascii=False, indent=2)
+
+
+def _get_user(user_id: str) -> Optional[Dict[str, Any]]:
+    profiles = _load_profiles()
+    u = profiles.get("users", {}).get(user_id)
+    if not isinstance(u, dict):
+        return None
+    out = dict(u)
+    out["id"] = user_id
+    # Don't expose password hash
+    out.pop("password_hash", None)
+    return out
+
+
+def _get_user_by_username(username: str) -> Optional[Tuple[str, Dict[str, Any]]]:
+    """Returns (user_id, user_dict) or None if not found."""
+    profiles = _load_profiles()
+    username_lower = username.lower()
+    for uid, udata in profiles.get("users", {}).items():
+        if isinstance(udata, dict) and udata.get("username", "").lower() == username_lower:
+            return uid, udata
+    return None
+
+
+def _progress_path(user_id: str) -> str:
+    udir = os.path.join(USERS_DIR, user_id)
+    os.makedirs(udir, exist_ok=True)
+    return os.path.join(udir, "progress.json")
+
+
+def _ensure_user_progress(user_id: str) -> None:
+    path = _progress_path(user_id)
+    if not os.path.exists(path):
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"__settings__": _default_settings()}, f, ensure_ascii=False, indent=2)
+
+
+def current_user_id() -> Optional[str]:
+    uid = session.get("user_id")
+    if uid and _get_user(uid):
+        return uid
+    return None
+
+
+def require_user() -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
+    uid = current_user_id()
+    if uid:
+        return uid, None
+    return None, None
+
+
+# -------- Progress per user --------
+def load_progress(user_id: str) -> Dict[str, Any]:
+    path = _progress_path(user_id)
+    if not os.path.exists(path):
+        return {"__settings__": _default_settings()}
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            p = json.load(f)
+    except json.JSONDecodeError:
+        p = {}
+
+    for k, v in list(p.items()):
+        if k.startswith("__"):
+            continue
+        if isinstance(v, dict) and "status" not in v and "learned" in v:
+            p.setdefault(k, {})
+            p[k]["status"] = "learned" if v.get("learned") else "active"
+            if "learned_at" in v:
+                p[k]["updated_at"] = v["learned_at"]
+
+    if "__settings__" not in p or not isinstance(p["__settings__"], dict):
+        p["__settings__"] = _default_settings()
+    else:
+        defaults = _default_settings()
+        p["__settings__"].setdefault("all", defaults["all"])
+        p["__settings__"].setdefault("groups", defaults["groups"])
+        p["__settings__"]["all"].setdefault("show_group_label", False)
+        p["__settings__"]["all"].setdefault("show_subgroup_label", False)
+        p["__settings__"]["all"].setdefault("all_mode", "flat")
+        p["__settings__"]["all"].setdefault("breakdown_ai_provider", "openai")
+
+    return p
+
+
+def save_progress(user_id: str, p: Dict[str, Any]) -> None:
+    with open(_progress_path(user_id), "w", encoding="utf-8") as f:
+        json.dump(p, f, ensure_ascii=False, indent=2)
+
+
+def card_status(progress: Dict[str, Any], card_id: str) -> str:
+    entry = progress.get(card_id)
+    if isinstance(entry, dict):
+        s = entry.get("status")
+        if s in ("active", "unsure", "learned", "deleted"):
+            return s
+    return "active"
+
+
+def set_card_status(progress: Dict[str, Any], card_id: str, status: str) -> None:
+    progress.setdefault(card_id, {})
+    progress[card_id]["status"] = status
+    progress[card_id]["updated_at"] = _now()
+
+
+# -------- Routes --------
+@app.get("/")
+def index():
+    return send_from_directory("static", "index.html")
+
+
+@app.get("/api/me")
+def api_me():
+    uid = current_user_id()
+    if uid:
+        return jsonify({"logged_in": True, "user": _get_user(uid)})
+    return jsonify({"logged_in": False, "user": None})
+
+
+@app.post("/api/register")
+def api_register():
+    data = request.get_json(force=True) or {}
+    username = (data.get("username") or "").strip()
+    password = (data.get("password") or "")
+    display_name = (data.get("display_name") or "").strip()
+
+    if not username or not password:
+        return jsonify({"error": "username_and_password_required"}), 400
+
+    if len(username) < 3:
+        return jsonify({"error": "username_too_short"}), 400
+
+    if len(password) < 4:
+        return jsonify({"error": "password_too_short"}), 400
+
+    # Check if username already exists
+    if _get_user_by_username(username):
+        return jsonify({"error": "username_taken"}), 400
+
+    profiles = _load_profiles()
+    user_id = uuid.uuid4().hex[:12]
+    
+    profiles["users"][user_id] = {
+        "username": username,
+        "password_hash": generate_password_hash(password),
+        "display_name": display_name or username,
+        "created_at": _now()
+    }
+
+    _save_profiles(profiles)
+    _ensure_user_progress(user_id)
+    session["user_id"] = user_id
+    return jsonify({"ok": True, "user": _get_user(user_id)})
+
+
+@app.post("/api/login")
+def api_login():
+    data = request.get_json(force=True) or {}
+    username = (data.get("username") or "").strip()
+    password = (data.get("password") or "")
+
+    if not username or not password:
+        return jsonify({"error": "username_and_password_required"}), 400
+
+    result = _get_user_by_username(username)
+    if not result:
+        return jsonify({"error": "invalid_credentials"}), 401
+
+    user_id, user_data = result
+    stored_hash = user_data.get("password_hash", "")
+
+    if not check_password_hash(stored_hash, password):
+        return jsonify({"error": "invalid_credentials"}), 401
+
+    _ensure_user_progress(user_id)
+    session["user_id"] = user_id
+    return jsonify({"ok": True, "user": _get_user(user_id)})
+
+
+@app.post("/api/logout")
+def api_logout():
+    session.pop("user_id", None)
+    return jsonify({"ok": True})
+
+
+@app.get("/api/health")
+def health():
+    cards, status = load_cards_cached()
+    return jsonify({"status": status, "cards_loaded": len(cards), "server_time": _now()})
+
+
+@app.get("/api/groups")
+def api_groups():
+    cards, status = load_cards_cached()
+    if status != "ok":
+        return jsonify({"error": status}), 500
+    return jsonify(sorted({c["group"] for c in cards}))
+
+
+@app.get("/api/settings")
+def api_settings_get():
+    uid, _ = require_user()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    progress = load_progress(uid)
+    scope = request.args.get("scope", "all")
+    settings = _migrate_settings(progress.get("__settings__", _default_settings()))
+    if scope == "all":
+        return jsonify({"scope": "all", "settings": settings["all"]})
+    return jsonify({"scope": scope, "settings": settings["groups"].get(scope) or {}})
+
+
+@app.post("/api/settings")
+def api_settings_set():
+    uid, _ = require_user()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    data = request.get_json(force=True) or {}
+    scope = data.get("scope", "all")
+    patch = data.get("settings", {})
+    if not isinstance(patch, dict):
+        return jsonify({"error": "settings must be an object"}), 400
+
+    progress = load_progress(uid)
+    settings = _migrate_settings(progress.get("__settings__", _default_settings()))
+
+    if scope == "all":
+        settings["all"].update(patch)
+    else:
+        settings["groups"].setdefault(scope, {})
+        settings["groups"][scope].update(patch)
+
+    progress["__settings__"] = settings
+    save_progress(uid, progress)
+    return jsonify({"ok": True})
+
+
+@app.post("/api/settings_reset")
+def api_settings_reset():
+    uid, _ = require_user()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+
+    data = request.get_json(force=True) or {}
+    scope = (data.get("scope") or "all").strip()
+
+    progress = load_progress(uid)
+    settings = _migrate_settings(progress.get("__settings__", _default_settings()))
+    defaults = _default_settings()
+
+    if scope == "all":
+        # Reset ONLY the All-Groups settings (keep per-group overrides)
+        settings["all"] = defaults["all"]
+    else:
+        # Reset ONLY that group's override (removes it)
+        if "groups" in settings and isinstance(settings["groups"], dict):
+            settings["groups"].pop(scope, None)
+
+    progress["__settings__"] = settings
+    save_progress(uid, progress)
+    return jsonify({"ok": True})
+
+
+@app.get("/api/counts")
+def api_counts():
+    uid, _ = require_user()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+
+    group = request.args.get("group", "")
+    cards, status = load_cards_cached()
+    if status != "ok":
+        return jsonify({"error": status}), 500
+
+    progress = load_progress(uid)
+    counts = {"active": 0, "unsure": 0, "learned": 0, "deleted": 0, "total": 0}
+    for c in cards:
+        if group and c["group"] != group:
+            continue
+        s = card_status(progress, c["id"])
+        counts["total"] += 1
+        counts[s] += 1
+    return jsonify(counts)
+
+
+@app.get("/api/cards")
+def api_cards():
+    uid, _ = require_user()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+
+    status_filter = request.args.get("status", "active")
+    if status_filter in ("all", "any", ""):
+        status_filter = ""
+    group = request.args.get("group", "")
+    q = (request.args.get("q", "") or "").strip().lower()
+
+    cards, status = load_cards_cached()
+    if status != "ok":
+        return jsonify({"error": status}), 500
+
+    progress = load_progress(uid)
+    out: List[Dict[str, Any]] = []
+    for c in cards:
+        if group and c["group"] != group:
+            continue
+
+        s = card_status(progress, c["id"])
+        if status_filter and s != status_filter:
+            continue
+
+        if q:
+            hay = f"{c.get('term','')} {c.get('meaning','')} {c.get('pron','')}".lower()
+            if q not in hay:
+                continue
+
+        cc = dict(c)
+        cc["status"] = s
+        out.append(cc)
+
+    return jsonify(out)
+
+
+@app.post("/api/set_status")
+def api_set_status():
+    uid, _ = require_user()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+
+    data = request.get_json(force=True) or {}
+    cid = data.get("id")
+    s = data.get("status")
+    if not cid or s not in ("active", "unsure", "learned", "deleted"):
+        return jsonify({"error": "id and valid status required"}), 400
+
+    progress = load_progress(uid)
+    set_card_status(progress, cid, s)
+    save_progress(uid, progress)
+    return jsonify({"ok": True})
+
+
+@app.post("/api/bulk_set_status")
+def api_bulk_set_status():
+    uid, _ = require_user()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+
+    data = request.get_json(force=True) or {}
+    ids = data.get("ids", [])
+    s = data.get("status")
+    if not isinstance(ids, list) or s not in ("active", "unsure", "learned", "deleted"):
+        return jsonify({"error": "ids[] and valid status required"}), 400
+
+    progress = load_progress(uid)
+    for cid in ids:
+        if cid:
+            set_card_status(progress, str(cid), s)
+    save_progress(uid, progress)
+    return jsonify({"ok": True})
+
+
+@app.post("/api/reset")
+def api_reset():
+    uid, _ = require_user()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    save_progress(uid, {"__settings__": _default_settings()})
+    return jsonify({"ok": True})
+
+
+@app.get("/api/breakdown")
+def api_breakdown_get():
+    uid, user = require_user()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+
+    card_id = (request.args.get("id") or "").strip()
+    if not card_id:
+        return jsonify({"error": "missing_id"}), 400
+
+    data = _load_breakdowns()
+    entry = data.get(card_id)
+    return jsonify({"id": card_id, "breakdown": entry})
+
+
+@app.post("/api/breakdown")
+def api_breakdown_set():
+    uid, user = require_user()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+
+    payload = request.get_json(force=True, silent=True) or {}
+    card_id = str(payload.get("id") or "").strip()
+    term = str(payload.get("term") or "").strip()
+
+    if not card_id:
+        return jsonify({"error": "missing_id"}), 400
+
+    parts = payload.get("parts") or []
+    if not isinstance(parts, list):
+        return jsonify({"error": "parts_must_be_list"}), 400
+
+    norm_parts: List[Dict[str, str]] = []
+    for p in parts:
+        if not isinstance(p, dict):
+            continue
+        part = str(p.get("part") or "").strip()
+        meaning = str(p.get("meaning") or "").strip()
+        if part or meaning:
+            norm_parts.append({"part": part, "meaning": meaning})
+
+    entry = {
+        "id": card_id,
+        "term": term,
+        "parts": norm_parts,
+        "literal": str(payload.get("literal") or "").strip(),
+        "notes": str(payload.get("notes") or "").strip(),
+        "updated_at": int(time.time()),
+        "updated_by": (user or {}).get("username") if isinstance(user, dict) else None,
+    }
+
+    data = _load_breakdowns()
+    existing = data.get(card_id)
+
+    # Only the admin user (sidscri) may overwrite an existing saved breakdown.
+    username = ((user or {}).get('username') if isinstance(user, dict) else '') or ''
+    is_admin = username.strip().lower() == 'sidscri'
+
+    def _core(b):
+        if not isinstance(b, dict):
+            return None
+        parts = b.get('parts') if isinstance(b.get('parts'), list) else []
+        norm_parts = []
+        for p in parts:
+            if not isinstance(p, dict):
+                continue
+            part = str(p.get('part') or '').strip()
+            meaning = str(p.get('meaning') or '').strip()
+            if part or meaning:
+                norm_parts.append({'part': part, 'meaning': meaning})
+        return {
+            'term': str(b.get('term') or '').strip(),
+            'parts': norm_parts,
+            'literal': str(b.get('literal') or '').strip(),
+            'notes': str(b.get('notes') or '').strip(),
+        }
+
+    if existing and not is_admin:
+        if _core(existing) != _core(entry):
+            return jsonify({
+                'error': 'overwrite_not_allowed',
+                'message': 'Only admin (sidscri) can overwrite an existing breakdown.',
+                'breakdown': existing,
+            }), 403
+        # No content changes; return existing without touching timestamps
+        return jsonify({'ok': True, 'breakdown': existing})
+
+    data[card_id] = entry
+    _save_breakdowns(data)
+    return jsonify({'ok': True, 'breakdown': entry})
+
+
+@app.post("/api/breakdown_autofill")
+def api_breakdown_autofill():
+    uid, user = require_user()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+
+    payload = request.get_json(force=True, silent=True) or {}
+    term = str(payload.get("term") or "").strip()
+    meaning = str(payload.get("meaning") or "").strip()
+    group = str(payload.get("group") or "").strip()
+    req_provider = str(payload.get("provider") or "").strip().lower()
+    if not term:
+        return jsonify({"error": "missing_term"}), 400
+
+    # Determine provider: request param > per-user setting > auto
+    prov = req_provider
+    if not prov:
+        try:
+            prog = load_progress(uid)
+            prov = str(prog.get("__settings__", {}).get("all", {}).get("breakdown_ai_provider") or "auto").strip().lower()
+        except Exception:
+            prov = "auto"
+    if prov not in ("auto", "openai", "gemini", "off"):
+        prov = "auto"
+
+    ai_error = None
+
+    def try_openai():
+        nonlocal ai_error
+        result, err = _openai_breakdown(term=term, meaning=meaning, group=group)
+        if result and isinstance(result, dict):
+            return {"ok": True, "suggestion": result, "source": "openai", "provider": "openai"}
+        if err:
+            ai_error = err
+        return None
+
+    def try_gemini():
+        nonlocal ai_error
+        result, err = _gemini_breakdown(term=term, meaning=meaning, group=group)
+        if result and isinstance(result, dict):
+            return {"ok": True, "suggestion": result, "source": "gemini", "provider": "gemini"}
+        if err:
+            ai_error = err
+        return None
+
+    # Try requested provider(s)
+    if prov == "openai":
+        out = try_openai()
+        if out:
+            return jsonify(out)
+    elif prov == "gemini":
+        out = try_gemini()
+        if out:
+            return jsonify(out)
+    elif prov == "auto":
+        # Prefer OpenAI, then Gemini
+        out = try_openai()
+        if out:
+            return jsonify(out)
+        out = try_gemini()
+        if out:
+            return jsonify(out)
+    # prov == off -> skip AI
+
+    # Fallback: curated + conservative split
+    key = re.sub(r"\s+", "", term.lower())
+    suggestion = AUTO_BREAKDOWNS.get(key)
+
+    if not suggestion:
+        parts = []
+        for tok in re.split(r"[\s\-]+", term.strip()):
+            t = tok.strip()
+            if t:
+                parts.append({"part": t, "meaning": ""})
+        suggestion = {"parts": parts, "literal": ""}
+
+    resp = {"ok": True, "suggestion": suggestion, "source": "curated", "provider": prov}
+    if ai_error:
+        # Provide a helpful message without leaking secrets.
+        resp["ai_error"] = ai_error
+    return jsonify(resp)
+
+
+@app.get("/api/ai")
+def api_ai_status():
+    """Simple status so the UI can show if AI autofill is available."""
+    uid, _ = require_user()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+
+    # selected provider (per-user setting)
+    prog = load_progress(uid)
+    prov = "auto"
+    try:
+        prov = (prog.get("__settings__", {}).get("all", {}).get("breakdown_ai_provider") or "auto").strip().lower()
+    except Exception:
+        prov = "auto"
+
+    return jsonify({
+        "ok": True,
+        "selected_provider": prov,
+        "openai_available": bool(OPENAI_API_KEY),
+        "openai_model": OPENAI_MODEL if OPENAI_API_KEY else "",
+        "gemini_available": bool(GEMINI_API_KEY),
+        "gemini_model": GEMINI_MODEL if GEMINI_API_KEY else "",
+    })
+
+
+@app.get("/api/breakdowns")
+def api_breakdowns_list():
+    uid, user = require_user()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+
+    q = (request.args.get("q") or "").strip().lower()
+    data = _load_breakdowns()
+    items = []
+    for k, v in data.items():
+        if not isinstance(v, dict):
+            continue
+        term = str(v.get("term") or "")
+        if q and q not in term.lower():
+            # also search inside parts
+            hay = " ".join([term] + [str(p.get("part","")) + " " + str(p.get("meaning","")) for p in (v.get("parts") or [])])
+            if q not in hay.lower():
+                continue
+        items.append(v)
+
+    # newest first
+    items.sort(key=lambda x: int(x.get("updated_at") or 0), reverse=True)
+    return jsonify({"ok": True, "items": items})
+
+
+
+
+"""
+ANDROID SYNC API ROUTES
+=======================
+Add these routes to your existing app.py file.
+
+Copy everything below and paste it BEFORE the line:
+    @app.get("/<path:filename>")
+"""
+
+# ============ ANDROID APP SYNC API ============
+
+# In-memory token storage (simple approach - tokens expire on server restart)
+# For production, consider using Redis or database storage
+_android_tokens: Dict[str, Dict[str, Any]] = {}
+
+def _generate_token() -> str:
+    """Generate a secure random token."""
+    return uuid.uuid4().hex + uuid.uuid4().hex
+
+def _verify_android_token(token: str) -> Optional[Tuple[str, Dict]]:
+    """Verify token and return (user_id, user_data) or None."""
+    if not token:
+        return None
+    session_data = _android_tokens.get(token)
+    if not session_data:
+        return None
+    # Check expiration (7 days)
+    if time.time() > session_data.get('exp', 0):
+        del _android_tokens[token]
+        return None
+    return session_data.get('uid'), session_data.get('user')
+
+def android_auth_required(f):
+    """Decorator for routes that require Android token auth."""
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
+            return jsonify({'error': 'No token provided'}), 401
+        token = auth_header[7:]
+        result = _verify_android_token(token)
+        if not result:
+            return jsonify({'error': 'Invalid or expired token'}), 401
+        request.android_uid, request.android_user = result
+        return f(*args, **kwargs)
+    return decorated
+
+
+@app.post("/api/sync/login")
+def api_android_login():
+    """Android app login endpoint.
+    
+    Expects JSON: {"username": "...", "password": "..."}
+    Returns: {"token": "...", "userId": "...", "username": "..."}
+    """
+    payload = request.get_json(force=True, silent=True) or {}
+    username = str(payload.get('username') or '').strip()
+    password = str(payload.get('password') or '').strip()
+    
+    if not username or not password:
+        return jsonify({'error': 'Username and password required'}), 400
+    
+    # Load profiles
+    profiles = _load_profiles()
+    users = profiles.get('users', {})
+    
+    # Find user by username (case-insensitive)
+    found_uid = None
+    found_user = None
+    for uid, user_data in users.items():
+        if user_data.get('username', '').lower() == username.lower():
+            found_uid = uid
+            found_user = user_data
+            break
+    
+    if not found_user:
+        return jsonify({'error': 'User not found'}), 401
+    
+    # Verify password
+    password_hash = found_user.get('password_hash', '')
+    if not check_password_hash(password_hash, password):
+        return jsonify({'error': 'Invalid password'}), 401
+    
+    # Generate token
+    token = _generate_token()
+    _android_tokens[token] = {
+        'uid': found_uid,
+        'user': found_user,
+        'exp': time.time() + (7 * 24 * 60 * 60)  # 7 days
+    }
+    
+    return jsonify({
+        'token': token,
+        'userId': found_uid,
+        'username': found_user.get('username', ''),
+        'displayName': found_user.get('display_name', '')
+    })
+
+
+@app.get("/api/sync/pull")
+@android_auth_required
+def api_sync_pull():
+    """Pull progress from server to Android app."""
+    uid = request.android_uid
+    progress = load_progress(uid)
+    
+    # Extract just the card statuses (not settings)
+    statuses = {}
+    for key, value in progress.items():
+        if key.startswith('__'):  # Skip internal keys like __settings__
+            continue
+        if isinstance(value, dict) and 'status' in value:
+            statuses[key] = value['status']
+    
+    return jsonify({'progress': statuses})
+
+
+@app.post("/api/sync/push")
+@android_auth_required  
+def api_sync_push():
+    """Push progress from Android app to server."""
+    uid = request.android_uid
+    payload = request.get_json(force=True, silent=True) or {}
+    incoming_progress = payload.get('progress', {})
+    
+    if not isinstance(incoming_progress, dict):
+        return jsonify({'error': 'Invalid progress data'}), 400
+    
+    # Load existing progress
+    current = load_progress(uid)
+    
+    # Merge incoming progress
+    for card_id, status in incoming_progress.items():
+        if not isinstance(status, str):
+            continue
+        # Normalize status
+        status_lower = status.lower()
+        if status_lower in ('active', 'unsure', 'learned', 'deleted'):
+            current[card_id] = {
+                'status': status_lower,
+                'updated_at': int(time.time())
+            }
+    
+    # Save
+    save_progress(uid, current)
+    return jsonify({'success': True, 'message': 'Progress synced'})
+
+
+@app.get("/api/sync/breakdowns")
+def api_sync_breakdowns():
+    """Get all breakdowns for Android app (no auth required for read)."""
+    data = _load_breakdowns()
+    return jsonify({'breakdowns': data})
+
+
+@app.post("/api/sync/customset")
+@android_auth_required
+def api_sync_customset():
+    """Sync custom study set from Android."""
+    uid = request.android_uid
+    payload = request.get_json(force=True, silent=True) or {}
+    custom_set = payload.get('customSet', [])
+    
+    if not isinstance(custom_set, list):
+        return jsonify({'error': 'Invalid custom set data'}), 400
+    
+    # Store in user's progress file under special key
+    progress = load_progress(uid)
+    progress['__custom_set__'] = list(custom_set)
+    save_progress(uid, progress)
+    
+    return jsonify({'success': True})
+
+
+@app.get("/api/sync/customset")
+@android_auth_required
+def api_get_customset():
+    """Get custom study set for Android."""
+    uid = request.android_uid
+    progress = load_progress(uid)
+    custom_set = progress.get('__custom_set__', [])
+    return jsonify({'customSet': custom_set})
+
+
+# ============ END ANDROID SYNC API ============
+
+@app.get("/<path:filename>")
+def static_files(filename):
+    return send_from_directory("static", filename)
+
+
+if __name__ == "__main__":
+    # Startup diagnostics (helps confirm your keys were picked up)
+    try:
+        openai_state = "SET" if bool(OPENAI_API_KEY) else "not set"
+        gemini_state = "SET" if bool(GEMINI_API_KEY) else "not set"
+        print(f"[AI] OpenAI key: {openai_state} • model: {OPENAI_MODEL if OPENAI_API_KEY else 'n/a'}")
+        print(f"[AI] Gemini key: {gemini_state} • model: {GEMINI_MODEL if GEMINI_API_KEY else 'n/a'}")
+    except Exception:
+        pass
+
+    app.run(host="0.0.0.0", port=PORT, debug=False)

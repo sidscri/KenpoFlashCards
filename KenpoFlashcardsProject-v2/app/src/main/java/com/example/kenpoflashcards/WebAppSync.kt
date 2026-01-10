@@ -50,7 +50,7 @@ object WebAppSync {
      */
     suspend fun login(serverUrl: String, username: String, password: String): LoginResult = withContext(Dispatchers.IO) {
         try {
-            val url = URL("$serverUrl/api/login")
+            val url = URL("$serverUrl/api/sync/login")
             val conn = url.openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
             conn.setRequestProperty("Content-Type", "application/json")

@@ -1,0 +1,62 @@
+name: KenpoFlashcardsWebServer (CI)
+
+on:
+  push:
+    paths:
+      - "KenpoFlashcardsWebServer/**"
+      - ".github/workflows/kenpo-webserver-ci.yml"
+  pull_request:
+    paths:
+      - "KenpoFlashcardsWebServer/**"
+      - ".github/workflows/kenpo-webserver-ci.yml"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: KenpoFlashcardsWebServer
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if (Test-Path requirements.txt) { pip install -r requirements.txt }
+
+      - name: Syntax check
+        run: |
+          python -m py_compile app.py
+
+      - name: Smoke import
+        run: |
+          python -c "import app; print('OK: imported app.py')"
+
+      - name: Sanity check kenpo_words.json (optional)
+        run: |
+          $paths = @(
+            $env:KENPO_WORDS_JSON,
+            ".\kenpo_words.json",
+            ".\data\kenpo_words.json",
+            ".\data\kenpo_words.sample.json"
+          ) | Where-Object { $_ -and $_.Trim() -ne "" }
+
+          $found = $false
+          foreach ($p in $paths) {
+            if (Test-Path $p) { $found = $true; break }
+          }
+
+          if (-not $found) {
+            Write-Host "NOTE: No kenpo_words.json found in repo checkout (this is OK for CI)."
+            Write-Host "      Set KENPO_WORDS_JSON as a GitHub Actions secret/env if you want this enforced."
+          } else {
+            Write-Host "OK: found kenpo_words.json"
+          }
