@@ -729,13 +729,6 @@ def set_card_status(progress: Dict[str, Any], card_id: str, status: str) -> None
 
 
 # -------- Routes --------
-@app.route("/api/breakdowns", methods=["POST", "OPTIONS"])
-def debug_breakdowns_post_probe():
-    print(">>> HIT /api/breakdowns", request.method)
-    print(">>> Headers:", dict(request.headers))
-    print(">>> Body:", request.get_data(as_text=True)[:2000])
-    return jsonify({"ok": True, "debug": True})
-
 @app.get("/")
 def index():
     return send_from_directory("static", "index.html")

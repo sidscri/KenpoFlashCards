@@ -56,23 +56,8 @@ class Repository(private val context: Context, private val store: Store) {
     // Breakdowns
     fun breakdownsFlow(): Flow<Map<String, TermBreakdown>> = store.breakdownsFlow()
     suspend fun getBreakdown(cardId: String): TermBreakdown? = store.breakdownsFlow().first()[cardId]
-    suspend fun saveBreakdown(breakdown: TermBreakdown) {
-        // Always save locally first
-        store.saveBreakdown(breakdown)
-
-        // If logged in, also upload to the server so other devices can pull it
-        try {
-            val admin = adminSettingsFlow().first()
-            val token = admin.authToken
-            if (admin.isLoggedIn && token.isNotBlank()) {
-                val serverUrl = admin.webAppUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
-                WebAppSync.saveBreakdown(serverUrl, token, breakdown)
-            }
-        } catch (_: Exception) {
-            // Keep local save even if server upload fails
-        }
-    }
-suspend fun deleteBreakdown(cardId: String) = store.deleteBreakdown(cardId)
+    suspend fun saveBreakdown(breakdown: TermBreakdown) = store.saveBreakdown(breakdown)
+    suspend fun deleteBreakdown(cardId: String) = store.deleteBreakdown(cardId)
     
     // Sync with web app
     suspend fun syncLogin(username: String, password: String): WebAppSync.LoginResult {

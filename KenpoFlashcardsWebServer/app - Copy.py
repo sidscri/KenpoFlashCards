@@ -1319,6 +1319,47 @@ def api_android_login():
         'displayName': found_user.get('display_name', '')
     })
 
+@app.post("/api/breakdowns")
+@android_auth_required
+def api_breakdowns_save_android():
+    """
+    Android expects POST /api/breakdowns with a Bearer token.
+    Saves/updates a breakdown so other devices can pull it later.
+    """
+    payload = request.get_json(silent=True) or {}
+
+    bid = str(payload.get("id") or "").strip()
+    term = str(payload.get("term") or "").strip()
+    parts = payload.get("parts") or []
+    literal = str(payload.get("literal") or "").strip()
+    notes = str(payload.get("notes") or "").strip()
+
+    if not bid or not term or not isinstance(parts, list):
+        return jsonify({"error": "id, term, parts[] required"}), 400
+
+    # normalize parts list
+    norm_parts = []
+    for p in parts:
+        if not isinstance(p, dict):
+            continue
+        norm_parts.append({
+            "part": str(p.get("part") or "").strip(),
+            "meaning": str(p.get("meaning") or "").strip(),
+        })
+
+    data = _load_breakdowns()
+    data[bid] = {
+        "id": bid,
+        "term": term,
+        "parts": norm_parts,
+        "literal": literal,
+        "notes": notes,
+        "updated_at": int(time.time()),
+        "updated_by": str(getattr(request, "android_uid", "") or ""),
+    }
+    _save_breakdowns(data)
+
+    return jsonify({"ok": True})
 
 @app.get("/api/sync/pull")
 @android_auth_required
