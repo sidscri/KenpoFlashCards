@@ -431,6 +431,39 @@ def _load_or_create_secret() -> str:
 
 
 app.secret_key = os.environ.get("KENPO_SECRET_KEY", "") or _load_or_create_secret()
+# ----------------------------
+# Version + request audit log
+# ----------------------------
+VERSION_FILE = os.path.join(app.root_path, "version.json")
+_VERSION_CACHE = None
+_VERSION_MTIME = 0.0
+
+def get_version():
+    """Load version.json with a tiny mtime-based cache."""
+    global _VERSION_CACHE, _VERSION_MTIME
+    try:
+        st = os.stat(VERSION_FILE)
+        if _VERSION_CACHE is None or st.st_mtime != _VERSION_MTIME:
+            with open(VERSION_FILE, "r", encoding="utf-8") as f:
+                _VERSION_CACHE = json.load(f)
+            _VERSION_MTIME = st.st_mtime
+    except Exception:
+        return {"name": "KenpoFlashcardsWebServer", "version": "unknown", "build": "unknown"}
+    return _VERSION_CACHE or {"name": "KenpoFlashcardsWebServer", "version": "unknown", "build": "unknown"}
+
+# Optional allowlist: set env var KENPO_ALLOWED_IPS="1.2.3.4,5.6.7.8"
+ALLOWED_IPS = {ip.strip() for ip in os.environ.get("KENPO_ALLOWED_IPS", "").split(",") if ip.strip()}
+
+@app.before_request
+def _access_log_and_optional_allowlist():
+    ip = (request.headers.get("X-Forwarded-For") or request.remote_addr or "").split(",")[0].strip()
+    ua = (request.headers.get("User-Agent") or "").strip()
+    uid = session.get("user_id")
+    uname = (_get_user(uid) or {}).get("username") if uid else "-"
+    if ALLOWED_IPS and ip not in ALLOWED_IPS:
+        print(f"[BLOCK] ip={ip} user={uname} {request.method} {request.path} ua={ua[:120]}")
+        return ("Forbidden", 403)
+    print(f"[REQ] ip={ip} user={uname} {request.method} {request.path} ua={ua[:120]}")
 
 _cards_cache: List[Dict[str, Any]] = []
 _cards_cache_mtime: float = -1.0
@@ -939,9 +972,13 @@ def api_logout():
 @app.get("/api/health")
 def health():
     cards, status = load_cards_cached()
-    return jsonify({"status": status, "cards_loaded": len(cards), "server_time": _now()})
+    v = get_version()
+    return jsonify({"status": status, "cards_loaded": len(cards), "server_time": _now(), "version": v.get("version"), "build": v.get("build")})
 
 
+@app.get("/api/version")
+def api_version():
+    return jsonify(get_version())
 @app.get("/api/groups")
 def api_groups():
     cards, status = load_cards_cached()
@@ -949,6 +986,16 @@ def api_groups():
         return jsonify({"error": status}), 500
     return jsonify(sorted({c["group"] for c in cards}))
 
+import datetime
+
+@app.get("/api/whoami")
+def whoami():
+    ip = (request.headers.get("X-Forwarded-For") or request.remote_addr or "").split(",")[0].strip()
+    return jsonify({
+        "ip": ip,
+        "ua": request.headers.get("User-Agent", "-"),
+        "time": datetime.datetime.utcnow().isoformat() + "Z",
+    })
 
 @app.get("/api/settings")
 def api_settings_get():

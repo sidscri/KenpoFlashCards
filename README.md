@@ -54,6 +54,32 @@ If you want a **Sonarr-style** experience on Windows (run on boot + tray icon), 
 If you want to create **Windows distributables** (portable EXE, installer EXE, MSI), use:
 - `KenpoFlashcardsWebServer_Packaged_in_exe_msi/` — see `KenpoFlashcardsWebServer_Packaged_in_exe_msi/README.md`
 
+## Quick “does it work” test (no guessing)
+1) On the server KenpoFlashcardsWebServer-v5.1.1 v22
+
+- After restarting the server, open: http://sidscri.tplinkdns.com:8009/api/sync/helper
+
+- You should see JSON with: 
+---version
+---term_to_id
+---cards
+
+- Also confirm data/helper.json exists on disk.
+
+2) On Android KenpoFlashcardsProject-v4.0.7.1 v16
+
+- Build/install the updated APK
+
+- Create a breakdown for “Soke”
+
+- It should now map to the same ID as the web server
+
+3) Verify from server logs
+
+- When Android posts a breakdown you should see the POST hit:
+
+- POST /api/breakdowns 200
+…and the saved breakdown should appear under the same id the web uses.
 
 ---
 

@@ -1,4 +1,11 @@
-The Fix
+✅ What I changed
+
+Android app (KenpoFlashcardsProject-v2)
+
+Updates ID generation to match server exactly
+
+If id exists in kenpo_words.json, Android will use it directly (future-proof)
+
 
 You need to give the Android login a different URL. Change line 1272 from:
 @app.post("/api/login")

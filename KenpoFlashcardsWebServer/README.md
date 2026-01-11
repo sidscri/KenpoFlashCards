@@ -120,3 +120,52 @@ Personal/educational use for learning American Kenpo Karate vocabulary.
 
 - Service + tray (Option A2): `../KenpoFlashcardsWebServer_Service_Tray/README.md`
 - Packaged EXE/MSI builds: `../KenpoFlashcardsWebServer_Packaged_in_exe_msi/README.md`
+
+Public files to reduce common 404 noise
+=====================================
+
+Files included:
+- favicon.ico
+- .well-known/security.txt
+- robots.txt
+- sitemap.xml
+
+How to use (common setups)
+--------------------------
+
+Flask (recommended pattern):
+    1) Put favicon.ico in your static/ folder (e.g., static/favicon.ico)
+    2) Copy .well-known/security.txt into a folder your app can serve:
+       - easiest: create a route for /.well-known/security.txt
+    3) Put robots.txt and sitemap.xml in static/ and serve at /robots.txt and /sitemap.xml
+
+Example Flask snippets:
+
+--- app.py ---
+from flask import Flask, send_from_directory
+import os
+
+app = Flask(__name__, static_folder="static")
+
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(app.static_folder, "favicon.ico")
+
+@app.route("/robots.txt")
+def robots():
+    return send_from_directory(app.static_folder, "robots.txt")
+
+@app.route("/sitemap.xml")
+def sitemap():
+    return send_from_directory(app.static_folder, "sitemap.xml")
+
+@app.route("/.well-known/security.txt")
+def security_txt():
+    return send_from_directory(os.path.join(app.root_path, ".well-known"), "security.txt")
+
+If you already have a reverse proxy (Nginx/Caddy), you can serve these as static files there instead.
+
+IMPORTANT:
+- Change Contact: mailto:security@example.com in security.txt to your real email.
+- Optionally change the sitemap <loc> to your real public URL.
+
