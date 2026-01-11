@@ -60,6 +60,9 @@ DATA_DIR = os.path.join(APP_DIR, "data")
 
 BREAKDOWNS_PATH = os.path.join(DATA_DIR, "breakdowns.json")
 
+# Canonical term->id helper (source of truth for IDs across devices)
+HELPER_PATH = os.path.join(DATA_DIR, "helper.json")
+
 # Optional AI provider (server-side) for breakdown auto-fill.
 # IMPORTANT: Keep API keys on the server (environment variables). Never put them in client-side JS.
 OPENAI_API_KEY = (os.environ.get("OPENAI_API_KEY") or "").strip()
@@ -536,6 +539,131 @@ def load_cards_cached() -> Tuple[List[Dict[str, Any]], str]:
         _cards_cache = _normalize_cards(raw)
         _cards_cache_mtime = mtime
     return _cards_cache, "ok"
+
+def _build_helper(cards: List[Dict[str, Any]], kenpo_mtime: float) -> Dict[str, Any]:
+    """
+    Build canonical mapping for cross-device ID consistency.
+
+    term_key = lower(trim(term))
+
+    If duplicate terms exist, term_to_id[term_key] becomes a list of ids.
+    """
+    term_to_id: Dict[str, Any] = {}
+    id_to_term: Dict[str, str] = {}
+    cards_by_id: Dict[str, Any] = {}
+
+    for c in cards:
+        term = str(c.get("term", "")).strip()
+        if not term:
+            continue
+        term_key = term.lower()
+        cid = str(c.get("id", "")).strip()
+        if not cid:
+            continue
+
+        cards_by_id[cid] = {
+            "id": cid,
+            "group": c.get("group", ""),
+            "subgroup": c.get("subgroup", ""),
+            "term": term,
+            "meaning": c.get("meaning", ""),
+            "pron": c.get("pron", ""),
+            "status": c.get("status", "active"),
+        }
+        id_to_term[cid] = term_key
+
+        if term_key not in term_to_id:
+            term_to_id[term_key] = cid
+        else:
+            existing = term_to_id[term_key]
+            if isinstance(existing, list):
+                if cid not in existing:
+                    existing.append(cid)
+            else:
+                if cid != existing:
+                    term_to_id[term_key] = [existing, cid]
+
+    flat = []
+    for k in sorted(term_to_id.keys()):
+        v = term_to_id[k]
+        if isinstance(v, list):
+            flat.append(f"{k}=" + ",".join(sorted(v)))
+        else:
+            flat.append(f"{k}={v}")
+    base = ("\n".join(flat) + f"\nkenpo_mtime={kenpo_mtime}").encode("utf-8")
+    version = hashlib.sha1(base).hexdigest()[:12]
+
+    return {
+        "version": version,
+        "kenpo_mtime": kenpo_mtime,
+        "generated_at": int(time.time()),
+        "term_to_id": term_to_id,
+        "id_to_term": id_to_term,
+        "cards": cards_by_id,
+    }
+
+
+def load_helper_cached() -> Tuple[Dict[str, Any], str]:
+    """Cache helper.json and rebuild automatically when kenpo_words.json changes."""
+    global _helper_cache, _helper_cache_mtime
+
+    if not os.path.exists(KENPO_JSON_PATH):
+        return {}, f"kenpo_words.json not found at: {KENPO_JSON_PATH}"
+
+    kenpo_mtime = os.path.getmtime(KENPO_JSON_PATH)
+
+    helper_exists = os.path.exists(HELPER_PATH)
+    helper_mtime = os.path.getmtime(HELPER_PATH) if helper_exists else -1.0
+
+    rebuild = (not helper_exists) or (_helper_cache_mtime != helper_mtime)
+
+    if not rebuild and _helper_cache:
+        stored = float(_helper_cache.get("kenpo_mtime", -1))
+        if stored != kenpo_mtime:
+            rebuild = True
+
+    if rebuild:
+        cards, status = load_cards_cached()
+        if status != "ok":
+            return {}, status
+        helper = _build_helper(cards, kenpo_mtime)
+        os.makedirs(DATA_DIR, exist_ok=True)
+        tmp = HELPER_PATH + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(helper, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, HELPER_PATH)
+        _helper_cache = helper
+        _helper_cache_mtime = os.path.getmtime(HELPER_PATH)
+
+    return _helper_cache, "ok"
+
+
+def _canonical_id_for_term(term: str, group: str = "", subgroup: str = "") -> Optional[str]:
+    """Resolve canonical id for a term using helper.json."""
+    helper, status = load_helper_cached()
+    if status != "ok":
+        return None
+
+    term_key = str(term or "").strip().lower()
+    if not term_key:
+        return None
+
+    mapping = helper.get("term_to_id", {})
+    v = mapping.get(term_key)
+    if not v:
+        return None
+
+    if isinstance(v, list):
+        g = str(group or "").strip()
+        sg = str(subgroup or "").strip()
+        if g or sg:
+            cards = helper.get("cards", {})
+            for cid in v:
+                c = cards.get(cid) or {}
+                if (str(c.get("group","")).strip() == g) and (str(c.get("subgroup","")).strip() == sg):
+                    return cid
+        return v[0]
+    return str(v)
 
 
 def _default_settings() -> Dict[str, Any]:
@@ -1327,9 +1455,19 @@ def api_breakdowns_save_android():
     Saves/updates a breakdown so other devices can pull it later.
     """
     payload = request.get_json(silent=True) or {}
-
-    bid = str(payload.get("id") or "").strip()
+    incoming_bid = str(payload.get("id") or "").strip()
+    bid = incoming_bid
     term = str(payload.get("term") or "").strip()
+
+    # Canonicalize breakdown id using server helper (term->id)
+    canonical = _canonical_id_for_term(
+        term,
+        group=str(payload.get("group") or "").strip(),
+        subgroup=str(payload.get("subgroup") or "").strip(),
+    )
+    if canonical:
+        bid = canonical
+
     parts = payload.get("parts") or []
     literal = str(payload.get("literal") or "").strip()
     notes = str(payload.get("notes") or "").strip()
@@ -1346,8 +1484,12 @@ def api_breakdowns_save_android():
             "part": str(p.get("part") or "").strip(),
             "meaning": str(p.get("meaning") or "").strip(),
         })
-
     data = _load_breakdowns()
+    if incoming_bid and incoming_bid != bid and incoming_bid in data:
+        try:
+            del data[incoming_bid]
+        except Exception:
+            pass
     data[bid] = {
         "id": bid,
         "term": term,
@@ -1359,7 +1501,7 @@ def api_breakdowns_save_android():
     }
     _save_breakdowns(data)
 
-    return jsonify({"ok": True})
+    return jsonify({"ok": True, "id": bid})
 
 @app.get("/api/sync/pull")
 @android_auth_required
@@ -1409,6 +1551,17 @@ def api_sync_push():
     save_progress(uid, current)
     return jsonify({'success': True, 'message': 'Progress synced'})
 
+
+@app.get("/api/sync/helper")
+def api_sync_helper():
+    """
+    Public helper endpoint used by Android + Web to agree on canonical card IDs.
+    (No token required; contains only vocabulary metadata.)
+    """
+    helper, status = load_helper_cached()
+    if status != "ok":
+        return jsonify({"error": status}), 404
+    return jsonify(helper)
 
 @app.get("/api/sync/breakdowns")
 def api_sync_breakdowns():
