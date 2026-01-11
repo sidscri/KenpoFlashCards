@@ -1647,6 +1647,23 @@ def api_get_customset():
 
 
 # ============ END ANDROID SYNC API ============
+# --- Common public files (avoid 404 noise) ---
+@app.get("/favicon.ico")
+def favicon():
+    return send_from_directory("static", "favicon.ico")
+
+@app.get("/robots.txt")
+def robots():
+    return send_from_directory("static", "robots.txt")
+
+@app.get("/sitemap.xml")
+def sitemap():
+    return send_from_directory("static", "sitemap.xml")
+
+# OPTION A (recommended for your project): put security.txt at static/.well-known/security.txt
+@app.get("/.well-known/security.txt")
+def security_txt():
+    return send_from_directory("static/.well-known", "security.txt")
 
 @app.get("/<path:filename>")
 def static_files(filename):
