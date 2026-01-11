@@ -31,7 +31,7 @@ object CsvImport {
             if (term.isBlank() || meaning.isBlank()) return@mapNotNull null
 
             FlashCard(
-                id = JsonUtil.stableId(group, subgroup, term, pron, meaning),
+                id = JsonUtil.stableId(group, subgroup, term, meaning, pron),
                 group = group,
                 subgroup = subgroup,
                 term = term,

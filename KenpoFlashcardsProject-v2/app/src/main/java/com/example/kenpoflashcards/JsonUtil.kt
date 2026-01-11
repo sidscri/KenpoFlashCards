@@ -14,11 +14,12 @@ object JsonUtil {
                 val group = o.optString("group", "Ungrouped")
                 val subgroup = if (o.isNull("subgroup")) null else o.optString("subgroup").takeIf { it.isNotBlank() }
                 val term = o.optString("term")
+                val idFromJson = o.optString("id", "").trim()
                 val pron = if (o.isNull("pron")) null else o.optString("pron").takeIf { it.isNotBlank() }
                 val meaning = o.optString("meaning")
                 add(
                     FlashCard(
-                        id = stableId(group, subgroup, term, pron, meaning),
+                        id = if (idFromJson.isNotBlank()) idFromJson else stableId(group, subgroup, term, meaning, pron),
                         group = group,
                         subgroup = subgroup,
                         term = term,
@@ -46,9 +47,11 @@ object JsonUtil {
         return arr.toString()
     }
 
-    fun stableId(group: String, subgroup: String?, term: String, pron: String?, meaning: String): String {
-        val base = "$group|${subgroup ?: ""}|$term|${pron ?: ""}|$meaning"
-        val md = MessageDigest.getInstance("SHA-256").digest(base.toByteArray())
-        return md.take(8).joinToString("") { "%02x".format(it) }
-    }
+    fun stableId(group: String, subgroup: String?, term: String, meaning: String, pron: String?): String {
+    // MUST match the web server algorithm:
+    // id = sha1(f"{group}||{subgroup}||{term}||{meaning}||{pron}")[:16]
+    val base = "$group||${subgroup ?: ""}||$term||$meaning||${pron ?: ""}"
+    val md = MessageDigest.getInstance("SHA-1").digest(base.toByteArray())
+    return md.take(8).joinToString("") { "%02x".format(it) }
+}
 }
