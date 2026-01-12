@@ -80,16 +80,9 @@ if "%BUILD%"=="" (
   goto :fail
 )
 
-REM Shorten version to major.minor (e.g., 5.3.0 -> 5.3)
-set "VER_SHORT=%VER%"
-for /f "tokens=1,2 delims=." %%a in ("%VER%") do (
-  if not "%%b"=="" set "VER_SHORT=%%a.%%b"
-)
 
-set "ZIPNAME=%PROJ%-v%VER_SHORT% v%BUILD%.zip"
+set "ZIPNAME=%PROJ%-v%VER% v%BUILD%.zip"
 set "ZIPPATH=%BASE%\%ZIPNAME%"
-
->>"%LOG%" echo VER_SHORT=%VER_SHORT%
 >>"%LOG%" echo ZIPPATH=%ZIPPATH%
 
 if exist "%ZIPPATH%" del /f /q "%ZIPPATH%" >>"%LOG%" 2>&1

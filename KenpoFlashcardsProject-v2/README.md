@@ -3,13 +3,12 @@
 > This is the **Android app** project inside the `sidscri-apps` monorepo.  
 > Repo root: `../README.md`
 
-# 🥋 Kenpo Vocabulary Flash Cards (Android)
-
 An Android flash-card app designed to help students of **American Kenpo Karate** learn, memorize, and review Kenpo vocabulary efficiently using categorized, interactive flash cards.
 
 This app focuses on **active recall**, **progress tracking**, and **organized learning**, making it ideal for beginners through advanced practitioners.
 
-**Current Version:** 4.0
+**Current Version:** v4.1.0 (versionCode 17)  
+**Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
@@ -65,13 +64,14 @@ Move cards between states with dedicated buttons for flexible learning paths.
 - Adaptive UI for different screen sizes
 - Dark theme throughout
 
-### ☁️ Web App Sync (v4.0)
+### ☁️ Web App Sync (v4.0+)
 - **Login** to sync with web app server
 - **Push/Pull** progress between devices
 - **Sync breakdowns** from shared database
 - Server: `sidscri.tplinkdns.com:8009`
+- Endpoint: `POST /api/sync/login` (token-based auth)
 
-### 🤖 AI Integration (v4.0)
+### 🤖 AI Integration (v4.0+)
 - **ChatGPT API** integration for breakdown autofill
 - Automatically generates:
   - Term part splits
@@ -114,7 +114,7 @@ Move cards between states with dedicated buttons for flexible learning paths.
 - Pronunciation-only mode toggle
 - Test voice button
 
-### Admin (v4.0)
+### Admin (v4.0+)
 - Web app login/sync
 - ChatGPT API configuration
 - Breakdown sync
@@ -156,8 +156,8 @@ app/src/main/
 │   ├── JsonUtil.kt          # JSON parsing utilities
 │   ├── TtsHelper.kt         # Text-to-speech wrapper
 │   ├── CsvImport.kt         # CSV import functionality
-│   ├── WebAppSync.kt        # Server sync API (v4.0)
-│   └── ChatGptHelper.kt     # AI breakdown autofill (v4.0)
+│   ├── WebAppSync.kt        # Server sync API
+│   └── ChatGptHelper.kt     # AI breakdown autofill
 ├── assets/
 │   └── kenpo_words.json     # Default vocabulary data
 ├── res/
@@ -169,12 +169,17 @@ app/src/main/
 
 ## 📋 Version History
 
-| Version | Features |
-|---------|----------|
-| **4.0** | Landscape mode, Web sync, ChatGPT integration, Group filters for study screens, Pronunciation-only speech |
-| **3.0** | Custom study sets, Sort modes, Group filtering, Return to top, Admin placeholder |
-| **2.0** | Three-state progress, Term breakdowns, Voice settings, Dark theme |
-| **1.0** | Basic flashcards, Got It tracking, Categories |
+| Version | Code | Key Changes |
+|---------|------|-------------|
+| **4.1.0** | 17 | Shared ID mapping for cross-device sync |
+| **4.0.7** | 14 | Fixed login endpoint (`/api/sync/login`) |
+| **4.0.5** | 12 | Debug instrumentation for login |
+| **4.0.0** | 7 | Landscape mode, Web sync, ChatGPT integration |
+| **3.0.1** | — | Custom sets, Sort modes, Group filtering |
+| **2.0.0** | — | Three-state progress, Term breakdowns, Dark theme |
+| **1.0.0** | — | Basic flashcards, Got It tracking |
+
+See [CHANGELOG.md](CHANGELOG.md) for full details.
 
 ---
 
@@ -185,17 +190,23 @@ app/src/main/
 3. Sync Gradle dependencies
 4. Run on device or emulator (API 26+)
 
-### Optional: Web Sync Setup
-To enable cloud sync, your server needs these endpoints:
-- `POST /api/login` - Authentication
+### Build Release APK
+```bash
+./gradlew assembleRelease
+# Output: app/build/outputs/apk/release/app-release.apk
+```
+
+### Web Sync Setup
+Your server needs these endpoints:
+- `POST /api/sync/login` - Token authentication
 - `GET/POST /api/sync/pull|push` - Progress sync
-- `GET/POST /api/breakdowns` - Shared breakdowns
+- `GET /api/sync/breakdowns` - Shared breakdowns
 
 ---
 
 ## 📄 License
 
-This project is for personal/educational use in learning American Kenpo Karate vocabulary.
+Personal/educational use for learning American Kenpo Karate vocabulary.
 
 ---
 

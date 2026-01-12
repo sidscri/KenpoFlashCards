@@ -1,0 +1,16 @@
+How to Keep Them Updated
+Manual Workflow (Recommended for now)
+
+Before each commit with significant changes
+
+Open the relevant CHANGELOG.md
+Add entry under ## Unreleased
+Commit both the code changes and changelog update
+
+
+When releasing
+
+Change ## Unreleased → ## vX.Y.Z (build N) — YYYY-MM-DD
+Add new empty ## Unreleased section
+Tag git tag v5.3.1
+Push git push && git push --tags

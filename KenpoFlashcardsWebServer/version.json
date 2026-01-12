@@ -1,7 +1,7 @@
 {
   "name": "KenpoFlashcardsWebServer",
-  "version": "5.3.0",
-  "build": 24,
+  "version": "5.3.1",
+  "build": 25,
   "released": "2026-01-12",
-  "notes": "Adds About/Admin/User Guide pages, user dropdown with version, and PDF user guide. Includes reportlab."
+  "notes": "Adds About/Admin/User Guide pages, user dropdown with version, and PDF user guide, Pull sync issue fix. Includes reportlab."
 }

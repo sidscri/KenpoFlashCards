@@ -63,6 +63,11 @@ BREAKDOWNS_PATH = os.path.join(DATA_DIR, "breakdowns.json")
 # Canonical term->id helper (source of truth for IDs across devices)
 HELPER_PATH = os.path.join(DATA_DIR, "helper.json")
 
+# helper.json cache (term<->id mapping)
+_helper_cache = {}
+_helper_cache_mtime = -1.0
+_ID16_RE = re.compile(r"^[0-9a-f]{16}$", re.I)
+
 # Optional AI provider (server-side) for breakdown auto-fill.
 # IMPORTANT: Keep API keys on the server (environment variables). Never put them in client-side JS.
 OPENAI_API_KEY = (os.environ.get("OPENAI_API_KEY") or "").strip()
@@ -1657,21 +1662,33 @@ def api_sync_push():
     # Load existing progress
     current = load_progress(uid)
     
-    # Merge incoming progress
-    for card_id, status in incoming_progress.items():
+    # Merge incoming progress (accept either 16-hex IDs or raw terms)
+    applied = 0
+    skipped_unknown = 0
+    for card_key, status in incoming_progress.items():
         if not isinstance(status, str):
             continue
-        # Normalize status
-        status_lower = status.lower()
-        if status_lower in ('active', 'unsure', 'learned', 'deleted'):
-            current[card_id] = {
-                'status': status_lower,
-                'updated_at': int(time.time())
-            }
+        status_lower = status.lower().strip()
+        if status_lower not in ('active', 'unsure', 'learned', 'deleted'):
+            continue
+
+        ck = card_key if isinstance(card_key, str) else str(card_key)
+
+        # Canonicalize key to the 16-hex ID used by the web UI.
+        canonical_id = ck.lower() if _ID16_RE.match(ck) else (_canonical_id_for_term(ck) or "")
+        if not canonical_id or not _ID16_RE.match(canonical_id):
+            skipped_unknown += 1
+            continue
+
+        current[canonical_id.lower()] = {
+            'status': status_lower,
+            'updated_at': int(time.time())
+        }
+        applied += 1
     
     # Save
     save_progress(uid, current)
-    return jsonify({'success': True, 'message': 'Progress synced'})
+    return jsonify({'success': True, 'message': 'Progress synced', 'applied': applied, 'skipped_unknown': skipped_unknown})
 
 
 @app.get("/api/sync/helper")
