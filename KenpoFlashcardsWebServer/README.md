@@ -108,14 +108,6 @@ KenpoFlashcardsWebServer/
 └── README.md
 ```
 
----
-
-## 📄 License
-
-Personal/educational use for learning American Kenpo Karate vocabulary.
-
----
-
 ## 🪟 Windows options
 
 - Service + tray (Option A2): `../KenpoFlashcardsWebServer_Service_Tray/README.md`
@@ -165,7 +157,78 @@ def security_txt():
 
 If you already have a reverse proxy (Nginx/Caddy), you can serve these as static files there instead.
 
+What new in version (v5.2, build v23)
+
+Adds data/helper.json (auto-generated, auto-refreshed when kenpo_words.json changes)
+
+Adds endpoint:
+
+GET /api/sync/helper → returns canonical term_to_id, cards, version, etc.
+
+Canonicalizes breakdown saves:
+
+POST /api/breakdowns now maps the incoming breakdown to the canonical card id using the term via helper.json
+
+Response includes the canonical id: { ok: true, id: "<canonical_id>" }
+
+version.json ✅ (v5.2, build v23)
+
+app.py ✅ (updated)
+
+static/favicon.ico ✅ (generic “K” icon — safe placeholder)
+
+static/.well-known/security.txt ✅ (placeholder; edit email)
+
+BRANDING_NOTE.md ✅ (quick reminder)
+
+
 IMPORTANT:
 - Change Contact: mailto:security@example.com in security.txt to your real email.
 - Optionally change the sitemap <loc> to your real public URL.
 
+What new in version (v5.3, build v24)
+
+What’s included in this redo
+1) Features re-added on top of v5.2 v23
+
+✅ version.json updated and used as the source of truth
+
+✅ User dropdown menu (click User: …) shows:
+
+Current version (from /api/version)
+
+Admin link (only visible for admin user Sidscri)
+
+About
+
+User Guide
+
+✅ New pages/routes:
+
+/about (Created by Sidney Shelton + mailto:Sidscri@yahoo.com, description, major features)
+
+/admin (health/version/helper/AI status)
+
+/user-guide (full guide + print)
+
+/user-guide.pdf (downloadable PDF generated on demand)
+
+✅ /api/version already existed in your v23 baseline — kept and ensured it reads version.json
+
+✅ requirements.txt updated to include reportlab (needed for PDF)
+
+2) README + Changelog (going forward)
+
+✅ Updated KenpoFlashcardsWebServer/README.md bottom section to reflect all new UI + routes + versioning
+
+✅ Added KenpoFlashcardsWebServer/CHANGELOG.md
+
+Includes a release entry for v5.3.0 build 24 and an Unreleased section for ongoing work
+
+---
+
+## 📄 License
+
+Personal/educational use for learning American Kenpo Karate vocabulary.
+
+---

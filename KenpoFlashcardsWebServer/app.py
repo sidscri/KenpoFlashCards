@@ -988,6 +988,81 @@ def api_groups():
 
 import datetime
 
+@app.get("/about")
+def about_page():
+    return send_from_directory("static", "about.html")
+
+@app.get("/admin")
+def admin_page():
+    return send_from_directory("static", "admin.html")
+
+@app.get("/user-guide")
+def user_guide_page():
+    return send_from_directory("static", "user-guide.html")
+
+@app.get("/user-guide.pdf")
+def user_guide_pdf():
+    """Serve a printable User Guide PDF (generated on demand)."""
+    try:
+        from reportlab.lib.pagesizes import letter
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.units import inch
+    except Exception:
+        return jsonify({"error": "reportlab not installed on server. Run: pip install reportlab"}), 500
+
+    v = get_version()
+    title = f"Kenpo Flashcards (Web) — User Guide  (v{v.get('version','')}, build {v.get('build','')})"
+    lines = [
+        "Created by Sidney Shelton (Sidscri@yahoo.com)",
+        "",
+        "Overview:",
+        "• Study Kenpo vocabulary and track progress across devices.",
+        "• Tabs: Unlearned / Unsure / Learned / All.",
+        "• Group filtering and All Cards mode.",
+        "• Sync: progress + breakdowns between Android and Web.",
+        "• AI Breakdowns (optional): OpenAI/Gemini configured server-side.",
+        "",
+        "How to use:",
+        "1) Choose a tab (Unlearned/Unsure/Learned/All).",
+        "2) Use Group dropdown or All Cards button to set your filter.",
+        "3) Use status buttons to move a card between states.",
+        "4) Use Search to jump to a term quickly.",
+        "5) Use Breakdown tools to view or generate a breakdown.",
+        "6) Use Sync to push/pull progress and pull breakdowns on other devices.",
+        "",
+        "Troubleshooting:",
+        "• If sync seems stuck: logout/login and pull again.",
+        "• Ensure server is running and reachable from your device.",
+        "• Visit /admin for diagnostics.",
+    ]
+
+    from io import BytesIO
+    buf = BytesIO()
+    c = canvas.Canvas(buf, pagesize=letter)
+    width, height = letter
+
+    x = 0.8 * inch
+    y = height - 1.0 * inch
+    c.setTitle("Kenpo Flashcards User Guide")
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(x, y, title)
+    y -= 0.4 * inch
+
+    c.setFont("Helvetica", 11)
+    for ln in lines:
+        if y < 0.8 * inch:
+            c.showPage()
+            y = height - 1.0 * inch
+            c.setFont("Helvetica", 11)
+        c.drawString(x, y, ln)
+        y -= 0.22 * inch
+
+    c.showPage()
+    c.save()
+    buf.seek(0)
+
+    return send_file(buf, mimetype="application/pdf", as_attachment=True, download_name="KenpoFlashcards_User_Guide.pdf")
+
 @app.get("/api/whoami")
 def whoami():
     ip = (request.headers.get("X-Forwarded-For") or request.remote_addr or "").split(",")[0].strip()
