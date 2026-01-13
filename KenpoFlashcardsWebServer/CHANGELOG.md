@@ -21,11 +21,14 @@ The format is simple and practical:
 - **Model Selection**: Choose ChatGPT and Gemini models from web UI
 - **Startup Key Loading**: Server loads encrypted API keys from file on startup
 - **Web API endpoints**: `/api/web/admin/apikeys` GET/POST for session-based admin access
+- **Admin Users SoT**: `data/admin_users.json` - Source of Truth for admin usernames
+- **Admin Users Endpoint**: `GET /api/admin/users` - returns admin usernames list
 
 ### Changed
 - API keys now include model selection (chatGptModel, geminiModel)
 - Keys loaded from `api_keys.enc` override environment variables
 - Admin page now prominently links to AI Access Settings
+- `_load_admin_usernames()` loads from JSON file with fallback
 
 ### Security
 - Environment variable API keys no longer needed (can be removed from START_KenpoFlashcardsWebServer.bat)

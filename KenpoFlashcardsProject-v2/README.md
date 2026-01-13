@@ -7,7 +7,7 @@ An Android flash-card app designed to help students of **American Kenpo Karate**
 
 This app focuses on **active recall**, **progress tracking**, and **organized learning**, making it ideal for beginners through advanced practitioners.
 
-**Current Version:** v4.1.0 (versionCode 17)  
+**Current Version:** v4.3.0 (versionCode 19)  
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -42,7 +42,7 @@ Move cards between states with dedicated buttons for flexible learning paths.
 - Add meanings for each part
 - Include literal translations and notes
 - **Auto-split** feature detects word boundaries
-- **AI-powered autofill** (requires OpenAI API key)
+- **AI-powered autofill** (ChatGPT or Gemini)
 
 ### 🔍 Filtering & Sorting
 - **Group filter** - Study cards from specific categories
@@ -73,6 +73,8 @@ Move cards between states with dedicated buttons for flexible learning paths.
 
 ### 🤖 AI Integration (v4.0+)
 - **ChatGPT API** integration for breakdown autofill
+- **Gemini API** integration (v4.2.0+)
+- **Model selection** - choose gpt-4o, gpt-4o-mini, gemini-1.5-flash, etc. (v4.3.0+)
 - Automatically generates:
   - Term part splits
   - Part meanings/translations
@@ -89,7 +91,7 @@ Move cards between states with dedicated buttons for flexible learning paths.
 | **Learned** | Mastered cards (List or Study view) |
 | **All** | Browse all cards with status indicators |
 | **Custom** | Your starred cards |
-| **More** | Settings, Deleted cards, Admin |
+| **More** | Settings, Login, Sync, About, Admin (if admin) |
 
 ---
 
@@ -114,10 +116,20 @@ Move cards between states with dedicated buttons for flexible learning paths.
 - Pronunciation-only mode toggle
 - Test voice button
 
-### Admin (v4.0+)
-- Web app login/sync
-- ChatGPT API configuration
+### Login (v4.2.0+)
+- Web app login
+- Auto-sync on login toggle
+- Auto-push on change toggle
+
+### Sync Progress (v4.2.0+)
+- Manual push/pull progress
 - Breakdown sync
+- AI service selector
+
+### AI Access (Admin Only, v4.3.0+)
+- ChatGPT API key and model
+- Gemini API key and model
+- Push/Pull keys to server
 
 ---
 
@@ -157,7 +169,8 @@ app/src/main/
 │   ├── TtsHelper.kt         # Text-to-speech wrapper
 │   ├── CsvImport.kt         # CSV import functionality
 │   ├── WebAppSync.kt        # Server sync API
-│   └── ChatGptHelper.kt     # AI breakdown autofill
+│   ├── ChatGptHelper.kt     # ChatGPT AI breakdown autofill
+│   └── GeminiHelper.kt      # Gemini AI breakdown autofill
 ├── assets/
 │   └── kenpo_words.json     # Default vocabulary data
 ├── res/
@@ -171,8 +184,8 @@ app/src/main/
 
 | Version | Code | Key Changes |
 |---------|------|-------------|
-| **4.3.0** | 19 | AI Model Selection, Admin Button, Sync Models and API |
-| **4.2.0** | 18 | About Screen, User Guide, Gemini AI Integration, Dedicated Login\Sync\AI Selector, Auto-sync settings, API key sync, Version display |
+| **4.3.0** | 19 | AI model selection, admin button fix, server-based admin users SoT |
+| **4.2.0** | 18 | About Screen, User Guide, Gemini AI, Dedicated Login/Sync screens, Auto-sync, API key sync |
 | **4.1.0** | 17 | Shared ID mapping for cross-device sync |
 | **4.0.7** | 14 | Fixed login endpoint (`/api/sync/login`) |
 | **4.0.5** | 12 | Debug instrumentation for login |
@@ -203,6 +216,7 @@ Your server needs these endpoints:
 - `POST /api/sync/login` - Token authentication
 - `GET/POST /api/sync/pull|push` - Progress sync
 - `GET /api/sync/breakdowns` - Shared breakdowns
+- `GET /api/admin/users` - Admin usernames (SoT)
 
 ---
 

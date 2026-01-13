@@ -1167,19 +1167,27 @@ fun LoginScreen(nav: NavHostController, repo: Repository) {
                     scope.launch {
                         val result = repo.syncLogin(username, password)
                         if (result.success) {
+                            val effectiveUrl = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
                             val newSettings = adminSettings.copy(
-                                webAppUrl = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL },
+                                webAppUrl = effectiveUrl,
                                 authToken = result.token,
                                 username = result.username,
                                 isLoggedIn = true,
                                 lastSyncTime = 0
                             )
                             repo.saveAdminSettings(newSettings)
+                            
+                            // Fetch admin users list from server (Source of Truth)
+                            val adminList = WebAppSync.fetchAdminUsers(effectiveUrl)
+                            if (adminList.isNotEmpty()) {
+                                AdminUsers.updateAdminList(adminList)
+                            }
+                            
                             statusMessage = "Login successful!"
                             password = ""
                             if (adminSettings.autoPullOnLogin) {
                                 statusMessage = "Login successful! Syncing..."
-                                val pullResult = repo.syncPullProgressWithToken(result.token, serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL })
+                                val pullResult = repo.syncPullProgressWithToken(result.token, effectiveUrl)
                                 val breakdownResult = repo.syncBreakdowns()
                                 statusMessage = if (pullResult.success && breakdownResult.success) "Login successful! Progress and breakdowns synced." else "Login successful! Some sync errors occurred."
                                 repo.saveAdminSettings(newSettings.copy(lastSyncTime = System.currentTimeMillis()))

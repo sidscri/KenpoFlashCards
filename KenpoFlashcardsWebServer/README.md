@@ -5,7 +5,7 @@
 
 Flask-based web application providing sync API and web UI for Kenpo Flashcards.
 
-**Current Version:** v5.3.1 (build 25)  
+**Current Version:** v5.5.0 (build 27)  
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -17,6 +17,8 @@ Flask-based web application providing sync API and web UI for Kenpo Flashcards.
 - **Breakdown Sync** - Shared term breakdown database
 - **Web UI** - Browser-based flashcard interface
 - **Helper Mapping** - Canonical card IDs for cross-device consistency
+- **AI Integration** - ChatGPT and Gemini API for breakdown autofill
+- **Encrypted API Keys** - Secure storage shared between Android and web
 
 ---
 
@@ -69,6 +71,20 @@ Open: `http://localhost:8009`
 | `/api/breakdowns` | GET | Get breakdowns (web session) |
 | `/api/breakdowns` | POST | Save breakdown (admin only) |
 
+### Admin (Token Required)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/admin/apikeys` | GET | Get encrypted API keys (admin) |
+| `/api/admin/apikeys` | POST | Save encrypted API keys (admin) |
+| `/api/admin/status` | GET | Check admin status |
+| `/api/admin/users` | GET | Get admin usernames (SoT) |
+
+### Web Admin (Session Required)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/web/admin/apikeys` | GET | Get API keys for web UI |
+| `/api/web/admin/apikeys` | POST | Save API keys from web UI |
+
 ### Info
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -76,8 +92,8 @@ Open: `http://localhost:8009`
 | `/api/health` | GET | Server health check |
 | `/about` | GET | About page |
 | `/admin` | GET | Admin diagnostics |
+| `/ai-access.html` | GET | AI Access settings (admin) |
 | `/user-guide` | GET | User guide page |
-| `/user-guide.pdf` | GET | Downloadable PDF guide |
 
 ---
 
@@ -87,7 +103,6 @@ Open: `http://localhost:8009`
 - `data/` - User accounts, progress, breakdowns
 - `logs/` - Server logs
 - `.env` - Environment variables
-- `gpt api.txt` - OpenAI API key
 
 ### Data Structure
 ```
@@ -96,6 +111,8 @@ data/
 ├── breakdowns.json      # Shared breakdowns
 ├── helper.json          # Auto-generated ID mapping
 ├── secret_key.txt       # Flask session key
+├── api_keys.enc         # Encrypted API keys (safe for git)
+├── admin_users.json     # Admin usernames (Source of Truth)
 └── users/
     ├── {user_id}/
     │   └── progress.json
@@ -106,18 +123,32 @@ data/
 
 ## 🔧 Configuration
 
-### Environment Variables
+### Environment Variables (Optional)
 | Variable | Description |
 |----------|-------------|
 | `KENPO_ROOT` | Root path for auto-discovering `kenpo_words.json` |
 | `KENPO_JSON_PATH` | Direct path to card data JSON |
-| `OPENAI_API_KEY` | OpenAI API key for AI features |
+
+**Note:** API keys are now stored encrypted in `data/api_keys.enc`. You no longer need to set `OPENAI_API_KEY` in the batch file - keys are loaded from the encrypted file on startup.
 
 ### Auto-Path Discovery
 The server automatically locates `kenpo_words.json` by scanning:
 ```
 {KENPO_ROOT}/*/app/src/main/assets/kenpo_words.json
 ```
+
+---
+
+## 🔐 Admin Management
+
+Admin users are defined in `data/admin_users.json`:
+```json
+{
+  "admin_usernames": ["sidscri"]
+}
+```
+
+Both Android app and web server read from this Source of Truth.
 
 ---
 
@@ -145,7 +176,7 @@ Should return JSON with `version`, `term_to_id`, `cards`
 ```
 http://localhost:8009/api/version
 ```
-Should return `{"version": "5.3.1", "build": 25, ...}`
+Should return `{"version": "5.5.0", "build": 27, ...}`
 
 ### 3. Check Data Files
 Confirm `data/helper.json` exists on disk after first request.
@@ -156,8 +187,8 @@ Confirm `data/helper.json` exists on disk after first request.
 
 | Version | Build | Key Changes |
 |---------|-------|-------------|
-| **5.5.0** | 27 | AI Access Page, Model Selection, Startup Key Loading, Web API endpoints, Keys loaded from `api_keys.enc |
-| **5.4.0** | 26 | Encrypted API Key Storage, Gemini API, About Page |
+| **5.5.0** | 27 | AI Access page, model selection, startup key loading, admin_users.json SoT |
+| **5.4.0** | 26 | Encrypted API key storage, Gemini API, admin endpoints |
 | **5.3.1** | 25 | Fixed duplicate `/api/login` endpoint conflict |
 | **5.3.0** | 24 | About/Admin/User Guide pages, user dropdown |
 | **5.2.0** | 23 | End-to-end sync confirmed, helper mapping |
@@ -181,10 +212,16 @@ KenpoFlashcardsWebServer/
 │   ├── index.html         # Web UI
 │   ├── app.js             # Frontend JavaScript
 │   ├── styles.css         # Styles
+│   ├── admin.html         # Admin diagnostics
+│   ├── ai-access.html     # AI Access settings (admin)
+│   ├── about.html         # About page
+│   ├── user-guide.html    # User guide
 │   ├── favicon.ico        # Browser icon
 │   └── .well-known/
 │       └── security.txt   # Security contact
-├── data/                  # Runtime data (gitignored)
+├── data/                  # Runtime data (gitignored except SoT files)
+│   ├── admin_users.json   # Admin usernames (Source of Truth)
+│   └── api_keys.enc       # Encrypted API keys (safe for git)
 └── CHANGELOG.md           # Version history
 ```
 

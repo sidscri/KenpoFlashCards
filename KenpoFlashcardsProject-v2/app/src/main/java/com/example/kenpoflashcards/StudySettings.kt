@@ -151,13 +151,26 @@ enum class BreakdownAiChoice(val label: String) {
 }
 
 /**
- * Admin users list - for now just Sidscri
+ * Admin users list - loaded from server with fallback
  */
 object AdminUsers {
-    private val admins = setOf("sidscri")
+    // Default fallback if server is unreachable
+    private val defaultAdmins = setOf("sidscri")
+    
+    // Cached admin list from server
+    private var cachedAdmins: Set<String>? = null
     
     fun isAdmin(username: String): Boolean {
         if (username.isBlank()) return false
+        val admins = cachedAdmins ?: defaultAdmins
         return username.trim().lowercase() in admins
     }
+    
+    fun updateAdminList(admins: Set<String>) {
+        if (admins.isNotEmpty()) {
+            cachedAdmins = admins
+        }
+    }
+    
+    fun getAdminList(): Set<String> = cachedAdmins ?: defaultAdmins
 }

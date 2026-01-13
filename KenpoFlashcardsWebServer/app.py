@@ -413,9 +413,23 @@ USERS_DIR = os.path.join(DATA_DIR, "users")
 PROFILES_PATH = os.path.join(DATA_DIR, "profiles.json")
 SECRET_PATH = os.path.join(DATA_DIR, "secret_key.txt")
 API_KEYS_PATH = os.path.join(DATA_DIR, "api_keys.enc")  # Encrypted API keys storage
+ADMIN_USERS_PATH = os.path.join(DATA_DIR, "admin_users.json")  # Admin users SoT
 
-# Admin users who can manage API keys
-ADMIN_USERNAMES = {"sidscri"}
+def _load_admin_usernames() -> set:
+    """Load admin usernames from admin_users.json (Source of Truth)."""
+    try:
+        if os.path.exists(ADMIN_USERS_PATH):
+            with open(ADMIN_USERS_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                usernames = data.get("admin_usernames", [])
+                return {u.lower() for u in usernames}
+    except Exception as e:
+        print(f"[WARN] Could not load admin_users.json: {e}")
+    # Fallback to hardcoded default
+    return {"sidscri"}
+
+# Admin users who can manage API keys (loaded from admin_users.json)
+ADMIN_USERNAMES = _load_admin_usernames()
 
 PORT = int(os.environ.get("KENPO_WEB_PORT", "8009"))
 app = Flask(__name__, static_folder="static")
@@ -1910,6 +1924,19 @@ def api_admin_status():
         'isAdmin': is_admin,
         'username': username,
         'hasApiKeys': bool(_load_encrypted_api_keys()) if is_admin else None
+    })
+
+
+@app.get("/api/admin/users")
+def api_get_admin_users():
+    """
+    Get list of admin usernames (Source of Truth).
+    Used by Android app to check admin status locally.
+    
+    Returns: {"admin_usernames": ["sidscri", ...]}
+    """
+    return jsonify({
+        'admin_usernames': list(ADMIN_USERNAMES)
     })
 
 

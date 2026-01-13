@@ -19,15 +19,17 @@ The format is simple and practical:
 ### Added
 - **Model Selection**: Choose AI model for ChatGPT (gpt-4o default) and Gemini (gemini-1.5-flash default)
 - Model settings sync with server alongside API keys
+- **Admin Users SoT**: Fetches admin usernames from server on login (`/api/admin/users`)
 
 ### Fixed
 - **Admin Button**: Fixed isAdmin() check not recognizing logged-in admin user
-- Simplified admin username comparison logic
+- Simplified admin username comparison logic with server-side Source of Truth
 
 ### Changed
 - Admin screen renamed to "AI Access Settings"
 - Push/Pull buttons now sync models along with API keys
 - ChatGPT default model changed from gpt-3.5-turbo to gpt-4o
+- AdminUsers object now caches admin list from server
 
 ---
 

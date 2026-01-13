@@ -358,6 +358,34 @@ object WebAppSync {
             ApiKeysResult(success = false, error = e.message ?: "Pull failed")
         }
     }
+    
+    /**
+     * Fetch admin usernames from server (Source of Truth)
+     */
+    suspend fun fetchAdminUsers(serverUrl: String): Set<String> = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("$serverUrl/api/admin/users")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.connectTimeout = 5000
+            conn.readTimeout = 5000
+            
+            if (conn.responseCode == 200) {
+                val response = conn.inputStream.bufferedReader().readText()
+                val json = JSONObject(response)
+                val admins = json.optJSONArray("admin_usernames") ?: return@withContext emptySet()
+                val set = mutableSetOf<String>()
+                for (i in 0 until admins.length()) {
+                    set.add(admins.optString(i, "").lowercase())
+                }
+                set
+            } else {
+                emptySet()
+            }
+        } catch (e: Exception) {
+            emptySet()
+        }
+    }
 }
 
 /**
