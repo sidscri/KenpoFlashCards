@@ -145,13 +145,90 @@ suspend fun deleteBreakdown(cardId: String) = store.deleteBreakdown(cardId)
         return result
     }
     
-    // Auto-fill breakdown
+    // Auto-fill breakdown with selected AI service
     suspend fun autoFillBreakdown(cardId: String, term: String, useAI: Boolean = false): TermBreakdown {
         val admin = adminSettingsFlow().first()
-        return if (useAI && admin.chatGptEnabled && admin.chatGptApiKey.isNotBlank()) {
-            ChatGptHelper.createAIBreakdown(admin.chatGptApiKey, cardId, term)
-        } else {
-            ChatGptHelper.createBasicBreakdown(cardId, term)
+        
+        if (!useAI) {
+            return ChatGptHelper.createBasicBreakdown(cardId, term)
+        }
+        
+        // Determine which AI to use based on settings
+        return when (admin.breakdownAiChoice) {
+            BreakdownAiChoice.AUTO_SELECT -> {
+                // Try both and pick best result (prioritize ChatGPT if both available)
+                if (admin.chatGptEnabled && admin.chatGptApiKey.isNotBlank()) {
+                    val chatGptResult = ChatGptHelper.createAIBreakdown(admin.chatGptApiKey, cardId, term)
+                    if (chatGptResult.hasContent()) return chatGptResult
+                }
+                if (admin.geminiEnabled && admin.geminiApiKey.isNotBlank()) {
+                    val geminiResult = GeminiHelper.createAIBreakdown(admin.geminiApiKey, cardId, term)
+                    if (geminiResult.hasContent()) return geminiResult
+                }
+                ChatGptHelper.createBasicBreakdown(cardId, term)
+            }
+            BreakdownAiChoice.CHATGPT -> {
+                if (admin.chatGptEnabled && admin.chatGptApiKey.isNotBlank()) {
+                    ChatGptHelper.createAIBreakdown(admin.chatGptApiKey, cardId, term)
+                } else {
+                    ChatGptHelper.createBasicBreakdown(cardId, term)
+                }
+            }
+            BreakdownAiChoice.GEMINI -> {
+                if (admin.geminiEnabled && admin.geminiApiKey.isNotBlank()) {
+                    GeminiHelper.createAIBreakdown(admin.geminiApiKey, cardId, term)
+                } else {
+                    ChatGptHelper.createBasicBreakdown(cardId, term)
+                }
+            }
+        }
+    }
+    
+    // Check which AI services are available
+    fun getAvailableAiServices(admin: AdminSettings): List<BreakdownAiChoice> {
+        val available = mutableListOf<BreakdownAiChoice>()
+        val hasChatGpt = admin.chatGptEnabled && admin.chatGptApiKey.isNotBlank()
+        val hasGemini = admin.geminiEnabled && admin.geminiApiKey.isNotBlank()
+        
+        if (hasChatGpt && hasGemini) {
+            available.add(BreakdownAiChoice.AUTO_SELECT)
+        }
+        if (hasChatGpt) {
+            available.add(BreakdownAiChoice.CHATGPT)
+        }
+        if (hasGemini) {
+            available.add(BreakdownAiChoice.GEMINI)
+        }
+        return available
+    }
+    
+    // Push API keys to server (encrypted)
+    suspend fun syncPushApiKeys(token: String, serverUrl: String, chatGptKey: String, geminiKey: String): WebAppSync.SyncResult {
+        if (token.isBlank()) return WebAppSync.SyncResult(false, error = "No auth token")
+        val url = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+        return WebAppSync.pushApiKeys(url, token, chatGptKey, geminiKey)
+    }
+    
+    // Pull API keys from server
+    suspend fun syncPullApiKeys(token: String, serverUrl: String): WebAppSync.ApiKeysResult {
+        if (token.isBlank()) return WebAppSync.ApiKeysResult(false, error = "No auth token")
+        val url = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+        return WebAppSync.pullApiKeys(url, token)
+    }
+    
+    // Mark pending sync (for offline changes)
+    suspend fun markPendingSync() {
+        val admin = adminSettingsFlow().first()
+        if (admin.autoPushOnChange && !admin.pendingSync) {
+            saveAdminSettings(admin.copy(pendingSync = true))
+        }
+    }
+    
+    // Clear pending sync flag
+    suspend fun clearPendingSync() {
+        val admin = adminSettingsFlow().first()
+        if (admin.pendingSync) {
+            saveAdminSettings(admin.copy(pendingSync = false))
         }
     }
     

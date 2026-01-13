@@ -79,6 +79,10 @@ private sealed class Route(val path: String) {
     data object Deleted : Route("deleted")
     data object Settings : Route("settings")
     data object Admin : Route("admin")
+    data object About : Route("about")
+    data object Login : Route("login")
+    data object SyncProgress : Route("sync_progress")
+    data object UserGuide : Route("user_guide")
 }
 
 @Composable
@@ -96,6 +100,10 @@ fun AppRoot() {
         composable(Route.Deleted.path) { DeletedScreen(nav, repo) }
         composable(Route.Settings.path) { SettingsScreen(nav, repo) }
         composable(Route.Admin.path) { AdminScreen(nav, repo) }
+        composable(Route.About.path) { AboutScreen(nav) }
+        composable(Route.Login.path) { LoginScreen(nav, repo) }
+        composable(Route.SyncProgress.path) { SyncProgressScreen(nav, repo) }
+        composable(Route.UserGuide.path) { UserGuideScreen(nav) }
     }
 }
 
@@ -760,13 +768,26 @@ fun SettingsScreen(nav: NavHostController, repo: Repository) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val settings by repo.settingsAllFlow().collectAsState(initial = StudySettings())
+    val adminSettings by repo.adminSettingsFlow().collectAsState(initial = AdminSettings())
     val tts = remember { TtsHelper(context) }
     DisposableEffect(Unit) { onDispose { tts.shutdown() } }
     val csvLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? -> if (uri == null) return@rememberLauncherForActivityResult; scope.launch { val imported = withContext(Dispatchers.IO) { context.contentResolver.openInputStream(uri)?.use { CsvImport.parseCsv(it.bufferedReader()) } ?: emptyList() }; if (imported.isNotEmpty()) repo.replaceCustomCards(imported) } }
     var showSortDropdown by remember { mutableStateOf(false) }
     
+    // Get version info
+    val versionName = try {
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName
+    } catch (_: Exception) { "4.2.0" }
+    val versionCode = try {
+        context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode
+    } catch (_: Exception) { 18L }
+    
     Scaffold(topBar = { TopAppBar(title = { Text("Settings") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkPanel)) }, bottomBar = { NavBar(nav, Route.Settings.path) }) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).padding(12.dp).verticalScroll(rememberScrollState())) {
+            // Version info at top
+            Text("Version $versionName (build $versionCode)", color = DarkMuted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End)
+            Spacer(Modifier.height(8.dp))
+            
             Text("Display", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
             SettingToggle("Show group label", settings.showGroup) { scope.launch { repo.saveSettingsAll(settings.copy(showGroup = it)) } }
             SettingToggle("Show subgroup label", settings.showSubgroup) { scope.launch { repo.saveSettingsAll(settings.copy(showSubgroup = it)) } }
@@ -805,8 +826,38 @@ fun SettingsScreen(nav: NavHostController, repo: Repository) {
             OutlinedButton({ scope.launch { repo.saveSettingsAll(getDefaultSettings()) } }, Modifier.fillMaxWidth()) { Text("Reset to Default Settings") }
             
             Spacer(Modifier.height(16.dp)); HorizontalDivider(color = DarkBorder); Spacer(Modifier.height(12.dp))
-            Button({ nav.navigate(Route.Admin.path) }, Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = AccentBlue)) {
-                Icon(Icons.Default.AdminPanelSettings, "Admin"); Spacer(Modifier.width(8.dp)); Text("Admin Settings")
+            
+            // Login button (shows login status)
+            Button({ nav.navigate(Route.Login.path) }, Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = if (adminSettings.isLoggedIn) AccentGood else AccentBlue)) {
+                Icon(Icons.Default.Person, "Login"); Spacer(Modifier.width(8.dp))
+                Text(if (adminSettings.isLoggedIn) "Logged in: ${adminSettings.username}" else "Login")
+            }
+            
+            Spacer(Modifier.height(6.dp))
+            
+            // Sync Progress button (with pending indicator)
+            Button({ nav.navigate(Route.SyncProgress.path) }, Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = AccentBlue)) {
+                Icon(Icons.Default.Sync, "Sync"); Spacer(Modifier.width(8.dp))
+                Text("Sync Progress")
+                if (adminSettings.pendingSync) {
+                    Spacer(Modifier.width(8.dp))
+                    Text("(Pending)", color = Color.Yellow, fontSize = 10.sp)
+                }
+            }
+            
+            Spacer(Modifier.height(16.dp)); HorizontalDivider(color = DarkBorder); Spacer(Modifier.height(12.dp))
+            
+            // Admin Settings button - only show for admin users
+            if (AdminUsers.isAdmin(adminSettings.username)) {
+                Button({ nav.navigate(Route.Admin.path) }, Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8B0000))) {
+                    Icon(Icons.Default.AdminPanelSettings, "Admin"); Spacer(Modifier.width(8.dp)); Text("Admin Settings")
+                }
+                Spacer(Modifier.height(6.dp))
+            }
+            
+            // About button
+            OutlinedButton({ nav.navigate(Route.About.path) }, Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Info, "About"); Spacer(Modifier.width(8.dp)); Text("About")
             }
         }
     }
@@ -824,124 +875,511 @@ private fun SettingToggle(label: String, checked: Boolean, onCheckedChange: (Boo
 fun AdminScreen(nav: NavHostController, repo: Repository) {
     val scope = rememberCoroutineScope()
     val adminSettings by repo.adminSettingsFlow().collectAsState(initial = AdminSettings())
-    var serverUrl by remember(adminSettings) { mutableStateOf(adminSettings.webAppUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }) }
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
     var chatGptKey by remember(adminSettings) { mutableStateOf(adminSettings.chatGptApiKey) }
+    var geminiKey by remember(adminSettings) { mutableStateOf(adminSettings.geminiApiKey) }
     var statusMessage by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     
-    Scaffold(topBar = { TopAppBar(title = { Text("Admin") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkPanel), navigationIcon = { IconButton({ nav.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Back") } }) }, bottomBar = { NavBar(nav, Route.Admin.path) }) { pad ->
+    // Check if user is admin
+    if (!AdminUsers.isAdmin(adminSettings.username)) {
+        // Redirect non-admins back to settings
+        LaunchedEffect(Unit) { nav.popBackStack() }
+        return
+    }
+    
+    Scaffold(topBar = { TopAppBar(title = { Text("Admin Settings") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF8B0000)), navigationIcon = { IconButton({ nav.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Back") } }) }, bottomBar = { NavBar(nav, Route.Admin.path) }) { pad ->
+        Column(Modifier.fillMaxSize().padding(pad).padding(12.dp).verticalScroll(rememberScrollState())) {
+            Text("⚠️ Admin Only", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.Yellow)
+            Spacer(Modifier.height(4.dp))
+            Text("These settings are only visible to administrators.", color = DarkMuted, fontSize = 11.sp)
+            
+            Spacer(Modifier.height(20.dp)); HorizontalDivider(color = DarkBorder); Spacer(Modifier.height(16.dp))
+            
+            // ChatGPT API Section
+            Text("ChatGPT API", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+            Spacer(Modifier.height(4.dp))
+            Text("Enable AI-powered breakdown autofill using OpenAI", color = DarkMuted, fontSize = 11.sp)
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(chatGptKey, { chatGptKey = it }, Modifier.fillMaxWidth(), label = { Text("OpenAI API Key") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), textStyle = LocalTextStyle.current.copy(fontSize = 12.sp))
+            Spacer(Modifier.height(6.dp))
+            SettingToggle("Enable ChatGPT Breakdown", adminSettings.chatGptEnabled) { scope.launch { repo.saveAdminSettings(adminSettings.copy(chatGptEnabled = it)) } }
+            Spacer(Modifier.height(6.dp))
+            Button({ scope.launch { repo.saveAdminSettings(adminSettings.copy(chatGptApiKey = chatGptKey)); statusMessage = "ChatGPT API key saved" } }, Modifier.fillMaxWidth()) { Text("Save ChatGPT Key") }
+            
+            Spacer(Modifier.height(20.dp)); HorizontalDivider(color = DarkBorder); Spacer(Modifier.height(16.dp))
+            
+            // Gemini API Section
+            Text("Gemini API", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+            Spacer(Modifier.height(4.dp))
+            Text("Enable AI-powered breakdown autofill using Google Gemini", color = DarkMuted, fontSize = 11.sp)
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(geminiKey, { geminiKey = it }, Modifier.fillMaxWidth(), label = { Text("Gemini API Key") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), textStyle = LocalTextStyle.current.copy(fontSize = 12.sp))
+            Spacer(Modifier.height(6.dp))
+            SettingToggle("Enable Gemini Breakdown", adminSettings.geminiEnabled) { scope.launch { repo.saveAdminSettings(adminSettings.copy(geminiEnabled = it)) } }
+            Spacer(Modifier.height(6.dp))
+            Button({ scope.launch { repo.saveAdminSettings(adminSettings.copy(geminiApiKey = geminiKey)); statusMessage = "Gemini API key saved" } }, Modifier.fillMaxWidth()) { Text("Save Gemini Key") }
+            
+            Spacer(Modifier.height(20.dp)); HorizontalDivider(color = DarkBorder); Spacer(Modifier.height(16.dp))
+            
+            // Push API Keys to Server
+            Text("Sync API Keys", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+            Spacer(Modifier.height(4.dp))
+            Text("Push encrypted API keys to server for use on other devices", color = DarkMuted, fontSize = 11.sp)
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button({
+                    if (adminSettings.authToken.isBlank()) { statusMessage = "Error: Login required"; return@Button }
+                    isLoading = true
+                    scope.launch {
+                        val result = repo.syncPushApiKeys(adminSettings.authToken, adminSettings.webAppUrl, chatGptKey, geminiKey)
+                        statusMessage = if (result.success) "API keys pushed to server!" else "Error: ${result.error}"
+                        isLoading = false
+                    }
+                }, Modifier.weight(1f), enabled = !isLoading && adminSettings.isLoggedIn) { Text(if (isLoading) "..." else "Push Keys") }
+                
+                Button({
+                    if (adminSettings.authToken.isBlank()) { statusMessage = "Error: Login required"; return@Button }
+                    isLoading = true
+                    scope.launch {
+                        val result = repo.syncPullApiKeys(adminSettings.authToken, adminSettings.webAppUrl)
+                        if (result.success) {
+                            chatGptKey = result.chatGptKey
+                            geminiKey = result.geminiKey
+                            repo.saveAdminSettings(adminSettings.copy(
+                                chatGptApiKey = result.chatGptKey,
+                                geminiApiKey = result.geminiKey,
+                                chatGptEnabled = result.chatGptKey.isNotBlank(),
+                                geminiEnabled = result.geminiKey.isNotBlank()
+                            ))
+                            statusMessage = "API keys pulled from server!"
+                        } else {
+                            statusMessage = "Error: ${result.error}"
+                        }
+                        isLoading = false
+                    }
+                }, Modifier.weight(1f), enabled = !isLoading && adminSettings.isLoggedIn) { Text(if (isLoading) "..." else "Pull Keys") }
+            }
+            
+            if (statusMessage.isNotBlank()) { Spacer(Modifier.height(8.dp)); Text(statusMessage, color = if (statusMessage.startsWith("Error")) Color.Red else AccentBlue, fontSize = 12.sp) }
+            
+            Spacer(Modifier.height(24.dp))
+            Text("Server Info", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = DarkMuted)
+            Text("""
+API keys are encrypted before being stored on the server.
+This allows them to be safely committed to GitHub.
+
+Server: ${adminSettings.webAppUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }}
+Logged in as: ${adminSettings.username}
+            """.trimIndent(), color = DarkMuted, fontSize = 10.sp)
+        }
+    }
+}
+
+// ==================== ABOUT SCREEN ====================
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AboutScreen(nav: NavHostController) {
+    val context = LocalContext.current
+    val versionName = try {
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName
+    } catch (_: Exception) { "4.2.0" }
+    val versionCode = try {
+        context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode
+    } catch (_: Exception) { 18L }
+    
+    Scaffold(topBar = { TopAppBar(title = { Text("About") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkPanel), navigationIcon = { IconButton({ nav.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Back") } }) }, bottomBar = { NavBar(nav, Route.Settings.path) }) { pad ->
+        Column(Modifier.fillMaxSize().padding(pad).padding(16.dp).verticalScroll(rememberScrollState())) {
+            // App Icon and Title
+            Card(colors = CardDefaults.cardColors(containerColor = DarkPanel2), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.School, "App Icon", modifier = Modifier.size(64.dp), tint = AccentBlue)
+                    Spacer(Modifier.height(12.dp))
+                    Text("Kenpo Vocabulary Flashcards", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.White, textAlign = TextAlign.Center)
+                    Text("Version $versionName (build $versionCode)", color = DarkMuted, fontSize = 12.sp)
+                }
+            }
+            
+            Spacer(Modifier.height(20.dp))
+            
+            // Creator Info
+            Text("Created By", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+            Spacer(Modifier.height(8.dp))
+            Card(colors = CardDefaults.cardColors(containerColor = DarkPanel), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Sidney Shelton", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Email, "Email", tint = AccentBlue, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Sidscri@yahoo.com", color = AccentBlue, fontSize = 14.sp)
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text("For questions, feature requests, or bug reports, please email the address above.", color = DarkMuted, fontSize = 12.sp)
+                }
+            }
+            
+            Spacer(Modifier.height(20.dp))
+            
+            // App Description
+            Text("About This App", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+            Spacer(Modifier.height(8.dp))
+            Card(colors = CardDefaults.cardColors(containerColor = DarkPanel), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Kenpo Vocabulary Flashcards is a study tool designed to help martial arts students learn and memorize Korean terminology used in Kenpo and other martial arts.\n\nThe app provides an organized, efficient way to study vocabulary with progress tracking, customizable study sessions, and AI-powered term breakdowns.", color = DarkText, fontSize = 13.sp, lineHeight = 20.sp)
+                }
+            }
+            
+            Spacer(Modifier.height(20.dp))
+            
+            // Major Features
+            Text("Major Features", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+            Spacer(Modifier.height(8.dp))
+            Card(colors = CardDefaults.cardColors(containerColor = DarkPanel), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    FeatureItem("📚", "Flashcard Study", "Study cards with term/definition flip, organized by groups")
+                    FeatureItem("📊", "Progress Tracking", "Track cards as Active, Unsure, or Learned")
+                    FeatureItem("⭐", "Custom Sets", "Create personalized study sets with starred cards")
+                    FeatureItem("🔤", "Term Breakdowns", "Break down compound terms into component parts with meanings")
+                    FeatureItem("🤖", "AI Autofill", "Use ChatGPT or Gemini to auto-generate term breakdowns")
+                    FeatureItem("🔊", "Text-to-Speech", "Hear pronunciations with customizable voice settings")
+                    FeatureItem("☁️", "Cloud Sync", "Sync progress across devices with web server")
+                    FeatureItem("🌙", "Dark Theme", "Easy-on-the-eyes dark mode interface")
+                }
+            }
+            
+            Spacer(Modifier.height(20.dp))
+            
+            // User Guide Button
+            Button({ nav.navigate(Route.UserGuide.path) }, Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = AccentBlue)) {
+                Icon(Icons.Default.MenuBook, "Guide"); Spacer(Modifier.width(8.dp)); Text("View User Guide")
+            }
+            
+            Spacer(Modifier.height(24.dp))
+            Text("© 2026 Sidney Shelton. All rights reserved.", color = DarkMuted, fontSize = 10.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+        }
+    }
+}
+
+@Composable
+private fun FeatureItem(emoji: String, title: String, description: String) {
+    Row(Modifier.padding(vertical = 6.dp)) {
+        Text(emoji, fontSize = 16.sp)
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(title, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+            Text(description, color = DarkMuted, fontSize = 11.sp)
+        }
+    }
+}
+
+// ==================== LOGIN SCREEN ====================
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LoginScreen(nav: NavHostController, repo: Repository) {
+    val scope = rememberCoroutineScope()
+    val adminSettings by repo.adminSettingsFlow().collectAsState(initial = AdminSettings())
+    var serverUrl by remember(adminSettings) { mutableStateOf(adminSettings.webAppUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }) }
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var statusMessage by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    
+    Scaffold(topBar = { TopAppBar(title = { Text("Login") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkPanel), navigationIcon = { IconButton({ nav.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Back") } }) }, bottomBar = { NavBar(nav, Route.Settings.path) }) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).padding(12.dp).verticalScroll(rememberScrollState())) {
             Text("Web App Sync", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
             Spacer(Modifier.height(4.dp))
             Text("Sync progress with: sidscri.tplinkdns.com:8009", color = DarkMuted, fontSize = 11.sp)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
             
             if (adminSettings.isLoggedIn) {
                 Card(colors = CardDefaults.cardColors(containerColor = AccentGood), modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text("✓ Logged in as: ${adminSettings.username}", color = Color.White, fontWeight = FontWeight.Bold)
+                    Column(Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.CheckCircle, "Logged In", tint = Color.White)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Logged in as: ${adminSettings.username}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+                        Spacer(Modifier.height(8.dp))
                         Text("Token: ${if (adminSettings.authToken.isNotBlank()) adminSettings.authToken.take(8) + "..." else "MISSING!"}", color = if (adminSettings.authToken.isNotBlank()) DarkMuted else Color.Red, fontSize = 10.sp)
                         if (adminSettings.lastSyncTime > 0) {
                             Text("Last sync: ${java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(adminSettings.lastSyncTime))}", color = DarkMuted, fontSize = 11.sp)
                         }
                     }
                 }
-                Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button({ 
-                        if (adminSettings.authToken.isBlank()) { statusMessage = "Error: No auth token"; return@Button }
-                        isLoading = true
-                        scope.launch { 
-                            val result = repo.syncPushProgressWithToken(adminSettings.authToken, adminSettings.webAppUrl)
-                            statusMessage = if (result.success) "Progress pushed!" else "Error: ${result.error}"
-                            if (result.success) repo.saveAdminSettings(adminSettings.copy(lastSyncTime = System.currentTimeMillis()))
-                            isLoading = false 
-                        } 
-                    }, Modifier.weight(1f), enabled = !isLoading) { Text(if (isLoading) "..." else "Push") }
-                    Button({ 
-                        if (adminSettings.authToken.isBlank()) { statusMessage = "Error: No auth token"; return@Button }
-                        isLoading = true
-                        scope.launch { 
-                            val result = repo.syncPullProgressWithToken(adminSettings.authToken, adminSettings.webAppUrl)
-                            statusMessage = if (result.success) "Progress pulled!" else "Error: ${result.error}"
-                            if (result.success) repo.saveAdminSettings(adminSettings.copy(lastSyncTime = System.currentTimeMillis()))
-                            isLoading = false 
-                        } 
-                    }, Modifier.weight(1f), enabled = !isLoading) { Text(if (isLoading) "..." else "Pull") }
+                Spacer(Modifier.height(16.dp))
+                OutlinedButton({ scope.launch { repo.saveAdminSettings(adminSettings.copy(isLoggedIn = false, authToken = "", username = "")); statusMessage = "Logged out successfully" } }, Modifier.fillMaxWidth()) { 
+                    Icon(Icons.Default.Logout, "Logout"); Spacer(Modifier.width(8.dp)); Text("Logout") 
                 }
-                Spacer(Modifier.height(4.dp))
-                OutlinedButton({ scope.launch { repo.saveAdminSettings(adminSettings.copy(isLoggedIn = false, authToken = "", username = "")); statusMessage = "Logged out" } }, Modifier.fillMaxWidth()) { Text("Logout") }
             } else {
-                OutlinedTextField(serverUrl, { serverUrl = it }, Modifier.fillMaxWidth(), label = { Text("Server URL") }, singleLine = true, textStyle = LocalTextStyle.current.copy(fontSize = 12.sp))
-                Spacer(Modifier.height(6.dp))
-                OutlinedTextField(username, { username = it }, Modifier.fillMaxWidth(), label = { Text("Username") }, singleLine = true)
-                Spacer(Modifier.height(6.dp))
-                OutlinedTextField(password, { password = it }, Modifier.fillMaxWidth(), label = { Text("Password") }, singleLine = true, visualTransformation = PasswordVisualTransformation())
+                OutlinedTextField(serverUrl, { serverUrl = it }, Modifier.fillMaxWidth(), label = { Text("Server URL") }, singleLine = true, textStyle = LocalTextStyle.current.copy(fontSize = 12.sp), leadingIcon = { Icon(Icons.Default.Cloud, "Server") })
                 Spacer(Modifier.height(8.dp))
+                OutlinedTextField(username, { username = it }, Modifier.fillMaxWidth(), label = { Text("Username") }, singleLine = true, leadingIcon = { Icon(Icons.Default.Person, "User") })
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(password, { password = it }, Modifier.fillMaxWidth(), label = { Text("Password") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), leadingIcon = { Icon(Icons.Default.Lock, "Password") })
+                Spacer(Modifier.height(12.dp))
                 Button({
                     if (username.isBlank() || password.isBlank()) { statusMessage = "Enter username and password"; return@Button }
                     isLoading = true
                     scope.launch {
                         val result = repo.syncLogin(username, password)
-                        if (result.success) { 
-                            // Save with new token
-                            val newSettings = AdminSettings(
+                        if (result.success) {
+                            val newSettings = adminSettings.copy(
                                 webAppUrl = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL },
                                 authToken = result.token,
                                 username = result.username,
                                 isLoggedIn = true,
-                                lastSyncTime = 0,
-                                chatGptApiKey = adminSettings.chatGptApiKey,
-                                chatGptEnabled = adminSettings.chatGptEnabled
+                                lastSyncTime = 0
                             )
                             repo.saveAdminSettings(newSettings)
-                            statusMessage = "Token(${result.token.length}): ${result.token.take(16)}... Debug: ${result.debugInfo}"
-                            password = "" 
-                        }
-                        else { statusMessage = "Login failed: ${result.error}" }
+                            statusMessage = "Login successful!"
+                            password = ""
+                            if (adminSettings.autoPullOnLogin) {
+                                statusMessage = "Login successful! Syncing..."
+                                val pullResult = repo.syncPullProgressWithToken(result.token, serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL })
+                                val breakdownResult = repo.syncBreakdowns()
+                                statusMessage = if (pullResult.success && breakdownResult.success) "Login successful! Progress and breakdowns synced." else "Login successful! Some sync errors occurred."
+                                repo.saveAdminSettings(newSettings.copy(lastSyncTime = System.currentTimeMillis()))
+                            }
+                        } else { statusMessage = "Login failed: ${result.error}" }
                         isLoading = false
                     }
-                }, Modifier.fillMaxWidth(), enabled = !isLoading) { Text(if (isLoading) "Logging in..." else "Login") }
+                }, Modifier.fillMaxWidth(), enabled = !isLoading) {
+                    Icon(Icons.Default.Login, "Login"); Spacer(Modifier.width(8.dp)); Text(if (isLoading) "Logging in..." else "Login")
+                }
             }
             
-            if (statusMessage.isNotBlank()) { Spacer(Modifier.height(8.dp)); Text(statusMessage, color = if (statusMessage.startsWith("Error") || statusMessage.startsWith("Login failed")) Color.Red else AccentBlue, fontSize = 12.sp) }
+            if (statusMessage.isNotBlank()) { 
+                Spacer(Modifier.height(12.dp))
+                Card(colors = CardDefaults.cardColors(containerColor = if (statusMessage.contains("failed") || statusMessage.contains("Error")) Color(0xFF3D1212) else DarkPanel2)) {
+                    Text(statusMessage, color = if (statusMessage.contains("failed") || statusMessage.contains("Error")) Color.Red else AccentBlue, fontSize = 12.sp, modifier = Modifier.padding(12.dp))
+                }
+            }
             
             Spacer(Modifier.height(20.dp)); HorizontalDivider(color = DarkBorder); Spacer(Modifier.height(16.dp))
-            
-            Text("ChatGPT API", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
-            Spacer(Modifier.height(4.dp))
-            Text("Enable AI-powered breakdown autofill", color = DarkMuted, fontSize = 11.sp)
+            Text("Sync Settings", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
             Spacer(Modifier.height(8.dp))
-            OutlinedTextField(chatGptKey, { chatGptKey = it }, Modifier.fillMaxWidth(), label = { Text("OpenAI API Key") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), textStyle = LocalTextStyle.current.copy(fontSize = 12.sp))
-            Spacer(Modifier.height(6.dp))
-            SettingToggle("Enable AI Breakdown", adminSettings.chatGptEnabled) { scope.launch { repo.saveAdminSettings(adminSettings.copy(chatGptEnabled = it)) } }
-            Spacer(Modifier.height(6.dp))
-            Button({ scope.launch { repo.saveAdminSettings(adminSettings.copy(chatGptApiKey = chatGptKey)); statusMessage = "API key saved" } }, Modifier.fillMaxWidth()) { Text("Save API Key") }
+            SettingToggle("Auto-pull progress on login", adminSettings.autoPullOnLogin) { scope.launch { repo.saveAdminSettings(adminSettings.copy(autoPullOnLogin = it)) } }
+            SettingToggle("Auto-push changes when made", adminSettings.autoPushOnChange) { scope.launch { repo.saveAdminSettings(adminSettings.copy(autoPushOnChange = it)) } }
+            Spacer(Modifier.height(12.dp))
+            Text("When auto-push is enabled, your progress will sync to the server whenever you change a card's status. If offline, changes will be queued.", color = DarkMuted, fontSize = 11.sp)
+        }
+    }
+}
+
+// ==================== SYNC PROGRESS SCREEN ====================
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SyncProgressScreen(nav: NavHostController, repo: Repository) {
+    val scope = rememberCoroutineScope()
+    val adminSettings by repo.adminSettingsFlow().collectAsState(initial = AdminSettings())
+    var statusMessage by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var showAiPicker by remember { mutableStateOf(false) }
+    val availableAi = remember(adminSettings) { repo.getAvailableAiServices(adminSettings) }
+    
+    Scaffold(topBar = { TopAppBar(title = { Text("Sync Progress") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkPanel), navigationIcon = { IconButton({ nav.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Back") } }) }, bottomBar = { NavBar(nav, Route.Settings.path) }) { pad ->
+        Column(Modifier.fillMaxSize().padding(pad).padding(12.dp).verticalScroll(rememberScrollState())) {
+            // Login Status Card
+            Card(colors = CardDefaults.cardColors(containerColor = if (adminSettings.isLoggedIn) AccentGood else Color(0xFF3D1212)), modifier = Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(if (adminSettings.isLoggedIn) Icons.Default.CheckCircle else Icons.Default.Error, "Status", tint = Color.White)
+                    Spacer(Modifier.width(8.dp))
+                    Column {
+                        Text("Login Status: ${if (adminSettings.isLoggedIn) "Connected" else "Not Logged In"}", color = Color.White, fontWeight = FontWeight.Bold)
+                        if (adminSettings.isLoggedIn) Text("User: ${adminSettings.username}", color = DarkMuted, fontSize = 11.sp)
+                        else Text("Please login to sync progress", color = DarkMuted, fontSize = 11.sp)
+                    }
+                }
+            }
+            
+            if (!adminSettings.isLoggedIn) {
+                Spacer(Modifier.height(12.dp))
+                Button({ nav.navigate(Route.Login.path) }, Modifier.fillMaxWidth()) { Icon(Icons.Default.Login, "Login"); Spacer(Modifier.width(8.dp)); Text("Go to Login") }
+            }
+            
+            if (adminSettings.pendingSync) {
+                Spacer(Modifier.height(12.dp))
+                Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF3D3D12)), modifier = Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Warning, "Pending", tint = Color.Yellow)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Changes pending sync", color = Color.Yellow, fontSize = 12.sp)
+                    }
+                }
+            }
+            
+            Spacer(Modifier.height(20.dp))
+            Text("Web App Sync", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+            Spacer(Modifier.height(4.dp))
+            Text("Sync your study progress with the web server", color = DarkMuted, fontSize = 11.sp)
+            if (adminSettings.lastSyncTime > 0) {
+                Text("Last sync: ${java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(adminSettings.lastSyncTime))}", color = DarkMuted, fontSize = 11.sp)
+            }
+            Spacer(Modifier.height(12.dp))
+            
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button({ 
+                    if (!adminSettings.isLoggedIn) { statusMessage = "Please login first"; return@Button }
+                    if (adminSettings.authToken.isBlank()) { statusMessage = "Error: No auth token"; return@Button }
+                    isLoading = true
+                    scope.launch { 
+                        val result = repo.syncPushProgressWithToken(adminSettings.authToken, adminSettings.webAppUrl)
+                        statusMessage = if (result.success) "Progress pushed!" else "Error: ${result.error}"
+                        if (result.success) { repo.saveAdminSettings(adminSettings.copy(lastSyncTime = System.currentTimeMillis(), pendingSync = false)) }
+                        isLoading = false 
+                    } 
+                }, Modifier.weight(1f), enabled = !isLoading && adminSettings.isLoggedIn) { Text(if (isLoading) "..." else "Push") }
+                Button({ 
+                    if (!adminSettings.isLoggedIn) { statusMessage = "Please login first"; return@Button }
+                    if (adminSettings.authToken.isBlank()) { statusMessage = "Error: No auth token"; return@Button }
+                    isLoading = true
+                    scope.launch { 
+                        val result = repo.syncPullProgressWithToken(adminSettings.authToken, adminSettings.webAppUrl)
+                        statusMessage = if (result.success) "Progress pulled!" else "Error: ${result.error}"
+                        if (result.success) repo.saveAdminSettings(adminSettings.copy(lastSyncTime = System.currentTimeMillis()))
+                        isLoading = false 
+                    } 
+                }, Modifier.weight(1f), enabled = !isLoading && adminSettings.isLoggedIn) { Text(if (isLoading) "..." else "Pull") }
+            }
             
             Spacer(Modifier.height(20.dp)); HorizontalDivider(color = DarkBorder); Spacer(Modifier.height(16.dp))
             
+            // Sync Breakdowns Section
             Text("Sync Breakdowns", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
             Spacer(Modifier.height(4.dp))
             Text("Download shared breakdowns from server", color = DarkMuted, fontSize = 11.sp)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
+            
+            // Choose Breakdown AI button
+            if (availableAi.isNotEmpty()) {
+                OutlinedButton({ showAiPicker = true }, Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.SmartToy, "AI"); Spacer(Modifier.width(8.dp))
+                    Text("Choose Breakdown AI: ${adminSettings.breakdownAiChoice.label}")
+                }
+                DropdownMenu(showAiPicker, { showAiPicker = false }) {
+                    availableAi.forEach { choice ->
+                        DropdownMenuItem(text = { Text(choice.label, color = Color.White) }, onClick = { scope.launch { repo.saveAdminSettings(adminSettings.copy(breakdownAiChoice = choice)) }; showAiPicker = false })
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            } else {
+                Text("No AI services configured. Admin can add API keys.", color = DarkMuted, fontSize = 11.sp)
+                Spacer(Modifier.height(8.dp))
+            }
+            
             Button({ isLoading = true; scope.launch { val result = repo.syncBreakdowns(); statusMessage = if (result.success) "Breakdowns synced!" else "Error: ${result.error}"; isLoading = false } }, Modifier.fillMaxWidth(), enabled = !isLoading) { Text(if (isLoading) "Syncing..." else "Sync Breakdowns") }
             
-            Spacer(Modifier.height(24.dp))
-            Text("Server Setup Guide", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = DarkMuted)
-            Text("""
-Your server needs these API endpoints:
-• POST /api/login - authenticate users
-• GET/POST /api/sync/pull|push - sync progress  
-• GET/POST /api/breakdowns - shared breakdowns
+            if (statusMessage.isNotBlank()) { Spacer(Modifier.height(12.dp)); Text(statusMessage, color = if (statusMessage.startsWith("Error")) Color.Red else AccentBlue, fontSize = 12.sp) }
+        }
+    }
+}
 
-Data stored in:
-c:/personal-servers/kenpoflashcardswebserver/data/
-• profiles.json - user accounts
-• breakdown.json - shared breakdowns
-• users/{id}/progress.json - per-user progress
-            """.trimIndent(), color = DarkMuted, fontSize = 10.sp)
+// ==================== USER GUIDE SCREEN ====================
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UserGuideScreen(nav: NavHostController) {
+    Scaffold(topBar = { TopAppBar(title = { Text("User Guide") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkPanel), navigationIcon = { IconButton({ nav.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Back") } }) }, bottomBar = { NavBar(nav, Route.Settings.path) }) { pad ->
+        LazyColumn(Modifier.fillMaxSize().padding(pad).padding(16.dp)) {
+            item { 
+                Text("Kenpo Vocabulary Flashcards", fontWeight = FontWeight.Bold, fontSize = 22.sp, color = Color.White)
+                Text("Complete User Guide", color = DarkMuted, fontSize = 14.sp)
+                Spacer(Modifier.height(20.dp))
+            }
+            
+            item { GuideSection("Getting Started", """
+Welcome to Kenpo Vocabulary Flashcards! This app helps you learn Korean martial arts terminology through interactive flashcard study.
+
+When you first open the app, you'll see the "To Study" screen with all active flashcards. Each card shows a term on the front and its definition on the back.
+            """) }
+            
+            item { GuideSection("Navigation", """
+The bottom navigation bar has 6 tabs:
+• To Study - Cards you're actively learning
+• Unsure - Cards you're not confident about yet
+• Learned - Cards you've mastered
+• All - View all cards in a list format
+• Custom - Your starred/favorite cards
+• More - Settings, sync, and about
+            """) }
+            
+            item { GuideSection("Studying Flashcards", """
+On study screens (To Study, Unsure, Learned Study):
+1. Tap the card to flip between term and definition
+2. Swipe left or right to navigate between cards
+3. Use the buttons at the bottom to mark your progress:
+   - "Unsure" moves the card to the Unsure pile
+   - "Learned" moves it to your Learned pile
+   - "Relearn" moves it back to To Study
+
+The speaker icon reads the term aloud using text-to-speech.
+            """) }
+            
+            item { GuideSection("Term Breakdowns", """
+Many Korean terms are compound words. Tap the "Breakdown" button to see:
+• Individual parts of the word
+• Meaning of each part
+• Literal translation
+• Optional notes
+
+Admins can use AI (ChatGPT or Gemini) to auto-generate breakdowns.
+            """) }
+            
+            item { GuideSection("Custom Study Sets", """
+Star your favorite or difficult cards to create a custom study set:
+1. Tap the star icon on any card
+2. Go to the Custom tab to study only starred cards
+3. Custom sets have their own progress tracking
+            """) }
+            
+            item { GuideSection("Cloud Sync", """
+Sync your progress across devices:
+1. Go to More > Login
+2. Enter your server URL, username, and password
+3. Use More > Sync Progress to push/pull your data
+
+Settings:
+• Auto-pull on login - Downloads progress when you sign in
+• Auto-push changes - Uploads progress automatically
+            """) }
+            
+            item { GuideSection("Settings", """
+Customize your experience in More > Settings:
+
+Display:
+• Show group/subgroup labels
+• Definition first (reverse card order)
+• Show breakdown on definition side
+
+Sorting & Randomization:
+• Sort by original order, alphabetical, or by group
+• Randomize cards in each study pile
+
+Voice:
+• Adjust speech rate
+• Speak pronunciation only
+            """) }
+            
+            item { GuideSection("Contact & Support", """
+Created by Sidney Shelton
+
+For questions, feature requests, or bug reports:
+Email: Sidscri@yahoo.com
+
+Thank you for using Kenpo Vocabulary Flashcards!
+            """) }
+            
+            item { Spacer(Modifier.height(24.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun GuideSection(title: String, content: String) {
+    Card(colors = CardDefaults.cardColors(containerColor = DarkPanel), modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        Column(Modifier.padding(16.dp)) {
+            Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = AccentBlue)
+            Spacer(Modifier.height(8.dp))
+            Text(content.trimIndent(), color = DarkText, fontSize = 13.sp, lineHeight = 20.sp)
         }
     }
 }

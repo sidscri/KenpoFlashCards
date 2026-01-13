@@ -412,6 +412,10 @@ def _gemini_breakdown(term: str, meaning: str = "", group: str = "") -> Tuple[Op
 USERS_DIR = os.path.join(DATA_DIR, "users")
 PROFILES_PATH = os.path.join(DATA_DIR, "profiles.json")
 SECRET_PATH = os.path.join(DATA_DIR, "secret_key.txt")
+API_KEYS_PATH = os.path.join(DATA_DIR, "api_keys.enc")  # Encrypted API keys storage
+
+# Admin users who can manage API keys
+ADMIN_USERNAMES = {"sidscri"}
 
 PORT = int(os.environ.get("KENPO_WEB_PORT", "8009"))
 app = Flask(__name__, static_folder="static")
@@ -433,6 +437,79 @@ def _load_or_create_secret() -> str:
     with open(SECRET_PATH, "w", encoding="utf-8") as f:
         f.write(s)
     return s
+
+
+# -------- API Key Encryption (for safe storage/git commit) --------
+import base64
+import hmac
+
+def _derive_encryption_key(secret: str) -> bytes:
+    """Derive a 32-byte key from the secret using SHA-256."""
+    return hashlib.sha256(secret.encode('utf-8')).digest()
+
+def _xor_encrypt(data: bytes, key: bytes) -> bytes:
+    """Simple XOR encryption (sufficient for API keys with a strong secret)."""
+    return bytes(d ^ key[i % len(key)] for i, d in enumerate(data))
+
+def _encrypt_api_keys(keys_dict: dict, secret: str) -> str:
+    """Encrypt API keys dict to a base64 string."""
+    json_data = json.dumps(keys_dict, ensure_ascii=False)
+    key = _derive_encryption_key(secret)
+    encrypted = _xor_encrypt(json_data.encode('utf-8'), key)
+    # Add HMAC for integrity check
+    mac = hmac.new(key, encrypted, hashlib.sha256).digest()
+    return base64.b64encode(mac + encrypted).decode('ascii')
+
+def _decrypt_api_keys(encrypted_str: str, secret: str) -> Optional[dict]:
+    """Decrypt API keys from base64 string. Returns None if invalid."""
+    try:
+        raw = base64.b64decode(encrypted_str)
+        if len(raw) < 32:
+            return None
+        mac_stored = raw[:32]
+        encrypted = raw[32:]
+        key = _derive_encryption_key(secret)
+        # Verify HMAC
+        mac_computed = hmac.new(key, encrypted, hashlib.sha256).digest()
+        if not hmac.compare_digest(mac_stored, mac_computed):
+            return None
+        decrypted = _xor_encrypt(encrypted, key)
+        return json.loads(decrypted.decode('utf-8'))
+    except Exception:
+        return None
+
+def _save_encrypted_api_keys(keys_dict: dict) -> bool:
+    """Save encrypted API keys to file."""
+    try:
+        secret = _load_or_create_secret()
+        encrypted = _encrypt_api_keys(keys_dict, secret)
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(API_KEYS_PATH, "w", encoding="utf-8") as f:
+            f.write(encrypted)
+        return True
+    except Exception as e:
+        print(f"[ERROR] Failed to save API keys: {e}")
+        return False
+
+def _load_encrypted_api_keys() -> dict:
+    """Load encrypted API keys from file."""
+    if not os.path.exists(API_KEYS_PATH):
+        return {}
+    try:
+        secret = _load_or_create_secret()
+        with open(API_KEYS_PATH, "r", encoding="utf-8") as f:
+            encrypted = f.read().strip()
+        if not encrypted:
+            return {}
+        result = _decrypt_api_keys(encrypted, secret)
+        return result if result else {}
+    except Exception as e:
+        print(f"[ERROR] Failed to load API keys: {e}")
+        return {}
+
+def _is_admin_user(username: str) -> bool:
+    """Check if username is an admin."""
+    return username.lower() in {u.lower() for u in ADMIN_USERNAMES}
 
 
 app.secret_key = os.environ.get("KENPO_SECRET_KEY", "") or _load_or_create_secret()
@@ -1736,6 +1813,94 @@ def api_get_customset():
     progress = load_progress(uid)
     custom_set = progress.get('__custom_set__', [])
     return jsonify({'customSet': custom_set})
+
+
+# ============ ADMIN API KEY MANAGEMENT ============
+
+@app.post("/api/admin/apikeys")
+@android_auth_required
+def api_admin_save_apikeys():
+    """
+    Save encrypted API keys (admin only).
+    
+    Expects JSON: {"chatGptKey": "...", "geminiKey": "..."}
+    Returns: {"success": true} or {"error": "..."}
+    """
+    # Check if user is admin
+    username = request.android_user.get('username', '')
+    if not _is_admin_user(username):
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    payload = request.get_json(force=True, silent=True) or {}
+    chat_gpt_key = str(payload.get('chatGptKey') or '').strip()
+    gemini_key = str(payload.get('geminiKey') or '').strip()
+    
+    # Load existing keys and update
+    keys = _load_encrypted_api_keys()
+    if chat_gpt_key:
+        keys['chatGptKey'] = chat_gpt_key
+    elif 'chatGptKey' in payload:  # Explicit empty means remove
+        keys.pop('chatGptKey', None)
+    
+    if gemini_key:
+        keys['geminiKey'] = gemini_key
+    elif 'geminiKey' in payload:  # Explicit empty means remove
+        keys.pop('geminiKey', None)
+    
+    # Save encrypted
+    if _save_encrypted_api_keys(keys):
+        # Also update environment variables for current session
+        global OPENAI_API_KEY, GEMINI_API_KEY
+        if chat_gpt_key:
+            OPENAI_API_KEY = chat_gpt_key
+        if gemini_key:
+            GEMINI_API_KEY = gemini_key
+        
+        print(f"[ADMIN] API keys updated by {username}")
+        return jsonify({'success': True, 'message': 'API keys saved and encrypted'})
+    else:
+        return jsonify({'error': 'Failed to save API keys'}), 500
+
+
+@app.get("/api/admin/apikeys")
+@android_auth_required
+def api_admin_get_apikeys():
+    """
+    Get decrypted API keys (admin only).
+    
+    Returns: {"chatGptKey": "...", "geminiKey": "..."} or {"error": "..."}
+    """
+    # Check if user is admin
+    username = request.android_user.get('username', '')
+    if not _is_admin_user(username):
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    keys = _load_encrypted_api_keys()
+    
+    # Return the keys (or empty strings if not set)
+    return jsonify({
+        'chatGptKey': keys.get('chatGptKey', ''),
+        'geminiKey': keys.get('geminiKey', ''),
+        'hasKeys': bool(keys)
+    })
+
+
+@app.get("/api/admin/status")
+@android_auth_required
+def api_admin_status():
+    """
+    Get admin status for current user.
+    
+    Returns: {"isAdmin": true/false, "username": "..."}
+    """
+    username = request.android_user.get('username', '')
+    is_admin = _is_admin_user(username)
+    
+    return jsonify({
+        'isAdmin': is_admin,
+        'username': username,
+        'hasApiKeys': bool(_load_encrypted_api_keys()) if is_admin else None
+    })
 
 
 # ============ END ANDROID SYNC API ============

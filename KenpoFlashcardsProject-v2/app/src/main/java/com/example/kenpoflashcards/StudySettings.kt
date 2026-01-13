@@ -102,4 +102,34 @@ data class AdminSettings(
     // ChatGPT API for breakdown autofill
     val chatGptApiKey: String = "",
     val chatGptEnabled: Boolean = false,
+    
+    // Gemini API for breakdown autofill
+    val geminiApiKey: String = "",
+    val geminiEnabled: Boolean = false,
+    
+    // Auto-sync settings
+    val autoPullOnLogin: Boolean = true,
+    val autoPushOnChange: Boolean = false,
+    val pendingSync: Boolean = false,  // True if changes made while offline
+    
+    // Breakdown AI selection
+    val breakdownAiChoice: BreakdownAiChoice = BreakdownAiChoice.AUTO_SELECT
 )
+
+/**
+ * Breakdown AI service selection
+ */
+enum class BreakdownAiChoice(val label: String) {
+    AUTO_SELECT("Auto Select (Best Result)"),
+    CHATGPT("ChatGPT"),
+    GEMINI("Gemini")
+}
+
+/**
+ * Admin users list - for now just Sidscri
+ */
+object AdminUsers {
+    private val admins = setOf("sidscri", "Sidscri", "SIDSCRI")
+    
+    fun isAdmin(username: String): Boolean = username.lowercase() in admins.map { it.lowercase() }
+}

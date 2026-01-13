@@ -15,33 +15,6 @@ The format is simple and practical:
 
 ---
 
-## v4.2.0 (versionCode 18) — 2026-01-12
-### Added
-- **About Screen**: New About page in More with app info, creator contact (Sidney Shelton, Sidscri@yahoo.com), and feature overview
-- **User Guide Screen**: Comprehensive printable/downloadable user guide accessible from About page
-- **Login Screen**: Dedicated login page moved from Admin Settings (all users can access)
-- **Sync Progress Screen**: New screen for Push/Pull progress sync and Breakdown sync
-- **Gemini AI Integration**: Added Google Gemini API support for breakdown autofill
-- **Breakdown AI Selector**: Users can choose between Auto Select (best result), ChatGPT, or Gemini for AI breakdowns
-- **Auto-sync settings**: Option to auto-pull progress on login and auto-push changes when made
-- **Pending sync indicator**: Visual indicator when offline changes need syncing
-- **API key sync**: Admin can push/pull encrypted API keys to/from server
-- **Version display**: Current app version shown in Settings screen
-
-### Changed
-- **Navigation restructure**: 
-  - Login moved from Admin to its own Login screen in More
-  - Sync functions moved to dedicated Sync Progress screen
-  - Admin Settings only visible to admin users (Sidscri)
-- Admin screen now only contains API key management (ChatGPT + Gemini)
-- Improved login flow with auto-sync on successful login
-
-### Security
-- Admin Settings screen restricted to admin users only
-- API keys can be encrypted and stored on server for cross-device access
-
----
-
 ## v4.1.0 (versionCode 17) — 2026-01-12
 ### Added
 - Shared ID mapping for cross-device sync compatibility

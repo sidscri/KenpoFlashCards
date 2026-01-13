@@ -171,7 +171,6 @@ app/src/main/
 
 | Version | Code | Key Changes |
 |---------|------|-------------|
-| **4.2.0** | 18 | About Screen, User Guide, Gemini AI Integration, Dedicated Login\Sync\AI Selector, Auto-sync settings, API key sync, Version display |
 | **4.1.0** | 17 | Shared ID mapping for cross-device sync |
 | **4.0.7** | 14 | Fixed login endpoint (`/api/sync/login`) |
 | **4.0.5** | 12 | Debug instrumentation for login |

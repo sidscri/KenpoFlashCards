@@ -19,3 +19,5 @@ Then in the Android app (WebAppSync.kt), change the login URL from:
 val url = URL("$baseUrl/api/login")
 to:
 val url = URL("$baseUrl/api/sync/login")
+Created: Mon 01/12/2026 10:12:38.49
+

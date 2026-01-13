@@ -15,21 +15,6 @@ The format is simple and practical:
 
 ---
 
-## v5.4.0 (build 26) — 2026-01-12
-### Added
-- **Encrypted API Key Storage**: Admin can store ChatGPT and Gemini API keys encrypted on server
-- **POST /api/admin/apikeys**: Push encrypted API keys to server (admin only)
-- **GET /api/admin/apikeys**: Pull decrypted API keys from server (admin only)
-- **GET /api/admin/status**: Check if current user is admin
-- Admin users defined in `ADMIN_USERNAMES` set (default: sidscri)
-
-### Security
-- API keys encrypted using XOR with HMAC integrity check
-- Keys derived from server's secret_key.txt using SHA-256
-- Encrypted file (`api_keys.enc`) safe for git commits
-
----
-
 ## v5.3.1 (build 25) — 2026-01-12
 ### Fixed
 - **Critical:** Fixed duplicate `/api/login` endpoint conflict — Flask was routing Android login requests to web session endpoint (line 781) instead of token-based endpoint (line 1272)

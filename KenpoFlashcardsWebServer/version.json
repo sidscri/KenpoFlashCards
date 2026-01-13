@@ -1,7 +1,7 @@
 {
   "name": "KenpoFlashcardsWebServer",
-  "version": "5.3.1",
-  "build": 25,
+  "version": "5.4.0",
+  "build": 26,
   "released": "2026-01-12",
-  "notes": "Adds About/Admin/User Guide pages, user dropdown with version, and PDF user guide, Pull sync issue fix. Includes reportlab."
+  "notes": "Adds encrypted API key storage for admin, /api/admin/apikeys endpoint for Android app sync, admin status check endpoint."
 }

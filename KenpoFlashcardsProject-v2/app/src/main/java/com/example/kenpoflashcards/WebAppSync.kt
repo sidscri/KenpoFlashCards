@@ -281,6 +281,77 @@ object WebAppSync {
             SyncResult(success = false, error = e.message ?: "Sync failed")
         }
     }
+    
+    /**
+     * API Keys sync result
+     */
+    data class ApiKeysResult(
+        val success: Boolean,
+        val chatGptKey: String = "",
+        val geminiKey: String = "",
+        val error: String = ""
+    )
+    
+    /**
+     * Push API keys to server (admin only)
+     * Server encrypts and stores in secure file
+     */
+    suspend fun pushApiKeys(serverUrl: String, token: String, chatGptKey: String, geminiKey: String): SyncResult = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("$serverUrl/api/admin/apikeys")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("Authorization", "Bearer $token")
+            conn.doOutput = true
+            conn.connectTimeout = 10000
+            conn.readTimeout = 10000
+            
+            val body = JSONObject().apply {
+                put("chatGptKey", chatGptKey)
+                put("geminiKey", geminiKey)
+            }
+            
+            conn.outputStream.use { it.write(body.toString().toByteArray()) }
+            
+            if (conn.responseCode == 200) {
+                SyncResult(success = true, message = "API keys saved to server")
+            } else {
+                SyncResult(success = false, error = "Save failed: ${conn.responseCode}")
+            }
+        } catch (e: Exception) {
+            SyncResult(success = false, error = e.message ?: "Save failed")
+        }
+    }
+    
+    /**
+     * Pull API keys from server (for new installs or logins)
+     * Server decrypts and returns keys
+     */
+    suspend fun pullApiKeys(serverUrl: String, token: String): ApiKeysResult = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("$serverUrl/api/admin/apikeys")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("Authorization", "Bearer $token")
+            conn.connectTimeout = 10000
+            conn.readTimeout = 10000
+            
+            if (conn.responseCode == 200) {
+                val response = conn.inputStream.bufferedReader().readText()
+                val json = JSONObject(response)
+                ApiKeysResult(
+                    success = true,
+                    chatGptKey = json.optString("chatGptKey", ""),
+                    geminiKey = json.optString("geminiKey", "")
+                )
+            } else {
+                ApiKeysResult(success = false, error = "Pull failed: ${conn.responseCode}")
+            }
+        } catch (e: Exception) {
+            ApiKeysResult(success = false, error = e.message ?: "Pull failed")
+        }
+    }
 }
 
 /**

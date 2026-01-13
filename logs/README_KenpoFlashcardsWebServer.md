@@ -156,7 +156,6 @@ Confirm `data/helper.json` exists on disk after first request.
 
 | Version | Build | Key Changes |
 |---------|-------|-------------|
-| **5.4.0** | 26 | Encrypted API Key Storage, Gemini API, About Page |
 | **5.3.1** | 25 | Fixed duplicate `/api/login` endpoint conflict |
 | **5.3.0** | 24 | About/Admin/User Guide pages, user dropdown |
 | **5.2.0** | 23 | End-to-end sync confirmed, helper mapping |
