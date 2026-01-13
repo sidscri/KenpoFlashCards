@@ -15,6 +15,25 @@ The format is simple and practical:
 
 ---
 
+## v4.4.0 (versionCode 20) — 2026-01-13
+### Fixed
+- **Admin Screen Loading**: Fixed admin screen immediately redirecting by waiting for settings to load
+- Admin screen now shows loading spinner while settings load
+
+### Added
+- **(Admin) label**: Shows after username in Login, Sync Progress screens when user is admin
+- **Key validation indicators**: "Key Accepted" / "Key Invalid" shown for ChatGPT and Gemini API keys
+- **First login auto-sync**: Always syncs progress and breakdowns on first device login
+- **Admin auto-pulls API keys**: When admin logs in, API keys are automatically pulled from server
+
+### Changed
+- Improved AI picker dropdown in Sync Progress screen with checkmark for current selection
+- "Pending sync" message now says "Push to sync" to clarify action needed
+- Login screen clarifies that first login always syncs automatically
+- Auto-pull setting renamed to "Auto-pull progress on future logins"
+
+---
+
 ## v4.3.0 (versionCode 19) — 2026-01-13
 ### Added
 - **Model Selection**: Choose AI model for ChatGPT (gpt-4o default) and Gemini (gemini-1.5-flash default)
