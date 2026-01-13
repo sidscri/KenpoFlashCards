@@ -15,6 +15,23 @@ The format is simple and practical:
 
 ---
 
+## v5.5.0 (build 27) — 2026-01-13
+### Added
+- **AI Access Page**: New `/ai-access.html` web page for managing API keys
+- **Model Selection**: Choose ChatGPT and Gemini models from web UI
+- **Startup Key Loading**: Server loads encrypted API keys from file on startup
+- **Web API endpoints**: `/api/web/admin/apikeys` GET/POST for session-based admin access
+
+### Changed
+- API keys now include model selection (chatGptModel, geminiModel)
+- Keys loaded from `api_keys.enc` override environment variables
+- Admin page now prominently links to AI Access Settings
+
+### Security
+- Environment variable API keys no longer needed (can be removed from START_KenpoFlashcardsWebServer.bat)
+
+---
+
 ## v5.4.0 (build 26) — 2026-01-12
 ### Added
 - **Encrypted API Key Storage**: Admin can store ChatGPT and Gemini API keys encrypted on server

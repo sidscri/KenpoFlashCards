@@ -66,7 +66,7 @@ object ChatGptHelper {
      * Use ChatGPT to get meanings for term parts
      * Requires valid API key
      */
-    suspend fun getBreakdownWithAI(apiKey: String, term: String, language: String = "Korean"): BreakdownResult = withContext(Dispatchers.IO) {
+    suspend fun getBreakdownWithAI(apiKey: String, term: String, model: String = "gpt-4o", language: String = "Korean"): BreakdownResult = withContext(Dispatchers.IO) {
         if (apiKey.isBlank()) {
             return@withContext BreakdownResult(success = false, error = "API key not set")
         }
@@ -114,7 +114,7 @@ object ChatGptHelper {
             }
             
             val body = JSONObject().apply {
-                put("model", "gpt-3.5-turbo")
+                put("model", model)
                 put("messages", messages)
                 put("temperature", 0.3)
                 put("max_tokens", 500)
@@ -180,8 +180,8 @@ object ChatGptHelper {
     /**
      * Create a full breakdown using ChatGPT API
      */
-    suspend fun createAIBreakdown(apiKey: String, cardId: String, term: String): TermBreakdown {
-        val result = getBreakdownWithAI(apiKey, term)
+    suspend fun createAIBreakdown(apiKey: String, cardId: String, term: String, model: String = "gpt-4o"): TermBreakdown {
+        val result = getBreakdownWithAI(apiKey, term, model)
         return if (result.success) {
             TermBreakdown(
                 id = cardId,

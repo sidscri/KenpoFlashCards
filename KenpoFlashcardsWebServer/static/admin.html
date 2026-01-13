@@ -15,6 +15,8 @@
     button { padding:10px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.06); color: inherit; cursor: pointer; }
     button:hover { background: rgba(255,255,255,0.10); }
     pre { white-space: pre-wrap; }
+    .btn-primary { background: #1f6feb; border-color: #1f6feb; }
+    .btn-primary:hover { background: #1a5cc7; }
   </style>
 </head>
 <body>
@@ -22,6 +24,13 @@
     <h1>Admin</h1>
     <p class="muted">Diagnostics and admin utilities.</p>
     <p><a href="/">← Back to App</a> • <a href="/about">About</a> • <a href="/user-guide">User Guide</a></p>
+
+    <!-- AI Access Settings Button -->
+    <div class="card" style="background: rgba(139, 0, 0, 0.2); border-color: rgba(255, 200, 0, 0.3);">
+      <h2>🤖 AI Access Settings</h2>
+      <p class="muted">Manage ChatGPT and Gemini API keys for breakdown autofill. Keys are encrypted and shared between Android app and web server.</p>
+      <a href="/ai-access.html"><button class="btn-primary">Open AI Access Settings</button></a>
+    </div>
 
     <div class="row">
       <div class="card">

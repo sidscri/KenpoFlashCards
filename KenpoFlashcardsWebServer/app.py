@@ -1821,9 +1821,9 @@ def api_get_customset():
 @android_auth_required
 def api_admin_save_apikeys():
     """
-    Save encrypted API keys (admin only).
+    Save encrypted API keys and models (admin only).
     
-    Expects JSON: {"chatGptKey": "...", "geminiKey": "..."}
+    Expects JSON: {"chatGptKey": "...", "chatGptModel": "...", "geminiKey": "...", "geminiModel": "..."}
     Returns: {"success": true} or {"error": "..."}
     """
     # Check if user is admin
@@ -1833,28 +1833,36 @@ def api_admin_save_apikeys():
     
     payload = request.get_json(force=True, silent=True) or {}
     chat_gpt_key = str(payload.get('chatGptKey') or '').strip()
+    chat_gpt_model = str(payload.get('chatGptModel') or 'gpt-4o').strip()
     gemini_key = str(payload.get('geminiKey') or '').strip()
+    gemini_model = str(payload.get('geminiModel') or 'gemini-1.5-flash').strip()
     
     # Load existing keys and update
     keys = _load_encrypted_api_keys()
     if chat_gpt_key:
         keys['chatGptKey'] = chat_gpt_key
-    elif 'chatGptKey' in payload:  # Explicit empty means remove
+    elif 'chatGptKey' in payload and not chat_gpt_key:  # Explicit empty means remove
         keys.pop('chatGptKey', None)
+    
+    keys['chatGptModel'] = chat_gpt_model
     
     if gemini_key:
         keys['geminiKey'] = gemini_key
-    elif 'geminiKey' in payload:  # Explicit empty means remove
+    elif 'geminiKey' in payload and not gemini_key:  # Explicit empty means remove
         keys.pop('geminiKey', None)
+    
+    keys['geminiModel'] = gemini_model
     
     # Save encrypted
     if _save_encrypted_api_keys(keys):
         # Also update environment variables for current session
-        global OPENAI_API_KEY, GEMINI_API_KEY
+        global OPENAI_API_KEY, GEMINI_API_KEY, OPENAI_MODEL, GEMINI_MODEL
         if chat_gpt_key:
             OPENAI_API_KEY = chat_gpt_key
+        OPENAI_MODEL = chat_gpt_model
         if gemini_key:
             GEMINI_API_KEY = gemini_key
+        GEMINI_MODEL = gemini_model
         
         print(f"[ADMIN] API keys updated by {username}")
         return jsonify({'success': True, 'message': 'API keys saved and encrypted'})
@@ -1866,9 +1874,9 @@ def api_admin_save_apikeys():
 @android_auth_required
 def api_admin_get_apikeys():
     """
-    Get decrypted API keys (admin only).
+    Get decrypted API keys and models (admin only).
     
-    Returns: {"chatGptKey": "...", "geminiKey": "..."} or {"error": "..."}
+    Returns: {"chatGptKey": "...", "chatGptModel": "...", "geminiKey": "...", "geminiModel": "..."} or {"error": "..."}
     """
     # Check if user is admin
     username = request.android_user.get('username', '')
@@ -1877,11 +1885,13 @@ def api_admin_get_apikeys():
     
     keys = _load_encrypted_api_keys()
     
-    # Return the keys (or empty strings if not set)
+    # Return the keys (or empty strings/defaults if not set)
     return jsonify({
         'chatGptKey': keys.get('chatGptKey', ''),
+        'chatGptModel': keys.get('chatGptModel', 'gpt-4o'),
         'geminiKey': keys.get('geminiKey', ''),
-        'hasKeys': bool(keys)
+        'geminiModel': keys.get('geminiModel', 'gemini-1.5-flash'),
+        'hasKeys': bool(keys.get('chatGptKey') or keys.get('geminiKey'))
     })
 
 
@@ -1904,6 +1914,79 @@ def api_admin_status():
 
 
 # ============ END ANDROID SYNC API ============
+
+# ============ WEB AI ACCESS ENDPOINTS (session-based) ============
+
+@app.get("/api/web/admin/apikeys")
+def web_admin_get_apikeys():
+    """Get API keys for web admin page (session auth)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({'error': 'Login required'}), 401
+    
+    user = _get_user(uid)
+    username = user.get('username', '') if user else ''
+    if not _is_admin_user(username):
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    keys = _load_encrypted_api_keys()
+    return jsonify({
+        'chatGptKey': keys.get('chatGptKey', ''),
+        'chatGptModel': keys.get('chatGptModel', 'gpt-4o'),
+        'geminiKey': keys.get('geminiKey', ''),
+        'geminiModel': keys.get('geminiModel', 'gemini-1.5-flash'),
+        'hasKeys': bool(keys.get('chatGptKey') or keys.get('geminiKey'))
+    })
+
+
+@app.post("/api/web/admin/apikeys")
+def web_admin_save_apikeys():
+    """Save API keys from web admin page (session auth)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({'error': 'Login required'}), 401
+    
+    user = _get_user(uid)
+    username = user.get('username', '') if user else ''
+    if not _is_admin_user(username):
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    payload = request.get_json(force=True, silent=True) or {}
+    chat_gpt_key = str(payload.get('chatGptKey') or '').strip()
+    chat_gpt_model = str(payload.get('chatGptModel') or 'gpt-4o').strip()
+    gemini_key = str(payload.get('geminiKey') or '').strip()
+    gemini_model = str(payload.get('geminiModel') or 'gemini-1.5-flash').strip()
+    
+    keys = _load_encrypted_api_keys()
+    if chat_gpt_key:
+        keys['chatGptKey'] = chat_gpt_key
+    elif 'chatGptKey' in payload and not chat_gpt_key:
+        keys.pop('chatGptKey', None)
+    
+    keys['chatGptModel'] = chat_gpt_model
+    
+    if gemini_key:
+        keys['geminiKey'] = gemini_key
+    elif 'geminiKey' in payload and not gemini_key:
+        keys.pop('geminiKey', None)
+    
+    keys['geminiModel'] = gemini_model
+    
+    if _save_encrypted_api_keys(keys):
+        global OPENAI_API_KEY, GEMINI_API_KEY, OPENAI_MODEL, GEMINI_MODEL
+        if chat_gpt_key:
+            OPENAI_API_KEY = chat_gpt_key
+        OPENAI_MODEL = chat_gpt_model
+        if gemini_key:
+            GEMINI_API_KEY = gemini_key
+        GEMINI_MODEL = gemini_model
+        
+        print(f"[ADMIN-WEB] API keys updated by {username}")
+        return jsonify({'success': True, 'message': 'API keys saved'})
+    else:
+        return jsonify({'error': 'Failed to save'}), 500
+
+
 # --- Common public files (avoid 404 noise) ---
 @app.get("/favicon.ico")
 def favicon():
@@ -1927,7 +2010,27 @@ def static_files(filename):
     return send_from_directory("static", filename)
 
 
+def _load_api_keys_on_startup():
+    """Load encrypted API keys from file and set global variables."""
+    global OPENAI_API_KEY, OPENAI_MODEL, GEMINI_API_KEY, GEMINI_MODEL
+    
+    keys = _load_encrypted_api_keys()
+    if keys:
+        if keys.get('chatGptKey'):
+            OPENAI_API_KEY = keys['chatGptKey']
+        if keys.get('chatGptModel'):
+            OPENAI_MODEL = keys['chatGptModel']
+        if keys.get('geminiKey'):
+            GEMINI_API_KEY = keys['geminiKey']
+        if keys.get('geminiModel'):
+            GEMINI_MODEL = keys['geminiModel']
+        print(f"[STARTUP] Loaded encrypted API keys from {API_KEYS_PATH}")
+
+
 if __name__ == "__main__":
+    # Load encrypted API keys from file (overrides environment variables)
+    _load_api_keys_on_startup()
+    
     # Startup diagnostics (helps confirm your keys were picked up)
     try:
         openai_state = "SET" if bool(OPENAI_API_KEY) else "not set"

@@ -17,7 +17,7 @@ import java.net.URL
  */
 object GeminiHelper {
     
-    private const val GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+    private const val GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
     
     data class BreakdownResult(
         val success: Boolean,
@@ -30,13 +30,13 @@ object GeminiHelper {
      * Use Gemini to get meanings for term parts
      * Requires valid API key
      */
-    suspend fun getBreakdownWithAI(apiKey: String, term: String, language: String = "Korean"): BreakdownResult = withContext(Dispatchers.IO) {
+    suspend fun getBreakdownWithAI(apiKey: String, term: String, model: String = "gemini-1.5-flash", language: String = "Korean"): BreakdownResult = withContext(Dispatchers.IO) {
         if (apiKey.isBlank()) {
             return@withContext BreakdownResult(success = false, error = "API key not set")
         }
         
         try {
-            val urlString = "$GEMINI_API_URL?key=$apiKey"
+            val urlString = "$GEMINI_API_BASE/$model:generateContent?key=$apiKey"
             val url = URL(urlString)
             val conn = url.openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
@@ -132,8 +132,8 @@ object GeminiHelper {
     /**
      * Create a full breakdown using Gemini API
      */
-    suspend fun createAIBreakdown(apiKey: String, cardId: String, term: String): TermBreakdown {
-        val result = getBreakdownWithAI(apiKey, term)
+    suspend fun createAIBreakdown(apiKey: String, cardId: String, term: String, model: String = "gemini-1.5-flash"): TermBreakdown {
+        val result = getBreakdownWithAI(apiKey, term, model)
         return if (result.success) {
             TermBreakdown(
                 id = cardId,

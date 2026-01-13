@@ -102,10 +102,12 @@ data class AdminSettings(
     // ChatGPT API for breakdown autofill
     val chatGptApiKey: String = "",
     val chatGptEnabled: Boolean = false,
+    val chatGptModel: String = "gpt-4o",  // Default model
     
     // Gemini API for breakdown autofill
     val geminiApiKey: String = "",
     val geminiEnabled: Boolean = false,
+    val geminiModel: String = "gemini-1.5-flash",  // Default model
     
     // Auto-sync settings
     val autoPullOnLogin: Boolean = true,
@@ -115,6 +117,29 @@ data class AdminSettings(
     // Breakdown AI selection
     val breakdownAiChoice: BreakdownAiChoice = BreakdownAiChoice.AUTO_SELECT
 )
+
+/**
+ * Available ChatGPT models
+ */
+object ChatGptModels {
+    val models = listOf(
+        "gpt-4o" to "GPT-4o (Default)",
+        "gpt-4o-mini" to "GPT-4o Mini (Faster)",
+        "gpt-4-turbo" to "GPT-4 Turbo",
+        "gpt-3.5-turbo" to "GPT-3.5 Turbo (Cheapest)"
+    )
+}
+
+/**
+ * Available Gemini models
+ */
+object GeminiModels {
+    val models = listOf(
+        "gemini-1.5-flash" to "Gemini 1.5 Flash (Default)",
+        "gemini-1.5-pro" to "Gemini 1.5 Pro",
+        "gemini-1.0-pro" to "Gemini 1.0 Pro"
+    )
+}
 
 /**
  * Breakdown AI service selection
@@ -129,7 +154,10 @@ enum class BreakdownAiChoice(val label: String) {
  * Admin users list - for now just Sidscri
  */
 object AdminUsers {
-    private val admins = setOf("sidscri", "Sidscri", "SIDSCRI")
+    private val admins = setOf("sidscri")
     
-    fun isAdmin(username: String): Boolean = username.lowercase() in admins.map { it.lowercase() }
+    fun isAdmin(username: String): Boolean {
+        if (username.isBlank()) return false
+        return username.trim().lowercase() in admins
+    }
 }

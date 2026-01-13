@@ -876,9 +876,13 @@ fun AdminScreen(nav: NavHostController, repo: Repository) {
     val scope = rememberCoroutineScope()
     val adminSettings by repo.adminSettingsFlow().collectAsState(initial = AdminSettings())
     var chatGptKey by remember(adminSettings) { mutableStateOf(adminSettings.chatGptApiKey) }
+    var chatGptModel by remember(adminSettings) { mutableStateOf(adminSettings.chatGptModel) }
     var geminiKey by remember(adminSettings) { mutableStateOf(adminSettings.geminiApiKey) }
+    var geminiModel by remember(adminSettings) { mutableStateOf(adminSettings.geminiModel) }
     var statusMessage by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
+    var showChatGptModelDropdown by remember { mutableStateOf(false) }
+    var showGeminiModelDropdown by remember { mutableStateOf(false) }
     
     // Check if user is admin
     if (!AdminUsers.isAdmin(adminSettings.username)) {
@@ -887,11 +891,11 @@ fun AdminScreen(nav: NavHostController, repo: Repository) {
         return
     }
     
-    Scaffold(topBar = { TopAppBar(title = { Text("Admin Settings") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF8B0000)), navigationIcon = { IconButton({ nav.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Back") } }) }, bottomBar = { NavBar(nav, Route.Admin.path) }) { pad ->
+    Scaffold(topBar = { TopAppBar(title = { Text("AI Access Settings") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF8B0000)), navigationIcon = { IconButton({ nav.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Back") } }) }, bottomBar = { NavBar(nav, Route.Admin.path) }) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).padding(12.dp).verticalScroll(rememberScrollState())) {
             Text("⚠️ Admin Only", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.Yellow)
             Spacer(Modifier.height(4.dp))
-            Text("These settings are only visible to administrators.", color = DarkMuted, fontSize = 11.sp)
+            Text("API keys are encrypted and shared between Android app and web server.", color = DarkMuted, fontSize = 11.sp)
             
             Spacer(Modifier.height(20.dp)); HorizontalDivider(color = DarkBorder); Spacer(Modifier.height(16.dp))
             
@@ -902,9 +906,24 @@ fun AdminScreen(nav: NavHostController, repo: Repository) {
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(chatGptKey, { chatGptKey = it }, Modifier.fillMaxWidth(), label = { Text("OpenAI API Key") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), textStyle = LocalTextStyle.current.copy(fontSize = 12.sp))
             Spacer(Modifier.height(6.dp))
+            
+            // Model selection dropdown
+            Row(Modifier.fillMaxWidth().clickable { showChatGptModelDropdown = true }.padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Model", fontSize = 13.sp, color = Color.White)
+                Row {
+                    Text(ChatGptModels.models.find { it.first == chatGptModel }?.second ?: chatGptModel, fontSize = 12.sp, color = DarkMuted)
+                    Icon(Icons.Default.ArrowDropDown, "Select", tint = DarkMuted)
+                }
+                DropdownMenu(showChatGptModelDropdown, { showChatGptModelDropdown = false }) {
+                    ChatGptModels.models.forEach { (modelId, modelName) ->
+                        DropdownMenuItem(text = { Text(modelName, color = Color.White) }, onClick = { chatGptModel = modelId; showChatGptModelDropdown = false })
+                    }
+                }
+            }
+            
             SettingToggle("Enable ChatGPT Breakdown", adminSettings.chatGptEnabled) { scope.launch { repo.saveAdminSettings(adminSettings.copy(chatGptEnabled = it)) } }
             Spacer(Modifier.height(6.dp))
-            Button({ scope.launch { repo.saveAdminSettings(adminSettings.copy(chatGptApiKey = chatGptKey)); statusMessage = "ChatGPT API key saved" } }, Modifier.fillMaxWidth()) { Text("Save ChatGPT Key") }
+            Button({ scope.launch { repo.saveAdminSettings(adminSettings.copy(chatGptApiKey = chatGptKey, chatGptModel = chatGptModel)); statusMessage = "ChatGPT settings saved" } }, Modifier.fillMaxWidth()) { Text("Save ChatGPT Settings") }
             
             Spacer(Modifier.height(20.dp)); HorizontalDivider(color = DarkBorder); Spacer(Modifier.height(16.dp))
             
@@ -915,27 +934,48 @@ fun AdminScreen(nav: NavHostController, repo: Repository) {
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(geminiKey, { geminiKey = it }, Modifier.fillMaxWidth(), label = { Text("Gemini API Key") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), textStyle = LocalTextStyle.current.copy(fontSize = 12.sp))
             Spacer(Modifier.height(6.dp))
+            
+            // Model selection dropdown
+            Row(Modifier.fillMaxWidth().clickable { showGeminiModelDropdown = true }.padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Model", fontSize = 13.sp, color = Color.White)
+                Row {
+                    Text(GeminiModels.models.find { it.first == geminiModel }?.second ?: geminiModel, fontSize = 12.sp, color = DarkMuted)
+                    Icon(Icons.Default.ArrowDropDown, "Select", tint = DarkMuted)
+                }
+                DropdownMenu(showGeminiModelDropdown, { showGeminiModelDropdown = false }) {
+                    GeminiModels.models.forEach { (modelId, modelName) ->
+                        DropdownMenuItem(text = { Text(modelName, color = Color.White) }, onClick = { geminiModel = modelId; showGeminiModelDropdown = false })
+                    }
+                }
+            }
+            
             SettingToggle("Enable Gemini Breakdown", adminSettings.geminiEnabled) { scope.launch { repo.saveAdminSettings(adminSettings.copy(geminiEnabled = it)) } }
             Spacer(Modifier.height(6.dp))
-            Button({ scope.launch { repo.saveAdminSettings(adminSettings.copy(geminiApiKey = geminiKey)); statusMessage = "Gemini API key saved" } }, Modifier.fillMaxWidth()) { Text("Save Gemini Key") }
+            Button({ scope.launch { repo.saveAdminSettings(adminSettings.copy(geminiApiKey = geminiKey, geminiModel = geminiModel)); statusMessage = "Gemini settings saved" } }, Modifier.fillMaxWidth()) { Text("Save Gemini Settings") }
             
             Spacer(Modifier.height(20.dp)); HorizontalDivider(color = DarkBorder); Spacer(Modifier.height(16.dp))
             
-            // Push API Keys to Server
-            Text("Sync API Keys", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+            // Sync API Keys with Server
+            Text("Sync with Server", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
             Spacer(Modifier.height(4.dp))
-            Text("Push encrypted API keys to server for use on other devices", color = DarkMuted, fontSize = 11.sp)
+            Text("Push/pull encrypted API keys and models to/from server", color = DarkMuted, fontSize = 11.sp)
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button({
                     if (adminSettings.authToken.isBlank()) { statusMessage = "Error: Login required"; return@Button }
                     isLoading = true
                     scope.launch {
-                        val result = repo.syncPushApiKeys(adminSettings.authToken, adminSettings.webAppUrl, chatGptKey, geminiKey)
+                        // Save locally first
+                        repo.saveAdminSettings(adminSettings.copy(
+                            chatGptApiKey = chatGptKey, chatGptModel = chatGptModel,
+                            geminiApiKey = geminiKey, geminiModel = geminiModel
+                        ))
+                        // Then push to server
+                        val result = repo.syncPushApiKeys(adminSettings.authToken, adminSettings.webAppUrl, chatGptKey, chatGptModel, geminiKey, geminiModel)
                         statusMessage = if (result.success) "API keys pushed to server!" else "Error: ${result.error}"
                         isLoading = false
                     }
-                }, Modifier.weight(1f), enabled = !isLoading && adminSettings.isLoggedIn) { Text(if (isLoading) "..." else "Push Keys") }
+                }, Modifier.weight(1f), enabled = !isLoading && adminSettings.isLoggedIn) { Text(if (isLoading) "..." else "Push to Server") }
                 
                 Button({
                     if (adminSettings.authToken.isBlank()) { statusMessage = "Error: Login required"; return@Button }
@@ -944,10 +984,14 @@ fun AdminScreen(nav: NavHostController, repo: Repository) {
                         val result = repo.syncPullApiKeys(adminSettings.authToken, adminSettings.webAppUrl)
                         if (result.success) {
                             chatGptKey = result.chatGptKey
+                            chatGptModel = result.chatGptModel
                             geminiKey = result.geminiKey
+                            geminiModel = result.geminiModel
                             repo.saveAdminSettings(adminSettings.copy(
                                 chatGptApiKey = result.chatGptKey,
+                                chatGptModel = result.chatGptModel,
                                 geminiApiKey = result.geminiKey,
+                                geminiModel = result.geminiModel,
                                 chatGptEnabled = result.chatGptKey.isNotBlank(),
                                 geminiEnabled = result.geminiKey.isNotBlank()
                             ))
@@ -957,7 +1001,7 @@ fun AdminScreen(nav: NavHostController, repo: Repository) {
                         }
                         isLoading = false
                     }
-                }, Modifier.weight(1f), enabled = !isLoading && adminSettings.isLoggedIn) { Text(if (isLoading) "..." else "Pull Keys") }
+                }, Modifier.weight(1f), enabled = !isLoading && adminSettings.isLoggedIn) { Text(if (isLoading) "..." else "Pull from Server") }
             }
             
             if (statusMessage.isNotBlank()) { Spacer(Modifier.height(8.dp)); Text(statusMessage, color = if (statusMessage.startsWith("Error")) Color.Red else AccentBlue, fontSize = 12.sp) }
@@ -965,8 +1009,8 @@ fun AdminScreen(nav: NavHostController, repo: Repository) {
             Spacer(Modifier.height(24.dp))
             Text("Server Info", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = DarkMuted)
             Text("""
-API keys are encrypted before being stored on the server.
-This allows them to be safely committed to GitHub.
+API keys are encrypted and stored in data/api_keys.enc on server.
+Both Android app and web server share the same encrypted keys.
 
 Server: ${adminSettings.webAppUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }}
 Logged in as: ${adminSettings.username}

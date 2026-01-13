@@ -1,7 +1,7 @@
 {
   "name": "KenpoFlashcardsWebServer",
-  "version": "5.4.0",
-  "build": 26,
-  "released": "2026-01-12",
-  "notes": "Adds encrypted API key storage for admin, /api/admin/apikeys endpoint for Android app sync, admin status check endpoint."
+  "version": "5.5.0",
+  "build": 27,
+  "released": "2026-01-13",
+  "notes": "Shared encrypted API keys with model selection. AI Access page. Keys loaded from encrypted file on startup."
 }

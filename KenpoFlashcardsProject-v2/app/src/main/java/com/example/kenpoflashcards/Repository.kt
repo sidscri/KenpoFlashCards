@@ -158,25 +158,25 @@ suspend fun deleteBreakdown(cardId: String) = store.deleteBreakdown(cardId)
             BreakdownAiChoice.AUTO_SELECT -> {
                 // Try both and pick best result (prioritize ChatGPT if both available)
                 if (admin.chatGptEnabled && admin.chatGptApiKey.isNotBlank()) {
-                    val chatGptResult = ChatGptHelper.createAIBreakdown(admin.chatGptApiKey, cardId, term)
+                    val chatGptResult = ChatGptHelper.createAIBreakdown(admin.chatGptApiKey, cardId, term, admin.chatGptModel)
                     if (chatGptResult.hasContent()) return chatGptResult
                 }
                 if (admin.geminiEnabled && admin.geminiApiKey.isNotBlank()) {
-                    val geminiResult = GeminiHelper.createAIBreakdown(admin.geminiApiKey, cardId, term)
+                    val geminiResult = GeminiHelper.createAIBreakdown(admin.geminiApiKey, cardId, term, admin.geminiModel)
                     if (geminiResult.hasContent()) return geminiResult
                 }
                 ChatGptHelper.createBasicBreakdown(cardId, term)
             }
             BreakdownAiChoice.CHATGPT -> {
                 if (admin.chatGptEnabled && admin.chatGptApiKey.isNotBlank()) {
-                    ChatGptHelper.createAIBreakdown(admin.chatGptApiKey, cardId, term)
+                    ChatGptHelper.createAIBreakdown(admin.chatGptApiKey, cardId, term, admin.chatGptModel)
                 } else {
                     ChatGptHelper.createBasicBreakdown(cardId, term)
                 }
             }
             BreakdownAiChoice.GEMINI -> {
                 if (admin.geminiEnabled && admin.geminiApiKey.isNotBlank()) {
-                    GeminiHelper.createAIBreakdown(admin.geminiApiKey, cardId, term)
+                    GeminiHelper.createAIBreakdown(admin.geminiApiKey, cardId, term, admin.geminiModel)
                 } else {
                     ChatGptHelper.createBasicBreakdown(cardId, term)
                 }
@@ -203,10 +203,10 @@ suspend fun deleteBreakdown(cardId: String) = store.deleteBreakdown(cardId)
     }
     
     // Push API keys to server (encrypted)
-    suspend fun syncPushApiKeys(token: String, serverUrl: String, chatGptKey: String, geminiKey: String): WebAppSync.SyncResult {
+    suspend fun syncPushApiKeys(token: String, serverUrl: String, chatGptKey: String, chatGptModel: String, geminiKey: String, geminiModel: String): WebAppSync.SyncResult {
         if (token.isBlank()) return WebAppSync.SyncResult(false, error = "No auth token")
         val url = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
-        return WebAppSync.pushApiKeys(url, token, chatGptKey, geminiKey)
+        return WebAppSync.pushApiKeys(url, token, chatGptKey, chatGptModel, geminiKey, geminiModel)
     }
     
     // Pull API keys from server

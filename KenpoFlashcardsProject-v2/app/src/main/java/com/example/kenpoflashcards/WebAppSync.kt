@@ -288,7 +288,9 @@ object WebAppSync {
     data class ApiKeysResult(
         val success: Boolean,
         val chatGptKey: String = "",
+        val chatGptModel: String = "gpt-4o",
         val geminiKey: String = "",
+        val geminiModel: String = "gemini-1.5-flash",
         val error: String = ""
     )
     
@@ -296,7 +298,7 @@ object WebAppSync {
      * Push API keys to server (admin only)
      * Server encrypts and stores in secure file
      */
-    suspend fun pushApiKeys(serverUrl: String, token: String, chatGptKey: String, geminiKey: String): SyncResult = withContext(Dispatchers.IO) {
+    suspend fun pushApiKeys(serverUrl: String, token: String, chatGptKey: String, chatGptModel: String, geminiKey: String, geminiModel: String): SyncResult = withContext(Dispatchers.IO) {
         try {
             val url = URL("$serverUrl/api/admin/apikeys")
             val conn = url.openConnection() as HttpURLConnection
@@ -309,7 +311,9 @@ object WebAppSync {
             
             val body = JSONObject().apply {
                 put("chatGptKey", chatGptKey)
+                put("chatGptModel", chatGptModel)
                 put("geminiKey", geminiKey)
+                put("geminiModel", geminiModel)
             }
             
             conn.outputStream.use { it.write(body.toString().toByteArray()) }
@@ -343,7 +347,9 @@ object WebAppSync {
                 ApiKeysResult(
                     success = true,
                     chatGptKey = json.optString("chatGptKey", ""),
-                    geminiKey = json.optString("geminiKey", "")
+                    chatGptModel = json.optString("chatGptModel", "gpt-4o"),
+                    geminiKey = json.optString("geminiKey", ""),
+                    geminiModel = json.optString("geminiModel", "gemini-1.5-flash")
                 )
             } else {
                 ApiKeysResult(success = false, error = "Pull failed: ${conn.responseCode}")

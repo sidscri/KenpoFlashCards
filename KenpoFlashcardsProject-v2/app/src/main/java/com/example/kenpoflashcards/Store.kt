@@ -204,8 +204,8 @@ class Store(private val context: Context) {
     private fun encodeAdminSettings(s: AdminSettings): String {
         val o = JSONObject()
         o.put("webAppUrl", s.webAppUrl); o.put("authToken", s.authToken); o.put("username", s.username); o.put("isLoggedIn", s.isLoggedIn); o.put("lastSyncTime", s.lastSyncTime)
-        o.put("chatGptApiKey", s.chatGptApiKey); o.put("chatGptEnabled", s.chatGptEnabled)
-        o.put("geminiApiKey", s.geminiApiKey); o.put("geminiEnabled", s.geminiEnabled)
+        o.put("chatGptApiKey", s.chatGptApiKey); o.put("chatGptEnabled", s.chatGptEnabled); o.put("chatGptModel", s.chatGptModel)
+        o.put("geminiApiKey", s.geminiApiKey); o.put("geminiEnabled", s.geminiEnabled); o.put("geminiModel", s.geminiModel)
         o.put("autoPullOnLogin", s.autoPullOnLogin); o.put("autoPushOnChange", s.autoPushOnChange); o.put("pendingSync", s.pendingSync)
         o.put("breakdownAiChoice", s.breakdownAiChoice.name)
         return o.toString()
@@ -219,7 +219,9 @@ class Store(private val context: Context) {
                 webAppUrl = o.optString("webAppUrl", ""), authToken = o.optString("authToken", ""), username = o.optString("username", ""),
                 isLoggedIn = o.optBoolean("isLoggedIn", false), lastSyncTime = o.optLong("lastSyncTime", 0),
                 chatGptApiKey = o.optString("chatGptApiKey", ""), chatGptEnabled = o.optBoolean("chatGptEnabled", false),
+                chatGptModel = o.optString("chatGptModel", "gpt-4o"),
                 geminiApiKey = o.optString("geminiApiKey", ""), geminiEnabled = o.optBoolean("geminiEnabled", false),
+                geminiModel = o.optString("geminiModel", "gemini-1.5-flash"),
                 autoPullOnLogin = o.optBoolean("autoPullOnLogin", true), autoPushOnChange = o.optBoolean("autoPushOnChange", false),
                 pendingSync = o.optBoolean("pendingSync", false),
                 breakdownAiChoice = runCatching { BreakdownAiChoice.valueOf(o.optString("breakdownAiChoice", BreakdownAiChoice.AUTO_SELECT.name)) }.getOrDefault(BreakdownAiChoice.AUTO_SELECT)

@@ -15,6 +15,22 @@ The format is simple and practical:
 
 ---
 
+## v4.3.0 (versionCode 19) — 2026-01-13
+### Added
+- **Model Selection**: Choose AI model for ChatGPT (gpt-4o default) and Gemini (gemini-1.5-flash default)
+- Model settings sync with server alongside API keys
+
+### Fixed
+- **Admin Button**: Fixed isAdmin() check not recognizing logged-in admin user
+- Simplified admin username comparison logic
+
+### Changed
+- Admin screen renamed to "AI Access Settings"
+- Push/Pull buttons now sync models along with API keys
+- ChatGPT default model changed from gpt-3.5-turbo to gpt-4o
+
+---
+
 ## v4.2.0 (versionCode 18) — 2026-01-12
 ### Added
 - **About Screen**: New About page in More with app info, creator contact (Sidney Shelton, Sidscri@yahoo.com), and feature overview
