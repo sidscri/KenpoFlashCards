@@ -360,6 +360,37 @@ object WebAppSync {
     }
     
     /**
+     * Pull API keys for any authenticated user (not just admin)
+     * Uses /api/sync/apikeys endpoint which is available to all authenticated users
+     */
+    suspend fun pullApiKeysForUser(serverUrl: String, token: String): ApiKeysResult = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("$serverUrl/api/sync/apikeys")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("Authorization", "Bearer $token")
+            conn.connectTimeout = 10000
+            conn.readTimeout = 10000
+            
+            if (conn.responseCode == 200) {
+                val response = conn.inputStream.bufferedReader().readText()
+                val json = JSONObject(response)
+                ApiKeysResult(
+                    success = true,
+                    chatGptKey = json.optString("chatGptKey", ""),
+                    chatGptModel = json.optString("chatGptModel", "gpt-4o"),
+                    geminiKey = json.optString("geminiKey", ""),
+                    geminiModel = json.optString("geminiModel", "gemini-1.5-flash")
+                )
+            } else {
+                ApiKeysResult(success = false, error = "Pull failed: ${conn.responseCode}")
+            }
+        } catch (e: Exception) {
+            ApiKeysResult(success = false, error = e.message ?: "Pull failed")
+        }
+    }
+    
+    /**
      * Fetch admin usernames from server (Source of Truth)
      */
     suspend fun fetchAdminUsers(serverUrl: String): Set<String> = withContext(Dispatchers.IO) {

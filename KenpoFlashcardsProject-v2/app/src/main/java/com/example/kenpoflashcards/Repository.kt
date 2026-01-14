@@ -216,6 +216,13 @@ suspend fun deleteBreakdown(cardId: String) = store.deleteBreakdown(cardId)
         return WebAppSync.pullApiKeys(url, token)
     }
     
+    // Pull API keys for any authenticated user (uses /api/sync/apikeys endpoint)
+    suspend fun syncPullApiKeysForUser(token: String, serverUrl: String): WebAppSync.ApiKeysResult {
+        if (token.isBlank()) return WebAppSync.ApiKeysResult(false, error = "No auth token")
+        val url = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+        return WebAppSync.pullApiKeysForUser(url, token)
+    }
+    
     // Mark pending sync (for offline changes)
     suspend fun markPendingSync() {
         val admin = adminSettingsFlow().first()

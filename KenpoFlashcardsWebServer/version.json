@@ -1,7 +1,7 @@
 {
   "name": "KenpoFlashcardsWebServer",
-  "version": "5.5.0",
-  "build": 27,
+  "version": "5.5.1",
+  "build": 28,
   "released": "2026-01-13",
-  "notes": "Shared encrypted API keys with model selection. AI Access page. Keys loaded from encrypted file on startup."
+  "notes": "Added /api/sync/apikeys endpoint for all users to pull API keys on login."
 }

@@ -5,7 +5,7 @@
 
 Flask-based web application providing sync API and web UI for Kenpo Flashcards.
 
-**Current Version:** v5.5.0 (build 27)  
+**Current Version:** v5.5.1 (build 28)  
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -19,6 +19,7 @@ Flask-based web application providing sync API and web UI for Kenpo Flashcards.
 - **Helper Mapping** - Canonical card IDs for cross-device consistency
 - **AI Integration** - ChatGPT and Gemini API for breakdown autofill
 - **Encrypted API Keys** - Secure storage shared between Android and web
+- **Shared API Keys** - All authenticated users can pull API keys (v5.5.1+)
 - **Admin Management** - Centralized admin users Source of Truth
 
 ---
@@ -65,6 +66,7 @@ Open: `http://localhost:8009`
 | `/api/sync/pull` | GET | Pull progress from server |
 | `/api/sync/breakdowns` | GET | Get all breakdowns |
 | `/api/sync/helper` | GET | Canonical ID mapping |
+| `/api/sync/apikeys` | GET | **Get API keys (all users)** ✨ v5.5.1 |
 
 ### Breakdowns
 | Endpoint | Method | Description |
@@ -111,7 +113,7 @@ data/
 ├── profiles.json        # User accounts (hashed passwords)
 ├── breakdowns.json      # Shared breakdowns
 ├── helper.json          # Auto-generated ID mapping
-├── secret_key.txt       # Flask session key
+├── secret_key.txt       # Flask session key (DO NOT SHARE)
 ├── api_keys.enc         # Encrypted API keys (safe for git)
 ├── admin_users.json     # Admin usernames (Source of Truth)
 └── users/
@@ -164,6 +166,24 @@ Admin users are defined in `data/admin_users.json` (Source of Truth):
 
 ---
 
+## 🔑 API Key Sharing (v5.5.1+)
+
+API keys are now shared with ALL authenticated users:
+
+| Endpoint | Who Can Access | Purpose |
+|----------|----------------|---------|
+| `GET /api/sync/apikeys` | All authenticated users | Pull keys on login |
+| `GET /api/admin/apikeys` | Admin only | Admin settings page |
+| `POST /api/admin/apikeys` | Admin only | Save/update keys |
+
+**Workflow:**
+1. Admin enters API keys in Admin Settings
+2. Admin clicks "Push to Server" → keys encrypted and saved
+3. Any user logs in → keys automatically pulled via `/api/sync/apikeys`
+4. User can use AI breakdown features
+
+---
+
 ## 🪟 Windows Deployment Options
 
 ### Service + Tray (Recommended)
@@ -188,7 +208,7 @@ Should return JSON with `version`, `term_to_id`, `cards`
 ```
 http://localhost:8009/api/version
 ```
-Should return `{"version": "5.5.0", "build": 27, ...}`
+Should return `{"version": "5.5.1", "build": 28, ...}`
 
 ### 3. Test Admin Users Endpoint
 ```
@@ -205,8 +225,9 @@ Confirm `data/helper.json` and `data/admin_users.json` exist on disk.
 
 | Version | Build | Key Changes |
 |---------|-------|-------------|
-| **5.5.0** | 27 | AI Access page, model selection, startup key loading, admin_users.json SoT, `/api/admin/users` endpoint |
-| **5.4.0** | 26 | Encrypted API key storage, Gemini API, admin endpoints (`/api/admin/apikeys`, `/api/admin/status`) |
+| **5.5.1** | 28 | `GET /api/sync/apikeys` for all users, API keys shared on login |
+| **5.5.0** | 27 | AI Access page, model selection, startup key loading, admin_users.json SoT |
+| **5.4.0** | 26 | Encrypted API key storage, Gemini API, admin endpoints |
 | **5.3.1** | 25 | Fixed duplicate `/api/login` endpoint conflict |
 | **5.3.0** | 24 | About/Admin/User Guide pages, user dropdown |
 | **5.2.0** | 23 | End-to-end sync confirmed, helper mapping |

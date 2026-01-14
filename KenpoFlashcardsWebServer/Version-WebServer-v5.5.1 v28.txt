@@ -1,0 +1,13 @@
+KenpoFlashcardsWebServer v5.5.1 (build 28)
+Released: 2026-01-13
+
+Changes in this version:
+- Added GET /api/sync/apikeys endpoint for all authenticated users
+- API keys now shared with ALL users on login (not just admins)
+- Non-admin users can now use AI breakdown features
+- Admin access only required to modify/save API keys
+
+Previous versions:
+- v5.5.0: AI Access page, model selection, admin_users.json SoT
+- v5.4.0: Encrypted API key storage, Gemini API, admin endpoints
+

@@ -1909,6 +1909,27 @@ def api_admin_get_apikeys():
     })
 
 
+@app.get("/api/sync/apikeys")
+@android_auth_required
+def api_sync_get_apikeys():
+    """
+    Get API keys for any authenticated user (read-only).
+    This allows all users to use AI features without admin access.
+    
+    Returns: {"chatGptKey": "...", "chatGptModel": "...", "geminiKey": "...", "geminiModel": "...", "hasKeys": bool}
+    """
+    keys = _load_encrypted_api_keys()
+    
+    # Return the keys (or empty strings/defaults if not set)
+    return jsonify({
+        'chatGptKey': keys.get('chatGptKey', ''),
+        'chatGptModel': keys.get('chatGptModel', 'gpt-4o'),
+        'geminiKey': keys.get('geminiKey', ''),
+        'geminiModel': keys.get('geminiModel', 'gemini-1.5-flash'),
+        'hasKeys': bool(keys.get('chatGptKey') or keys.get('geminiKey'))
+    })
+
+
 @app.get("/api/admin/status")
 @android_auth_required
 def api_admin_status():
