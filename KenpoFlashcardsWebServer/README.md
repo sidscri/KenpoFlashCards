@@ -19,6 +19,7 @@ Flask-based web application providing sync API and web UI for Kenpo Flashcards.
 - **Helper Mapping** - Canonical card IDs for cross-device consistency
 - **AI Integration** - ChatGPT and Gemini API for breakdown autofill
 - **Encrypted API Keys** - Secure storage shared between Android and web
+- **Admin Management** - Centralized admin users Source of Truth
 
 ---
 
@@ -77,7 +78,7 @@ Open: `http://localhost:8009`
 | `/api/admin/apikeys` | GET | Get encrypted API keys (admin) |
 | `/api/admin/apikeys` | POST | Save encrypted API keys (admin) |
 | `/api/admin/status` | GET | Check admin status |
-| `/api/admin/users` | GET | Get admin usernames (SoT) |
+| `/api/admin/users` | GET | Get admin usernames (SoT, no auth) |
 
 ### Web Admin (Session Required)
 | Endpoint | Method | Description |
@@ -97,9 +98,9 @@ Open: `http://localhost:8009`
 
 ---
 
-## 📁 Data & Secrets
+## 🔒 Data & Secrets
 
-**Runtime data is NOT committed to Git:**
+**Runtime data is NOT committed to Git (except SoT files):**
 - `data/` - User accounts, progress, breakdowns
 - `logs/` - Server logs
 - `.env` - Environment variables
@@ -139,16 +140,27 @@ The server automatically locates `kenpo_words.json` by scanning:
 
 ---
 
-## 🔐 Admin Management
+## 👤 Admin Management
 
-Admin users are defined in `data/admin_users.json`:
+Admin users are defined in `data/admin_users.json` (Source of Truth):
 ```json
 {
-  "admin_usernames": ["sidscri"]
+  "description": "Source of Truth for admin users",
+  "updated": "2026-01-13",
+  "admin_usernames": ["sidscri"],
+  "notes": "Usernames are case-insensitive"
 }
 ```
 
-Both Android app and web server read from this Source of Truth.
+**How it works:**
+1. Server loads `admin_users.json` on startup → `ADMIN_USERNAMES` global
+2. Android app fetches `GET /api/admin/users` on login
+3. Both projects use the same Source of Truth
+4. To add new admin: edit JSON file, restart server (or implement hot-reload)
+
+**Fallback behavior:**
+- If `admin_users.json` missing/corrupt: defaults to `{"sidscri"}`
+- Android fallback if server unreachable: uses default `{"sidscri"}`
 
 ---
 
@@ -178,8 +190,14 @@ http://localhost:8009/api/version
 ```
 Should return `{"version": "5.5.0", "build": 27, ...}`
 
-### 3. Check Data Files
-Confirm `data/helper.json` exists on disk after first request.
+### 3. Test Admin Users Endpoint
+```
+http://localhost:8009/api/admin/users
+```
+Should return `{"admin_usernames": ["sidscri"]}`
+
+### 4. Check Data Files
+Confirm `data/helper.json` and `data/admin_users.json` exist on disk.
 
 ---
 
@@ -187,8 +205,8 @@ Confirm `data/helper.json` exists on disk after first request.
 
 | Version | Build | Key Changes |
 |---------|-------|-------------|
-| **5.5.0** | 27 | AI Access page, model selection, startup key loading, admin_users.json SoT |
-| **5.4.0** | 26 | Encrypted API key storage, Gemini API, admin endpoints |
+| **5.5.0** | 27 | AI Access page, model selection, startup key loading, admin_users.json SoT, `/api/admin/users` endpoint |
+| **5.4.0** | 26 | Encrypted API key storage, Gemini API, admin endpoints (`/api/admin/apikeys`, `/api/admin/status`) |
 | **5.3.1** | 25 | Fixed duplicate `/api/login` endpoint conflict |
 | **5.3.0** | 24 | About/Admin/User Guide pages, user dropdown |
 | **5.2.0** | 23 | End-to-end sync confirmed, helper mapping |
@@ -220,8 +238,8 @@ KenpoFlashcardsWebServer/
 │   └── .well-known/
 │       └── security.txt   # Security contact
 ├── data/                  # Runtime data (gitignored except SoT files)
-│   ├── admin_users.json   # Admin usernames (Source of Truth)
-│   └── api_keys.enc       # Encrypted API keys (safe for git)
+│   ├── admin_users.json   # Admin usernames (Source of Truth) ✓ git
+│   └── api_keys.enc       # Encrypted API keys (safe for git) ✓ git
 └── CHANGELOG.md           # Version history
 ```
 

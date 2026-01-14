@@ -18,17 +18,26 @@ The format is simple and practical:
 ## v5.5.0 (build 27) — 2026-01-13
 ### Added
 - **AI Access Page**: New `/ai-access.html` web page for managing API keys
+  - ChatGPT and Gemini sections with model selection dropdowns
+  - API key input fields (password type)
+  - Key status indicators (✓ Key configured / No key configured)
+  - Shows last 4 chars of existing keys as placeholder
+  - Auto-redirects if not logged in (401) or not admin (403)
 - **Model Selection**: Choose ChatGPT and Gemini models from web UI
 - **Startup Key Loading**: Server loads encrypted API keys from file on startup
-- **Web API endpoints**: `/api/web/admin/apikeys` GET/POST for session-based admin access
+- **Web API endpoints**: 
+  - `GET /api/web/admin/apikeys` - Get API keys for web UI (session-based)
+  - `POST /api/web/admin/apikeys` - Save API keys from web UI (session-based)
 - **Admin Users SoT**: `data/admin_users.json` - Source of Truth for admin usernames
-- **Admin Users Endpoint**: `GET /api/admin/users` - returns admin usernames list
+  - Centralized admin management for both Android and web
+  - Edit JSON file to add/remove admins
+- **Admin Users Endpoint**: `GET /api/admin/users` - returns admin usernames list (no auth required)
+- `_load_admin_usernames()` - loads from JSON file with fallback to {"sidscri"}
 
 ### Changed
 - API keys now include model selection (chatGptModel, geminiModel)
 - Keys loaded from `api_keys.enc` override environment variables
-- Admin page now prominently links to AI Access Settings
-- `_load_admin_usernames()` loads from JSON file with fallback
+- Admin page now prominently links to AI Access Settings (warning-colored card)
 
 ### Security
 - Environment variable API keys no longer needed (can be removed from START_KenpoFlashcardsWebServer.bat)
@@ -38,8 +47,8 @@ The format is simple and practical:
 ## v5.4.0 (build 26) — 2026-01-12
 ### Added
 - **Encrypted API Key Storage**: Admin can store ChatGPT and Gemini API keys encrypted on server
-- **POST /api/admin/apikeys**: Push encrypted API keys to server (admin only)
-- **GET /api/admin/apikeys**: Pull decrypted API keys from server (admin only)
+- **POST /api/admin/apikeys**: Push encrypted API keys to server (admin only, token auth)
+- **GET /api/admin/apikeys**: Pull decrypted API keys from server (admin only, token auth)
 - **GET /api/admin/status**: Check if current user is admin
 - Admin users defined in `ADMIN_USERNAMES` set (default: sidscri)
 
@@ -155,7 +164,7 @@ The format is simple and practical:
 # When releasing:
 1. Change "Unreleased" to version number + date
 2. Add new "Unreleased" section
-3. Tag the release: git tag v5.3.1
+3. Tag the release: git tag v5.5.0
 4. Push: git push && git push --tags
 ```
 

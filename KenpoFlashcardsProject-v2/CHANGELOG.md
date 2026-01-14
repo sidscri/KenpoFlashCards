@@ -19,16 +19,19 @@ The format is simple and practical:
 ### Fixed
 - **Admin Screen Loading**: Fixed admin screen immediately redirecting by waiting for settings to load
 - Admin screen now shows loading spinner while settings load
+- Root cause: `AdminScreen` used `AdminSettings()` as initial value (empty username), immediately checked `isAdmin("")` which returned false
 
 ### Added
-- **(Admin) label**: Shows after username in Login, Sync Progress screens when user is admin
-- **Key validation indicators**: "Key Accepted" / "Key Invalid" shown for ChatGPT and Gemini API keys
-- **First login auto-sync**: Always syncs progress and breakdowns on first device login
+- **(Admin) label**: Shows after username in Login, Sync Progress, and Admin screens when user is admin
+- **Key validation indicators**: "Key Accepted" (green) / "Key Invalid" (red) shown for ChatGPT and Gemini API keys
+  - ChatGPT: Valid if starts with "sk-"
+  - Gemini: Valid if starts with "AI"
+- **First login auto-sync**: Always syncs progress and breakdowns on first device login (no setting needed)
 - **Admin auto-pulls API keys**: When admin logs in, API keys are automatically pulled from server
 
 ### Changed
 - Improved AI picker dropdown in Sync Progress screen with checkmark for current selection
-- "Pending sync" message now says "Push to sync" to clarify action needed
+- "Pending sync" message now says "Changes pending sync - Push to sync" to clarify action needed
 - Login screen clarifies that first login always syncs automatically
 - Auto-pull setting renamed to "Auto-pull progress on future logins"
 
@@ -36,19 +39,24 @@ The format is simple and practical:
 
 ## v4.3.0 (versionCode 19) — 2026-01-13
 ### Added
-- **Model Selection**: Choose AI model for ChatGPT (gpt-4o default) and Gemini (gemini-1.5-flash default)
+- **Model Selection**: Choose AI model for ChatGPT and Gemini
+  - ChatGPT models: gpt-4o (default), gpt-4o-mini, gpt-4-turbo, gpt-3.5-turbo
+  - Gemini models: gemini-1.5-flash (default), gemini-1.5-pro, gemini-1.0-pro
 - Model settings sync with server alongside API keys
-- **Admin Users SoT**: Fetches admin usernames from server on login (`/api/admin/users`)
+- **Admin Users SoT**: Fetches admin usernames from server on login (`GET /api/admin/users`)
+- `WebAppSync.fetchAdminUsers()` - fetches admin list from server
+- `AdminUsers.updateAdminList()` - updates cached admin list
 
 ### Fixed
-- **Admin Button**: Fixed isAdmin() check not recognizing logged-in admin user
+- **Admin Button**: Fixed `isAdmin()` check not recognizing logged-in admin user
 - Simplified admin username comparison logic with server-side Source of Truth
+- Case-insensitive comparison: `username.trim().lowercase() in admins`
 
 ### Changed
 - Admin screen renamed to "AI Access Settings"
 - Push/Pull buttons now sync models along with API keys
 - ChatGPT default model changed from gpt-3.5-turbo to gpt-4o
-- AdminUsers object now caches admin list from server
+- AdminUsers object now caches admin list from server with fallback to default {"sidscri"}
 
 ---
 
@@ -58,7 +66,7 @@ The format is simple and practical:
 - **User Guide Screen**: Comprehensive printable/downloadable user guide accessible from About page
 - **Login Screen**: Dedicated login page moved from Admin Settings (all users can access)
 - **Sync Progress Screen**: New screen for Push/Pull progress sync and Breakdown sync
-- **Gemini AI Integration**: Added Google Gemini API support for breakdown autofill
+- **Gemini AI Integration**: Added Google Gemini API support for breakdown autofill (`GeminiHelper.kt`)
 - **Breakdown AI Selector**: Users can choose between Auto Select (best result), ChatGPT, or Gemini for AI breakdowns
 - **Auto-sync settings**: Option to auto-pull progress on login and auto-push changes when made
 - **Pending sync indicator**: Visual indicator when offline changes need syncing
@@ -219,14 +227,14 @@ The format is simple and practical:
    - Create a new empty `## Unreleased` section
 
 ## Version Numbering
-- `versionName`: User-visible version (e.g., "4.1.0")
-- `versionCode`: Integer that must increment for each release (e.g., 17)
+- `versionName`: User-visible version (e.g., "4.4.0")
+- `versionCode`: Integer that must increment for each release (e.g., 20)
 
 ## Build & Release
 ```bash
 # Update build.gradle:
-versionCode 17
-versionName "4.1.0"
+versionCode 20
+versionName "4.4.0"
 
 # Build release APK:
 ./gradlew assembleRelease

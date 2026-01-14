@@ -7,7 +7,7 @@ An Android flash-card app designed to help students of **American Kenpo Karate**
 
 This app focuses on **active recall**, **progress tracking**, and **organized learning**, making it ideal for beginners through advanced practitioners.
 
-**Current Version:** v4.3.0 (versionCode 19)  
+**Current Version:** v4.4.0 (versionCode 20)  
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -68,6 +68,8 @@ Move cards between states with dedicated buttons for flexible learning paths.
 - **Login** to sync with web app server
 - **Push/Pull** progress between devices
 - **Sync breakdowns** from shared database
+- **First login auto-sync** - always syncs on first device login (v4.4.0+)
+- **Auto-sync settings** - auto-pull on future logins, auto-push on change
 - Server: `sidscri.tplinkdns.com:8009`
 - Endpoint: `POST /api/sync/login` (token-based auth)
 
@@ -75,10 +77,17 @@ Move cards between states with dedicated buttons for flexible learning paths.
 - **ChatGPT API** integration for breakdown autofill
 - **Gemini API** integration (v4.2.0+)
 - **Model selection** - choose gpt-4o, gpt-4o-mini, gemini-1.5-flash, etc. (v4.3.0+)
+- **Key validation indicators** - shows "Key Accepted" or "Key Invalid" (v4.4.0+)
 - Automatically generates:
   - Term part splits
   - Part meanings/translations
   - Literal translations
+
+### 👤 Admin Features (v4.2.0+)
+- **Admin-only access** - Admin Settings visible only to admin users
+- **(Admin) label** - Shows after username when logged in as admin (v4.4.0+)
+- **API key management** - Push/pull encrypted keys to/from server
+- **Server-based admin list** - Admin usernames fetched from server Source of Truth (v4.3.0+)
 
 ---
 
@@ -120,16 +129,22 @@ Move cards between states with dedicated buttons for flexible learning paths.
 - Web app login
 - Auto-sync on login toggle
 - Auto-push on change toggle
+- First login always syncs (no setting needed)
+- Shows "(Admin)" label for admin users (v4.4.0+)
 
 ### Sync Progress (v4.2.0+)
 - Manual push/pull progress
+- Pending sync indicator with "Push to sync" message
 - Breakdown sync
-- AI service selector
+- AI service selector (Auto Select, ChatGPT, Gemini)
+- Shows "(Admin)" label for admin users (v4.4.0+)
 
 ### AI Access (Admin Only, v4.3.0+)
-- ChatGPT API key and model
-- Gemini API key and model
+- ChatGPT API key and model selection
+- Gemini API key and model selection
+- Key validation indicators ("Key Accepted" / "Key Invalid")
 - Push/Pull keys to server
+- Auto-pulls keys on admin login (v4.4.0+)
 
 ---
 
@@ -164,11 +179,11 @@ app/src/main/
 │   ├── Models.kt            # Data classes (FlashCard, TermBreakdown, etc.)
 │   ├── Repository.kt        # Data access layer
 │   ├── Store.kt             # DataStore persistence
-│   ├── StudySettings.kt     # Settings data classes
+│   ├── StudySettings.kt     # Settings data classes, AdminUsers object
 │   ├── JsonUtil.kt          # JSON parsing utilities
 │   ├── TtsHelper.kt         # Text-to-speech wrapper
 │   ├── CsvImport.kt         # CSV import functionality
-│   ├── WebAppSync.kt        # Server sync API
+│   ├── WebAppSync.kt        # Server sync API, fetchAdminUsers()
 │   ├── ChatGptHelper.kt     # ChatGPT AI breakdown autofill
 │   └── GeminiHelper.kt      # Gemini AI breakdown autofill
 ├── assets/
@@ -184,6 +199,7 @@ app/src/main/
 
 | Version | Code | Key Changes |
 |---------|------|-------------|
+| **4.4.0** | 20 | Admin screen loading fix, (Admin) labels, key validation indicators, first-login auto-sync, admin auto-pulls API keys |
 | **4.3.0** | 19 | AI model selection, admin button fix, server-based admin users SoT |
 | **4.2.0** | 18 | About Screen, User Guide, Gemini AI, Dedicated Login/Sync screens, Auto-sync, API key sync |
 | **4.1.0** | 17 | Shared ID mapping for cross-device sync |
@@ -217,6 +233,7 @@ Your server needs these endpoints:
 - `GET/POST /api/sync/pull|push` - Progress sync
 - `GET /api/sync/breakdowns` - Shared breakdowns
 - `GET /api/admin/users` - Admin usernames (SoT)
+- `GET/POST /api/admin/apikeys` - Encrypted API keys (admin only)
 
 ---
 
