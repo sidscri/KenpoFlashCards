@@ -1,9 +1,0 @@
-Fixes for v4.4.2 (versionCode 22)
-Created: Wed 01/14/2026 06:34:33
-
-- Added settings toggle to show/hide the Custom Set (⭐) button (default ON).
-- Updated Unsure/To Study portrait UI:
-  - Compact header row (title + search + group filter)
-  - Removed redundant top app bar to save vertical space
-  - Search is icon-based like landscape; tap outside collapses search while keeping results
-- Sync screen: admin sessions now show “(Admin)” in the login status line.

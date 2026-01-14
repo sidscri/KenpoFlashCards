@@ -323,7 +323,7 @@ private fun LandscapeStudyLayout(
                 }
             }
             if (searchExpanded) {
-                OutlinedTextField(search, onSearchChange, Modifier.fillMaxWidth().height(48.dp), singleLine = true, placeholder = { Text("Search", fontSize = 11.sp) }, colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = DarkPanel2, focusedContainerColor = DarkPanel2), textStyle = LocalTextStyle.current.copy(fontSize = 12.sp))
+                OutlinedTextField(search, onSearchChange, Modifier.background(DarkPanel2, RoundedCornerShape(12.dp)).fillMaxWidth().height(48.dp), singleLine = true, placeholder = { Text("Search", fontSize = 11.sp) }, colors = OutlinedTextFieldDefaults.colors(), textStyle = LocalTextStyle.current.copy(fontSize = 12.sp))
             }
             if (current != null) {
                 Spacer(Modifier.height(4.dp)); Text(cardCount, color = DarkMuted, fontSize = 11.sp)
@@ -428,7 +428,7 @@ fun StudyScreen(nav: NavHostController, repo: Repository, statusFilter: CardStat
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = { Text("Search...", color = DarkMuted, fontSize = 12.sp) },
                         singleLine = true,
-                        colors = TextFieldDefaults.outlinedTextFieldColors(unfocusedContainerColor = DarkPanel2, focusedContainerColor = DarkPanel2),
+                        colors = OutlinedTextFieldDefaults.colors(),
                         textStyle = LocalTextStyle.current.copy(fontSize = 12.sp)
                     )
                     Spacer(Modifier.height(6.dp))
@@ -536,7 +536,7 @@ fun LearnedScreen(nav: NavHostController, repo: Repository) {
         } else {
             Column(Modifier.fillMaxSize().padding(pad).padding(horizontal = 12.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (!landscape) { CountsRow(progress, allCards); Text("Learned: ${learnedCards.size}", color = DarkMuted, fontSize = 11.sp) }
-                OutlinedTextField(search, { search = it; index = 0 }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Search") }, colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = DarkPanel2, focusedContainerColor = DarkPanel2))
+                OutlinedTextField(search, { search = it; index = 0 }, Modifier.background(DarkPanel2, RoundedCornerShape(12.dp)).fillMaxWidth(), singleLine = true, label = { Text("Search") }, colors = OutlinedTextFieldDefaults.colors())
                 Spacer(Modifier.height(6.dp))
                 if (viewMode == LearnedViewMode.LIST) {
                     if (learnedCards.isEmpty()) Text("Nothing learned yet.", color = DarkMuted)
@@ -625,14 +625,14 @@ fun AllCardsScreen(nav: NavHostController, repo: Repository) {
             if (!landscape) {
                 CountsRow(progress, allCards)
                 Text("Total: ${displayedCards.size}", color = DarkMuted, fontSize = 11.sp)
-                OutlinedTextField(search, { search = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Search") }, colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = DarkPanel2, focusedContainerColor = DarkPanel2))
+                OutlinedTextField(search, { search = it }, Modifier.background(DarkPanel2, RoundedCornerShape(12.dp)).fillMaxWidth(), singleLine = true, label = { Text("Search") }, colors = OutlinedTextFieldDefaults.colors())
                 Spacer(Modifier.height(6.dp))
             } else {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("Total: ${displayedCards.size}", color = DarkMuted, fontSize = 11.sp)
                     if (searchExpanded) {
                         Spacer(Modifier.width(8.dp))
-                        OutlinedTextField(search, { search = it }, Modifier.weight(1f).height(40.dp), singleLine = true, placeholder = { Text("Search", fontSize = 11.sp) }, colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = DarkPanel2, focusedContainerColor = DarkPanel2), textStyle = LocalTextStyle.current.copy(fontSize = 12.sp))
+                        OutlinedTextField(search, { search = it }, Modifier.background(DarkPanel2, RoundedCornerShape(12.dp)).weight(1f).height(40.dp), singleLine = true, placeholder = { Text("Search", fontSize = 11.sp) }, colors = OutlinedTextFieldDefaults.colors(), textStyle = LocalTextStyle.current.copy(fontSize = 12.sp))
                     }
                 }
                 Spacer(Modifier.height(4.dp))
@@ -724,7 +724,7 @@ fun CustomSetScreen(nav: NavHostController, repo: Repository) {
         } else {
             Column(Modifier.fillMaxSize().padding(pad).padding(horizontal = 12.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 CountsRow(progress, allCards); Text("Custom: ${customCards.size}", color = DarkMuted, fontSize = 11.sp)
-                OutlinedTextField(search, { search = it; index = 0; showFront = true }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Search") }, colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = DarkPanel2, focusedContainerColor = DarkPanel2))
+                OutlinedTextField(search, { search = it; index = 0; showFront = true }, Modifier.background(DarkPanel2, RoundedCornerShape(12.dp)).fillMaxWidth(), singleLine = true, label = { Text("Search") }, colors = OutlinedTextFieldDefaults.colors())
                 Spacer(Modifier.height(6.dp))
                 if (current == null) { Text("No cards in custom set.", color = DarkMuted); Text("Add from All tab via ☆", color = DarkMuted, fontSize = 11.sp) }
                 else {
@@ -764,7 +764,7 @@ fun DeletedScreen(nav: NavHostController, repo: Repository) {
     Scaffold(topBar = { TopAppBar(title = { Text("Deleted") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkPanel)) }, bottomBar = { NavBar(nav, Route.Deleted.path) }) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).padding(12.dp)) {
             Text("Deleted: ${deletedCards.size}", color = DarkMuted, fontSize = 11.sp)
-            OutlinedTextField(search, { search = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Search") }, colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = DarkPanel2, focusedContainerColor = DarkPanel2))
+            OutlinedTextField(search, { search = it }, Modifier.background(DarkPanel2, RoundedCornerShape(12.dp)).fillMaxWidth(), singleLine = true, label = { Text("Search") }, colors = OutlinedTextFieldDefaults.colors())
             Spacer(Modifier.height(8.dp))
             if (deletedCards.isEmpty()) Text("No deleted cards.", color = DarkMuted)
             else LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
