@@ -15,6 +15,15 @@ The format is simple and practical:
 
 ---
 
+## 5.5.2 (build 29) — 2026-01-14
+### Added
+- **Version/docs sync with Android App 4.4.2 (v22)
+
+### Changed
+- No functional server code changes in this patch release.
+
+---
+
 ## v5.5.1 (build 28) — 2026-01-13
 ### Added
 - **GET /api/sync/apikeys**: New endpoint for all authenticated users to pull API keys

@@ -16,25 +16,19 @@ The format is simple and practical:
 ---
 
 ## 4.4.2 (v22) — 2026-01-14
-### Added
-- **Settings toggle to show/hide the Custom Set (⭐) button (default ON).
-
-### Changed
-- **Unsure/To Study portrait layout uses a compact header row (title + search + group filter) and removes the redundant top app bar.
-- Portrait search is now icon-based (expand/collapse) like landscape; tap outside collapses search while keeping filtered results.
-- Sync screen now labels admin sessions with “(Admin)” in the login status line.
-
----
-
-## v4.4.1 (versionCode 21) — 2026-01-13
-### Added
-- `syncPullApiKeysForUser()` method in Repository for user-level API key retrieval
-- `pullApiKeysForUser()` method in WebAppSync calling `/api/sync/apikeys`
-
+- **Added**: Settings toggle to show/hide the Custom Set (⭐) button (default ON).
+- **Changed**: Unsure/To Study portrait layout uses a compact header row (title + search + group filter) and removes the redundant top app bar.
+- **Changed**: Portrait search is now icon-based (expand/collapse) like landscape; tap outside collapses search while keeping filtered results.
+- **Changed**: Sync screen now labels admin sessions with “(Admin)” in the login status line.
+## v4.4.2 (versionCode 21) — 2026-01-13
 ### Changed
 - **API keys pulled for ALL users**: All authenticated users now receive API keys on login (not just admins)
 - Uses new `/api/sync/apikeys` endpoint available to all authenticated users
 - Non-admin users can now use AI breakdown features without admin access
+
+### Added
+- `syncPullApiKeysForUser()` method in Repository for user-level API key retrieval
+- `pullApiKeysForUser()` method in WebAppSync calling `/api/sync/apikeys`
 
 ---
 

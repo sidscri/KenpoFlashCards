@@ -1,31 +1,31 @@
-START Tue 01/13/2026 23:16:32.30
+START Wed 01/14/2026 12:32:54.30
 BASE=C:\Users\Sidscri\Documents\GitHub\sidscri-apps
 SRC=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v2
 GRADLE=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v2\app\build.gradle
 SEVENZIP=C:\Program Files\7-Zip\7z.exe
-PARSED_versionCode=21
-PARSED_versionName=4.4.1
-ZIPPATH=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v4.4.1 v21.zip
-FIXES_NAME=Fixes v4.4.1 v21.txt
+PARSED_versionCode=22
+PARSED_versionName=4.4.2
+ZIPPATH=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v4.4.2 v22.zip
+FIXES_NAME=Fixes v4.4.2 v22.txt
 STAGE=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage_kfproject
 
 ROBOCOPY_EXIT_CODE=1
 Could Not Find C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage_kfproject\KenpoFlashcardsProject-v2\*.iml
-Creating fixes file: "C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage_kfproject\KenpoFlashcardsProject-v2\Fixes v4.4.1 v21.txt"
+Fixes file already correct: "C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage_kfproject\KenpoFlashcardsProject-v2\Fixes v4.4.2 v22.txt"
 Running 7z (from stage)...
 
 7-Zip 25.01 (x64) : Copyright (c) 1999-2025 Igor Pavlov : 2025-08-03
 
 Scanning the drive:
-39 folders, 72 files, 1770564 bytes (1730 KiB)
+39 folders, 72 files, 1773281 bytes (1732 KiB)
 
-Creating archive: C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v4.4.1 v21.zip
+Creating archive: C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v4.4.2 v22.zip
 
-Add new data to archive: 39 folders, 72 files, 1770564 bytes (1730 KiB)
+Add new data to archive: 39 folders, 72 files, 1773281 bytes (1732 KiB)
 
 
 Files read from disk: 72
-Archive size: 1565195 bytes (1529 KiB)
+Archive size: 1565898 bytes (1530 KiB)
 Everything is Ok
 7Z_EXIT_CODE=0
 SUCCESS

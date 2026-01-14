@@ -12,6 +12,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -339,7 +340,9 @@ private fun LandscapeStudyLayout(
                 // Action row
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Button(onPrimaryAction, Modifier.weight(1f).height(36.dp), colors = ButtonDefaults.buttonColors(containerColor = AccentGood)) { Text(primaryActionText, fontSize = 11.sp) }
+                    if (settings.showCustomSetButton) {
                     IconButton(onCustomToggle, modifier = Modifier.size(36.dp).background(DarkPanel2, RoundedCornerShape(6.dp))) { Icon(if (inCustomSet) Icons.Default.Star else Icons.Default.StarBorder, "Custom", tint = if (inCustomSet) Color.Yellow else DarkMuted, modifier = Modifier.size(18.dp)) }
+                    }
                     IconButton(onBreakdown, modifier = Modifier.size(36.dp).background(DarkPanel2, RoundedCornerShape(6.dp))) { Icon(Icons.Default.Extension, "Breakdown", tint = if (currentBreakdown?.hasContent() == true) AccentBlue else DarkMuted, modifier = Modifier.size(18.dp)) }
                     OutlinedButton(onSecondaryAction, Modifier.weight(1f).height(36.dp)) { Text(secondaryActionText, fontSize = 11.sp) }
                 }
@@ -364,6 +367,7 @@ fun StudyScreen(nav: NavHostController, repo: Repository, statusFilter: CardStat
     val adminSettings by repo.adminSettingsFlow().collectAsState(initial = AdminSettings())
     val groups = remember(allCards) { allCards.map { it.group }.distinct().sorted() }
     var search by remember { mutableStateOf("") }
+    var searchExpanded by remember { mutableStateOf(false) }
     var showFront by remember { mutableStateOf(true) }
     var index by remember { mutableStateOf(0) }
     var showBreakdown by remember { mutableStateOf(false) }
@@ -384,7 +388,7 @@ fun StudyScreen(nav: NavHostController, repo: Repository, statusFilter: CardStat
     val inCustomSet = current?.let { customSet.contains(it.id) } ?: false
     val atEnd = index >= filteredCards.size - 1 && filteredCards.isNotEmpty()
     
-    Scaffold(topBar = { TopAppBar(title = { Text(title) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkPanel), actions = { if (!landscape) { GroupFilterDropdown(groups, settings.studyFilterGroup) { scope.launch { repo.saveSettingsAll(settings.copy(studyFilterGroup = it)) } }; Spacer(Modifier.width(8.dp)) } }) }, bottomBar = { NavBar(nav, route) }) { pad ->
+    Scaffold(bottomBar = { NavBar(nav, route) }) { pad ->
         if (landscape) {
             Box(Modifier.fillMaxSize().padding(pad)) {
                 LandscapeStudyLayout(
@@ -409,27 +413,58 @@ fun StudyScreen(nav: NavHostController, repo: Repository, statusFilter: CardStat
             }
         } else {
             Column(Modifier.fillMaxSize().padding(pad).padding(horizontal = 12.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                CountsRow(progress, allCards)
-                OutlinedTextField(search, { search = it; index = 0; showFront = true }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Search") }, colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = DarkPanel2, focusedContainerColor = DarkPanel2))
-                Spacer(Modifier.height(6.dp))
-                if (current == null) { Text("No ${title.lowercase()} cards.", color = DarkMuted) }
-                else {
-                    Text("Card ${index + 1} / ${filteredCards.size}", color = DarkMuted, fontSize = 12.sp); Spacer(Modifier.height(4.dp))
-                    FlipCard(current, currentBreakdown, showFront, settings, { showFront = !showFront }, { if (index < filteredCards.size - 1) { index++; showFront = true } }, { if (index > 0) { index--; showFront = true } })
+                // Header row (title + search + group filter)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton({ searchExpanded = !searchExpanded }) { Icon(Icons.Default.Search, "Search", tint = DarkMuted) }
+                        GroupFilterDropdown(groups, settings.studyFilterGroup) { scope.launch { repo.saveSettingsAll(settings.copy(studyFilterGroup = it)) } }
+                    }
+                }
+                if (searchExpanded) {
+                    OutlinedTextField(
+                        value = search,
+                        onValueChange = { search = it; index = 0; showFront = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Search...", color = DarkMuted, fontSize = 12.sp) },
+                        singleLine = true,
+                        colors = TextFieldDefaults.outlinedTextFieldColors(unfocusedContainerColor = DarkPanel2, focusedContainerColor = DarkPanel2),
+                        textStyle = LocalTextStyle.current.copy(fontSize = 12.sp)
+                    )
                     Spacer(Modifier.height(6.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        OutlinedButton({ if (index > 0) { index--; showFront = true } }, enabled = index > 0, modifier = Modifier.weight(1f)) { Text("Prev") }; Spacer(Modifier.width(6.dp))
-                        Button({ tts.setRate(settings.speechRate); val text = if (settings.speakPronunciationOnly && !current.pron.isNullOrBlank()) current.pron else current.term + if (!current.pron.isNullOrBlank()) ", ${current.pron}" else ""; tts.speak(text) }, modifier = Modifier.weight(1f)) { Icon(Icons.Default.VolumeUp, "Speak") }; Spacer(Modifier.width(6.dp))
-                        OutlinedButton({ if (index < filteredCards.size - 1) { index++; showFront = true } }, enabled = index < filteredCards.size - 1, modifier = Modifier.weight(1f)) { Text("Next") }
+                } else {
+                    Spacer(Modifier.height(6.dp))
+                }
+                CountsRow(progress, allCards)
+                Box(Modifier.fillMaxSize()) {
+                    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        if (current == null) {
+                            Text("No ${title.lowercase()} cards.", color = DarkMuted)
+                        } else {
+                            Text("Card ${index + 1} / ${filteredCards.size}", color = DarkMuted, fontSize = 12.sp); Spacer(Modifier.height(4.dp))
+                            FlipCard(current, currentBreakdown, showFront, settings, { showFront = !showFront }, { if (index < filteredCards.size - 1) { index++; showFront = true } }, { if (index > 0) { index--; showFront = true } })
+                            Spacer(Modifier.height(6.dp))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                OutlinedButton({ if (index > 0) { index--; showFront = true } }, modifier = Modifier.weight(1f)) { Text("Prev") }; Spacer(Modifier.width(6.dp))
+                                Button({ tts.setRate(settings.speechRate); val textToSpeak = if (settings.speakPronunciationOnly) current?.pron ?: "" else current?.term ?: ""; tts.speak(textToSpeak) }, modifier = Modifier.weight(1f)) { Icon(Icons.Default.VolumeUp, "Speak") }; Spacer(Modifier.width(6.dp))
+                                OutlinedButton({ if (index < filteredCards.size - 1) { index++; showFront = true } }, modifier = Modifier.weight(1f)) { Text("Next") }
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Button({ scope.launch { repo.setStatus(current.id, CardStatus.LEARNED); if (index >= filteredCards.size - 1) index = (filteredCards.size - 2).coerceAtLeast(0); showFront = true } }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = AccentGood)) { Text("Got it ✓") }
+                                if (settings.showCustomSetButton) {
+                                    IconButton({ scope.launch { if (inCustomSet) repo.removeFromCustomSet(current.id) else repo.addToCustomSet(current.id) } }) { Icon(if (inCustomSet) Icons.Default.Star else Icons.Default.StarBorder, "Custom", tint = if (inCustomSet) Color.Yellow else DarkMuted) }
+                                }
+                                IconButton({ showBreakdown = true }) { Icon(Icons.Default.Info, "Breakdown", tint = if (currentBreakdown?.hasContent() == true) AccentBlue else DarkMuted) }
+                                OutlinedButton({ scope.launch { val nextStatus = if (isActive) CardStatus.UNSURE else CardStatus.ACTIVE; repo.setStatus(current.id, nextStatus); if (index >= filteredCards.size - 1) index = (filteredCards.size - 2).coerceAtLeast(0); showFront = true } }, modifier = Modifier.weight(1f)) { Text(if (isActive) "Unsure" else "Relearn") }
+                            }
+                            if (atEnd) { Spacer(Modifier.height(6.dp)); OutlinedButton({ index = 0; showFront = true }, Modifier.fillMaxWidth()) { Icon(Icons.Default.KeyboardArrowUp, "Top"); Spacer(Modifier.width(4.dp)); Text("Return to Top") } }
+                        }
                     }
-                    Spacer(Modifier.height(4.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Button({ scope.launch { repo.setStatus(current.id, CardStatus.LEARNED); if (index >= filteredCards.size - 1) index = (filteredCards.size - 2).coerceAtLeast(0); showFront = true } }, Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = AccentGood)) { Text("Got it ✓") }
-                        IconButton({ scope.launch { if (inCustomSet) repo.removeFromCustomSet(current.id) else repo.addToCustomSet(current.id) } }, modifier = Modifier.size(44.dp).background(DarkPanel2, RoundedCornerShape(8.dp))) { Icon(if (inCustomSet) Icons.Default.Star else Icons.Default.StarBorder, "Custom", tint = if (inCustomSet) Color.Yellow else DarkMuted) }
-                        IconButton({ showBreakdown = true }, modifier = Modifier.size(44.dp).background(DarkPanel2, RoundedCornerShape(8.dp))) { Icon(Icons.Default.Extension, "Breakdown", tint = if (currentBreakdown?.hasContent() == true) AccentBlue else DarkMuted) }
-                        OutlinedButton({ scope.launch { val newStatus = if (isActive) CardStatus.UNSURE else CardStatus.ACTIVE; repo.setStatus(current.id, newStatus); if (index >= filteredCards.size - 1) index = (filteredCards.size - 2).coerceAtLeast(0); showFront = true } }, Modifier.weight(1f)) { Text(if (isActive) "Unsure" else "Relearn") }
+                    // Tap outside search to collapse, but keep results filtered
+                    if (searchExpanded) {
+                        Box(Modifier.matchParentSize().pointerInput(Unit) { detectTapGestures(onTap = { searchExpanded = false }) })
                     }
-                    if (atEnd) { Spacer(Modifier.height(6.dp)); OutlinedButton({ index = 0; showFront = true }, Modifier.fillMaxWidth()) { Icon(Icons.Default.KeyboardArrowUp, "Top"); Spacer(Modifier.width(4.dp)); Text("Return to Top") } }
                 }
             }
         }
@@ -539,7 +574,9 @@ fun LearnedScreen(nav: NavHostController, repo: Repository) {
                         Spacer(Modifier.height(4.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                             OutlinedButton({ scope.launch { repo.setStatus(current.id, CardStatus.ACTIVE) } }, Modifier.weight(1f)) { Text("Relearn") }
+                                if (settings.showCustomSetButton) {
                             IconButton({ scope.launch { if (inCustomSet) repo.removeFromCustomSet(current.id) else repo.addToCustomSet(current.id) } }, modifier = Modifier.size(44.dp).background(DarkPanel2, RoundedCornerShape(8.dp))) { Icon(if (inCustomSet) Icons.Default.Star else Icons.Default.StarBorder, "Custom", tint = if (inCustomSet) Color.Yellow else DarkMuted) }
+                                }
                             IconButton({ showBreakdown = true; breakdownCard = current }, modifier = Modifier.size(44.dp).background(DarkPanel2, RoundedCornerShape(8.dp))) { Icon(Icons.Default.Extension, "Breakdown", tint = if (currentBreakdown?.hasContent() == true) AccentBlue else DarkMuted) }
                             OutlinedButton({ scope.launch { repo.setStatus(current.id, CardStatus.UNSURE) } }, Modifier.weight(1f)) { Text("Unsure") }
                         }
@@ -607,7 +644,9 @@ fun AllCardsScreen(nav: NavHostController, repo: Repository) {
                         Column(Modifier.padding(10.dp)) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                 Text(c.term, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                                if (settings.showCustomSetButton) {
                                 IconButton({ scope.launch { if (inCustomSet) repo.removeFromCustomSet(c.id) else repo.addToCustomSet(c.id) } }, modifier = Modifier.size(28.dp)) { Icon(if (inCustomSet) Icons.Default.Star else Icons.Default.StarBorder, "Custom", tint = if (inCustomSet) Color.Yellow else DarkMuted, modifier = Modifier.size(18.dp)) }
+                                }
                                 IconButton({ breakdownCard = c; showBreakdown = true }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Extension, "Breakdown", tint = if (bd?.hasContent() == true) AccentBlue else DarkMuted, modifier = Modifier.size(18.dp)) }
                                 AssistChip(onClick = {}, label = { Text(statusDisplayName(status), fontSize = 8.sp) })
                             }
@@ -805,6 +844,9 @@ fun SettingsScreen(nav: NavHostController, repo: Repository) {
             SettingToggle("Randomize Unsure", settings.randomizeUnsure) { scope.launch { repo.saveSettingsAll(settings.copy(randomizeUnsure = it)) } }
             SettingToggle("Randomize Learned Study", settings.randomizeLearnedStudy) { scope.launch { repo.saveSettingsAll(settings.copy(randomizeLearnedStudy = it)) } }
             
+            Spacer(Modifier.height(12.dp)); Text("Study Screens", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+            SettingToggle("Show Custom Set (⭐) button", settings.showCustomSetButton) { scope.launch { repo.saveSettingsAll(settings.copy(showCustomSetButton = it)) } }
+
             Spacer(Modifier.height(12.dp)); Text("List Views", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
             SettingToggle("Show definitions in All list", settings.showDefinitionsInAllList) { scope.launch { repo.saveSettingsAll(settings.copy(showDefinitionsInAllList = it)) } }
             SettingToggle("Show definitions in Learned list", settings.showDefinitionsInLearnedList) { scope.launch { repo.saveSettingsAll(settings.copy(showDefinitionsInLearnedList = it)) } }
@@ -1320,7 +1362,7 @@ fun SyncProgressScreen(nav: NavHostController, repo: Repository) {
                     Icon(if (adminSettings.isLoggedIn) Icons.Default.CheckCircle else Icons.Default.Error, "Status", tint = Color.White)
                     Spacer(Modifier.width(8.dp))
                     Column {
-                        Text("Login Status: ${if (adminSettings.isLoggedIn) "Connected" else "Not Logged In"}", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Login Status: ${if (adminSettings.isLoggedIn) "Logged In$adminLabel" else "Not Logged In"}", color = Color.White, fontWeight = FontWeight.Bold)
                         if (adminSettings.isLoggedIn) Text("User: ${adminSettings.username}$adminLabel", color = DarkMuted, fontSize = 11.sp)
                         else Text("Please login to sync progress", color = DarkMuted, fontSize = 11.sp)
                     }

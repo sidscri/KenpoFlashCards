@@ -1,0 +1,10 @@
+Version: KenpoFlashcards Android App
+VersionName: 4.4.2
+VersionCode: 22
+Date: 2026-01-14
+
+What changed:
+- Added a setting to show/hide the Custom Set (⭐) button (default ON).
+- Unsure/To Study portrait layout: compact header row with search icon; removed redundant top bar.
+- Portrait search collapses when tapping outside; search text stays so results remain filtered.
+- Sync status: “(Admin)” label appears for admin logins.

@@ -7,7 +7,7 @@ An Android flash-card app designed to help students of **American Kenpo Karate**
 
 This app focuses on **active recall**, **progress tracking**, and **organized learning**, making it ideal for beginners through advanced practitioners.
 
-**Current Version:** v4.4.1 (versionCode 21)  
+**Current Version:** v4.4.2 (versionCode 22)  
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -70,7 +70,7 @@ Move cards between states with dedicated buttons for flexible learning paths.
 - **Sync breakdowns** from shared database
 - **First login auto-sync** - always syncs on first device login (v4.4.0+)
 - **Auto-sync settings** - auto-pull on future logins, auto-push on change
-- **API keys pulled for all users** - AI features available to everyone (v4.4.1+)
+- **API keys pulled for all users** - AI features available to everyone (v4.4.2+)
 - Server: `sidscri.tplinkdns.com:8009`
 - Endpoint: `POST /api/sync/login` (token-based auth)
 
@@ -79,7 +79,7 @@ Move cards between states with dedicated buttons for flexible learning paths.
 - **Gemini API** integration (v4.2.0+)
 - **Model selection** - choose gpt-4o, gpt-4o-mini, gemini-1.5-flash, etc. (v4.3.0+)
 - **Key validation indicators** - shows "Key Accepted" or "Key Invalid" (v4.4.0+)
-- **Shared API keys** - All users receive API keys on login (v4.4.1+)
+- **Shared API keys** - All users receive API keys on login (v4.4.2+)
 - Automatically generates:
   - Term part splits
   - Part meanings/translations
@@ -201,6 +201,7 @@ app/src/main/
 
 | Version | Code | Key Changes |
 |---------|------|-------------|
+| **4.4.2** | 22 | API keys pulled for ALL users on login (not just admins), new `/api/sync/apikeys` endpoint |
 | **4.4.1** | 21 | API keys pulled for ALL users on login (not just admins), new `/api/sync/apikeys` endpoint |
 | **4.4.0** | 20 | Admin screen loading fix, (Admin) labels, key validation indicators, first-login auto-sync, admin auto-pulls API keys |
 | **4.3.0** | 19 | AI model selection, admin button fix, server-based admin users SoT |
@@ -235,7 +236,7 @@ Your server needs these endpoints:
 - `POST /api/sync/login` - Token authentication
 - `GET/POST /api/sync/pull|push` - Progress sync
 - `GET /api/sync/breakdowns` - Shared breakdowns
-- `GET /api/sync/apikeys` - API keys for all users (v4.4.1+)
+- `GET /api/sync/apikeys` - API keys for all users (v4.4.2+)
 - `GET /api/admin/users` - Admin usernames (SoT)
 - `GET/POST /api/admin/apikeys` - Encrypted API keys (admin only for POST)
 

@@ -5,7 +5,7 @@
 
 Flask-based web application providing sync API and web UI for Kenpo Flashcards.
 
-**Current Version:** v5.5.1 (build 28)  
+**Current Version:** v5.5.2 (build 29)  
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -19,7 +19,7 @@ Flask-based web application providing sync API and web UI for Kenpo Flashcards.
 - **Helper Mapping** - Canonical card IDs for cross-device consistency
 - **AI Integration** - ChatGPT and Gemini API for breakdown autofill
 - **Encrypted API Keys** - Secure storage shared between Android and web
-- **Shared API Keys** - All authenticated users can pull API keys (v5.5.1+)
+- **Shared API Keys** - All authenticated users can pull API keys (v5.5.2+)
 - **Admin Management** - Centralized admin users Source of Truth
 
 ---
@@ -66,7 +66,7 @@ Open: `http://localhost:8009`
 | `/api/sync/pull` | GET | Pull progress from server |
 | `/api/sync/breakdowns` | GET | Get all breakdowns |
 | `/api/sync/helper` | GET | Canonical ID mapping |
-| `/api/sync/apikeys` | GET | **Get API keys (all users)** ✨ v5.5.1 |
+| `/api/sync/apikeys` | GET | **Get API keys (all users)** ✨ v5.5.2 |
 
 ### Breakdowns
 | Endpoint | Method | Description |
@@ -166,7 +166,7 @@ Admin users are defined in `data/admin_users.json` (Source of Truth):
 
 ---
 
-## 🔑 API Key Sharing (v5.5.1+)
+## 🔑 API Key Sharing (v5.5.2+)
 
 API keys are now shared with ALL authenticated users:
 
@@ -208,7 +208,7 @@ Should return JSON with `version`, `term_to_id`, `cards`
 ```
 http://localhost:8009/api/version
 ```
-Should return `{"version": "5.5.1", "build": 28, ...}`
+Should return `{"version": "5.5.2", "build": 28, ...}`
 
 ### 3. Test Admin Users Endpoint
 ```
@@ -225,6 +225,7 @@ Confirm `data/helper.json` and `data/admin_users.json` exist on disk.
 
 | Version | Build | Key Changes |
 |---------|-------|-------------|
+| **5.5.2** | 29 | `GET /api/sync/apikeys` for all users, API keys shared on login |
 | **5.5.1** | 28 | `GET /api/sync/apikeys` for all users, API keys shared on login |
 | **5.5.0** | 27 | AI Access page, model selection, startup key loading, admin_users.json SoT |
 | **5.4.0** | 26 | Encrypted API key storage, Gemini API, admin endpoints |
