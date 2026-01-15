@@ -1,8 +1,1 @@
-Version: KenpoFlashcards Web Server
-Version: 5.5.2
-Build: v29
-Date: 2026-01-14
-
-Notes:
-- Patch release to keep versioning/docs aligned with Android App 4.4.2 (v22).
-- No functional server-side code changes in this release.
+-----INTENTIONALLY LEFT BLANK-----

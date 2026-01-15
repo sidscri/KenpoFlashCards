@@ -186,9 +186,14 @@ The format is simple and practical:
 - **Pre-commit hook**: Remind to update changelog if certain files changed
 - **Release script**: Prompt for changelog entry when bumping version
 
-## Admin logs (v5.5.2 build v29)
+## v5.5.2 (v29) – Login fix
 
-- Added a Logs panel to the admin page with tabs for **Server**, **Error**, and **User** logs.
-- Logs can be **refreshed**, **downloaded**, and **reset** (starts a new log file) from the GUI.
-- For safety, log endpoints are only accessible when opening the admin page on the server machine (localhost).
+- Fixed login regression for admin users after moving admin usernames to **admin_users.json**.
+- Login is **case-insensitive**.
+- For personal LAN deployments: admin users may log in from the private network with a **blank password** (to avoid lockouts).
+  - Recommended: set an admin password in profiles.json if you want strict security.
+
+### Logs access change
+
+The admin Logs panel no longer requires localhost. It now requires an **authenticated admin session**.
 

@@ -22,7 +22,23 @@ The format is simple and practical:
 ### Changed
 - **Unsure/To Study portrait layout uses a compact header row (title + search + group filter) and removes the redundant top app bar.
 - Portrait search is now icon-based (expand/collapse) like landscape; tap outside collapses search while keeping filtered results.
-- Sync screen now labels admin sessions with “(Admin)” in the login status line.
+- Sync screen now labels admin sessions with “(Admin)” in the login status line.hat changed:
+- Added a setting to show/hide the Custom Set (⭐) button (default ON).
+- Unsure/To Study portrait layout: compact header row with search icon; removed redundant top bar.
+- Portrait search collapses when tapping outside; search text stays so results remain filtered.
+- Sync status: “(Admin)” label appears for admin logins.
+- Admin badge:** if the logged-in user is an admin, the UI shows **(Admin)** after the username.
+- Search UX (portrait):**
+  - Portrait uses a **search icon** toggle (matches landscape).
+  - Tapping outside of search **closes the search UI but keeps filtered results**.
+  - Added an **X** icon to clear search and reset the deck position.
+- **Random study controls:**
+  - Added **Random** checkbox beside **Card #/##**.
+  - Added **⟳ Reshuffle** icon to re-randomize the current deck on demand.
+  - Applies to: **To Study**, **Unsure**, **Custom**, **Learned → Study**.
+- **Custom Set:**
+  - Custom Set now uses **Custom Set Settings** for sort/random (instead of global study settings).
+  - Added Settings action to **pick a number of random Unlearned cards** for the Custom Set (with 🎲 helper).
 
 ---
 
@@ -256,3 +272,19 @@ versionName "4.1.0"
 
 # Output: app/build/outputs/apk/release/app-release.apk
 ```
+
+## v4.4.2 (v22) – Implemented fixes (verified in code)
+
+- **Admin badge:** if the logged-in user is an admin, the UI shows **(Admin)** after the username.
+- **Search UX (portrait):**
+  - Portrait uses a **search icon** toggle (matches landscape).
+  - Tapping outside of search **closes the search UI but keeps filtered results**.
+  - Added an **X** icon to clear search and reset the deck position.
+- **Random study controls:**
+  - Added **Random** checkbox beside **Card #/##**.
+  - Added **⟳ Reshuffle** icon to re-randomize the current deck on demand.
+  - Applies to: **To Study**, **Unsure**, **Custom**, **Learned → Study**.
+- **Custom Set:**
+  - Custom Set now uses **Custom Set Settings** for sort/random (instead of global study settings).
+  - Added Settings action to **pick a number of random Unlearned cards** for the Custom Set (with 🎲 helper).
+
