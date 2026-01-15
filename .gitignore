@@ -57,3 +57,8 @@ KenpoFlashcardsWebServer_Service_Tray/
 *.aab
 *.apk
 yarn-error.log*
+
+# Excel temp/lock files
+~$*.xlsx
+~$*.xls
+~$*.xlsm

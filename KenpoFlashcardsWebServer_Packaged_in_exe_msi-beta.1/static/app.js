@@ -1,0 +1,1853 @@
+let allGroups = [];
+let scopeGroup = "";         // selected group for studying ("" means all)
+let allCardsMode = true; // studying all cards across groups    // "All Cards" button (flat mode)
+let activeTab = "active";    // active | unsure | learned
+
+// Learned tab can be viewed as a list (default) or studied like a deck
+let learnedViewMode = "list"; // list | study
+
+function updateFilterHighlight(){
+  const btn = $("allCardsBtn");
+  const sel = $("groupSelect");
+  if(!btn || !sel) return;
+  const usingAll = !!allCardsMode || !sel.value;
+  btn.classList.toggle("filterActive", usingAll);
+  sel.classList.toggle("filterActive", !usingAll);
+}
+
+
+function updateLearnedViewHighlight(){
+  const wrap = $("learnedViewToggle");
+  if(!wrap) return;
+  const show = (activeTab === "learned");
+  wrap.classList.toggle("hidden", !show);
+  const bList = $("learnedViewListBtn");
+  const bStudy = $("learnedViewStudyBtn");
+  if(bList) bList.classList.toggle("active", learnedViewMode === "list");
+  if(bStudy) bStudy.classList.toggle("active", learnedViewMode === "study");
+}
+
+let deck = [];
+let deckIndex = 0;
+
+let settingsAll = null;      // global settings
+let settingsGroup = {};      // group overrides (loaded on demand)
+
+const $ = (id) => document.getElementById(id);
+function bind(id, evt, fn){
+  const el = $(id);
+  if(!el){ console.warn("Missing element:", id); return; }
+  el.addEventListener(evt, fn);
+}
+
+let currentUser = null; // {id, username, display_name}
+
+function isAdminUser(){
+  try{
+    return !!(currentUser && (currentUser.username||"").toString().trim().toLowerCase() === "sidscri");
+  } catch(e){
+    return false;
+  }
+}
+let appInitialized = false;
+
+let aiStatus = { openai_available: false, openai_model: "", gemini_available: false, gemini_model: "", selected_provider: "auto" };
+
+async function postLoginInit(){
+  if(appInitialized) return;
+  await loadGroups();
+  await loadHealth();
+  try{ aiStatus = await jget("/api/ai"); } catch(e){ aiStatus = { openai_available:false, openai_model:"", gemini_available:false, gemini_model:"", selected_provider:"auto" }; }
+  await refreshCounts();
+  // default start view
+  setTab("active");
+  appInitialized = true;
+}
+
+
+function showAuthOverlay(){ $("authOverlay").classList.remove("hidden"); }
+function hideAuthOverlay(){ $("authOverlay").classList.add("hidden"); }
+
+function setAuthView(view){
+  $("loginBox").classList.toggle("hidden", view !== "login");
+  $("registerBox").classList.toggle("hidden", view !== "register");
+}
+
+function setUserLine(){
+  if(currentUser){
+    $("userLine").textContent = `User: ${currentUser.display_name || currentUser.username}`;
+  } else {
+    $("userLine").textContent = "";
+  }
+}
+
+function clearAuthForms(){
+  $("loginUsername").value = "";
+  $("loginPassword").value = "";
+  $("regUsername").value = "";
+  $("regPassword").value = "";
+  $("regDisplayName").value = "";
+}
+
+async function ensureLoggedIn(){
+  const me = await fetch("/api/me").then(r=>r.json());
+  if(me.logged_in){
+    currentUser = me.user;
+    setUserLine();
+    hideAuthOverlay();
+    if(!appInitialized){
+      try{ await postLoginInit(); } catch(e){}
+    }
+    return true;
+  }
+
+  currentUser = null;
+  setUserLine();
+  showAuthOverlay();
+  clearAuthForms();
+  $("authMessage").textContent = "Sign in to continue";
+  setAuthView("login");
+  return false;
+}
+
+
+async function jget(url){
+  const r = await fetch(url);
+  if(r.status === 401){
+    await ensureLoggedIn();
+    throw new Error("login_required");
+  }
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function jpost(url, body){
+  const r = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body||{})});
+  if(r.status === 401){
+    await ensureLoggedIn();
+    throw new Error("login_required");
+  }
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+function setStatus(msg){ $("status").textContent = msg; }
+
+function escapeHtml(str){
+  return String(str ?? "")
+    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+}
+
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+}
+
+function isFlipped(){ return $("card").classList.contains("flipped"); }
+function flip(){ $("card").classList.toggle("flipped"); }
+
+function setTab(tab){
+  activeTab = tab;
+
+  // Show/hide the Learned view toggle
+  const lvt = $("learnedViewToggle");
+  if(lvt) lvt.classList.toggle("hidden", tab !== "learned");
+  const lvList = $("learnedViewListBtn");
+  const lvStudy = $("learnedViewStudyBtn");
+  if(lvList) lvList.classList.toggle("active", tab === "learned" && learnedViewMode === "list");
+  if(lvStudy) lvStudy.classList.toggle("active", tab === "learned" && learnedViewMode === "study");
+
+  // Update study action button labels based on current mode
+  updateStudyActionButtons();
+for(const [id, name] of [["tabActive","active"],["tabUnsure","unsure"],["tabLearned","learned"],["tabAll","all"]]){
+    $(id).classList.toggle("active", tab===name);
+  }
+
+  const study = (tab === "active" || tab === "unsure" || (tab === "learned" && learnedViewMode === "study"));
+  $("viewStudy").classList.toggle("hidden", !study);
+  $("viewList").classList.toggle("hidden", study);
+  $("viewSettings").classList.add("hidden");
+
+  refresh();
+}
+
+function updateStudyActionButtons(){
+  const got = $("gotItBtn");
+  const ub  = $("unsureBtn");
+  if(!got || !ub) return;
+
+  // Default (Unlearned/Unsure study)
+  got.textContent = "Got it ✓ (mark learned)";
+  got.classList.remove("neutral", "warn");
+  got.classList.add("good");
+
+  ub.textContent = (activeTab === "unsure") ? "Relearn" : "Unsure";
+  ub.classList.remove("good", "neutral");
+  ub.classList.add("secondary");
+
+  // Learned study mode: replace buttons with Relearn / Still Unsure
+  if(activeTab === "learned" && learnedViewMode === "study"){
+    got.textContent = "Relearn";
+    got.classList.remove("good");
+    got.classList.add("neutral");
+
+    ub.textContent = "Still Unsure";
+    ub.classList.remove("secondary");
+    ub.classList.add("warn");
+  }
+}
+
+async function refreshCounts(){
+  try{
+    const groupParam = scopeGroup ? `&group=${encodeURIComponent(scopeGroup)}` : "";
+    const c = await jget(`/api/counts?${groupParam}`);
+    $("countsLine").textContent = `Unlearned: ${c.active} | Unsure: ${c.unsure} | Learned: ${c.learned}`;
+  } catch(e){
+    $("countsLine").textContent = `Unlearned: — | Unsure: — | Learned: —`;
+  }
+}
+
+async function loadHealth(){
+  const h = await jget("/api/health");
+  // Don't show local file path on the page
+  $("healthLine").textContent = `Cards loaded: ${h.cards_loaded}`;
+}
+
+async function loadGroups(){
+  allGroups = await jget("/api/groups");
+
+  const sel = $("groupSelect");
+  sel.innerHTML = "";
+  const optPick = document.createElement("option");
+  optPick.value = "";
+  optPick.textContent = "Select group…";
+  sel.appendChild(optPick);
+
+  for(const g of allGroups){
+    const o = document.createElement("option");
+    o.value = g;
+    o.textContent = g;
+    sel.appendChild(o);
+  }
+
+  scopeGroup = "";
+  sel.value = "";
+  allCardsMode = true;
+
+  updateFilterHighlight();
+  updateLearnedViewHighlight();
+
+  // Build a dark custom dropdown (native <select> option list is white on Windows).
+  setupGroupDropdown(allGroups);
+
+  sel.addEventListener("change", () => {
+    scopeGroup = sel.value;
+    allCardsMode = scopeGroup ? false : true;
+    updateFilterHighlight();
+  updateLearnedViewHighlight();
+    refresh();
+  });
+
+  const scopeSel = $("settingsScope");
+  scopeSel.innerHTML = "";
+  const sAll = document.createElement("option");
+  sAll.value = "all";
+  sAll.textContent = "All Groups";
+  scopeSel.appendChild(sAll);
+
+  for(const g of allGroups){
+    const o = document.createElement("option");
+    o.value = g;
+    o.textContent = g;
+    scopeSel.appendChild(o);
+  }
+}
+
+let _groupDropdownWired = false;
+function setupGroupDropdown(groupsList){
+  const root = $("groupDropdown");
+  const btn = $("groupDropdownBtn");
+  const menu = $("groupDropdownMenu");
+  const sel = $("groupSelect");
+  if(!root || !btn || !menu || !sel) return;
+
+  // Render menu
+  const current = sel.value || "";
+  const items = [{value:"", label:"Select group…", muted:true}].concat(
+    (groupsList || []).map(g => ({value:g, label:g, muted:false}))
+  );
+  menu.innerHTML = items.map(it => {
+    const cls = ["dropdownItem", it.muted ? "muted" : "", it.value===current ? "selected" : ""].filter(Boolean).join(" ");
+    const safe = (it.label||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    return `<div class="${cls}" role="option" data-value="${(it.value||"").replace(/"/g,"&quot;")}">${safe}</div>`;
+  }).join("");
+
+  const setBtnLabel = (v) => { btn.textContent = v ? v : "Select group…"; };
+  setBtnLabel(current);
+
+  // One-time wiring
+  if(!_groupDropdownWired){
+    _groupDropdownWired = true;
+
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const isOpen = !menu.classList.contains("hidden");
+      if(isOpen){
+        menu.classList.add("hidden");
+        btn.setAttribute("aria-expanded","false");
+      }else{
+        menu.classList.remove("hidden");
+        btn.setAttribute("aria-expanded","true");
+      }
+    });
+
+    menu.addEventListener("click", (e) => {
+      const item = e.target.closest(".dropdownItem");
+      if(!item) return;
+      const v = item.getAttribute("data-value") || "";
+      sel.value = v;
+      setBtnLabel(v);
+      // Update selected styling
+      [...menu.querySelectorAll(".dropdownItem")].forEach(el => el.classList.toggle("selected", el.getAttribute("data-value") === v));
+      menu.classList.add("hidden");
+      btn.setAttribute("aria-expanded","false");
+      sel.dispatchEvent(new Event("change"));
+    });
+
+    // Close on outside click / ESC
+    document.addEventListener("click", (e) => {
+      if(!root.contains(e.target)){
+        menu.classList.add("hidden");
+        btn.setAttribute("aria-expanded","false");
+      }
+    }, true);
+
+    document.addEventListener("keydown", (e) => {
+      if(e.key === "Escape"){
+        menu.classList.add("hidden");
+        btn.setAttribute("aria-expanded","false");
+      }
+    });
+  }
+}
+
+async function getScopeSettings(){
+  if(!settingsAll){
+    const res = await jget("/api/settings?scope=all");
+    settingsAll = res.settings;
+  }
+
+  if(!scopeGroup){
+    return settingsAll;
+  }
+
+  if(!(scopeGroup in settingsGroup)){
+    const res = await jget(`/api/settings?scope=${encodeURIComponent(scopeGroup)}`);
+    settingsGroup[scopeGroup] = res.settings || {};
+  }
+
+  return { ...settingsAll, ...settingsGroup[scopeGroup] };
+}
+
+function labelFor(card, settings){
+  const showGroup = settings.show_group_label !== false;
+  const showSub  = settings.show_subgroup_label !== false;
+
+  const g = (card.group || "").trim();
+  const sg = (card.subgroup || "").trim();
+
+  const parts = [];
+  if(showGroup && g) parts.push(g);
+  if(showSub && sg) parts.push(sg);
+
+  return parts.join(" • ");
+}
+
+
+function getStudyRandomizeFlag(settings){
+  const base = (settings && typeof settings.randomize === "boolean") ? settings.randomize : false;
+  const link = (settings && settings.link_randomize_study_tabs !== false);
+  // Per-tab flags live in All-Groups scope (global)
+  if(activeTab === "active"){
+    return (settings && typeof settings.randomize_unlearned === "boolean") ? settings.randomize_unlearned : base;
+  }
+  if(activeTab === "unsure"){
+    return (settings && typeof settings.randomize_unsure === "boolean") ? settings.randomize_unsure : base;
+  }
+  if(activeTab === "learned" && learnedViewMode === "study"){
+    return (settings && typeof settings.randomize_learned_study === "boolean") ? settings.randomize_learned_study : base;
+  }
+  return base;
+}
+
+async function setStudyRandomizeFlag(value){
+  const settings = await getScopeSettings();
+  const link = (settings && settings.link_randomize_study_tabs !== false);
+  const patch = {};
+  if(link){
+    patch.randomize_unlearned = !!value;
+    patch.randomize_unsure = !!value;
+    patch.randomize_learned_study = !!value;
+  } else {
+    if(activeTab === "active") patch.randomize_unlearned = !!value;
+    else if(activeTab === "unsure") patch.randomize_unsure = !!value;
+    else if(activeTab === "learned" && learnedViewMode === "study") patch.randomize_learned_study = !!value;
+  }
+  await jpost("/api/settings", {scope:"all", settings: patch});
+  // refresh settings cache
+  settingsAll = null;
+}
+
+
+function updateRandomStudyUI(){
+  try{
+    const chk = $("randomStudyChk");
+    const btn = $("randomRefreshBtn");
+    if(!chk || !btn) return;
+    const on = !!chk.checked;
+    btn.style.display = on ? "inline-flex" : "none";
+  } catch(e){}
+}
+
+let breakdownCurrentCard = null;
+let breakdownCurrentData = null;
+
+// Cache for inline breakdown lookups (used to show breakdown on study card definition side)
+const breakdownInlineCache = Object.create(null); // id -> breakdown or null
+const breakdownInlinePending = Object.create(null); // id -> Promise
+let breakdownInlineRenderToken = 0;
+
+function breakdownHasContent(b){
+  if(!b) return false;
+  const parts = Array.isArray(b.parts) ? b.parts : [];
+  const anyParts = parts.some(p => p && ((p.part||"").trim() || (p.meaning||"").trim()));
+  const lit = (b.literal || "").trim();
+  return anyParts || !!lit;
+}
+
+async function getBreakdownInline(cardId){
+  if(!cardId) return null;
+  if(Object.prototype.hasOwnProperty.call(breakdownInlineCache, cardId)) return breakdownInlineCache[cardId];
+  if(breakdownInlinePending[cardId]) return breakdownInlinePending[cardId];
+
+  breakdownInlinePending[cardId] = (async ()=>{
+    try{
+      const res = await jget(`/api/breakdown?id=${encodeURIComponent(cardId)}`);
+      const b = res && res.breakdown ? res.breakdown : null;
+      breakdownInlineCache[cardId] = b;
+      return b;
+    } catch(e){
+      breakdownInlineCache[cardId] = null;
+      return null;
+    } finally {
+      delete breakdownInlinePending[cardId];
+    }
+  })();
+
+  return breakdownInlinePending[cardId];
+}
+
+function renderBreakdownInlineHTML(b){
+  if(!breakdownHasContent(b)) return "";
+  const parts = Array.isArray(b.parts) ? b.parts : [];
+  const cleanParts = parts
+    .filter(p => p && ((p.part||"").trim() || (p.meaning||"").trim()))
+    .map(p => ({part:(p.part||"").trim(), meaning:(p.meaning||"").trim()}));
+
+  const pieces = [];
+  if(cleanParts.length){
+    const spans = cleanParts.map(p => {
+      const left = escapeHtml(p.part || "");
+      const right = escapeHtml(p.meaning || "");
+      if(left && right) return `<span><b>${left}</b> = ${right}</span>`;
+      if(left) return `<span><b>${left}</b></span>`;
+      return `<span>${right}</span>`;
+    });
+    pieces.push(
+      `<div class="label">Term breakdown</div>` +
+      `<div class="value parts">${spans.join('<span class="sep">•</span>')}</div>`
+    );
+  }
+  const lit = (b.literal || "").trim();
+  if(lit){
+    pieces.push(
+      `<div class="label">Literal meaning</div>` +
+      `<div class="value">${escapeHtml(lit)}</div>`
+    );
+  }
+  return pieces.join("");
+}
+
+async function updateStudyDefinitionExtras(card, settings){
+  const front = $("frontExtras");
+  const back = $("backExtras");
+  if(!front || !back) return;
+
+  // Clear by default
+  front.innerHTML = "";
+  back.innerHTML = "";
+  front.classList.add("hidden");
+  back.classList.add("hidden");
+
+  if(!card || !settings) return;
+
+  // Show breakdown by default unless the "Remove breakdown" toggle is enabled for this Study tab
+  const isLearnedStudy = (activeTab === "learned" && learnedViewMode === "study");
+  const tabKey = (activeTab === "active") ? "unlearned"
+    : (activeTab === "unsure") ? "unsure"
+    : (isLearnedStudy ? "learned_study" : "");
+  if(!tabKey) return;
+
+  const applyAll = !!settings.breakdown_apply_all_tabs;
+  let remove = false;
+  if(applyAll){
+    remove = !!settings.breakdown_remove_all_tabs;
+  } else {
+    if(tabKey === "unlearned") remove = !!settings.breakdown_remove_unlearned;
+    else if(tabKey === "unsure") remove = !!settings.breakdown_remove_unsure;
+    else if(tabKey === "learned_study") remove = !!settings.breakdown_remove_learned_study;
+  }
+
+  if(remove) return;
+
+  const token = ++breakdownInlineRenderToken;
+  const b = await getBreakdownInline(card.id);
+  if(token !== breakdownInlineRenderToken) return; // stale
+  if(!breakdownHasContent(b)) return;
+
+  const html = renderBreakdownInlineHTML(b);
+  if(!html) return;
+
+  const reversed = !!settings.reverse_faces;
+  // Definition side is back when NOT reversed, front when reversed
+  const target = reversed ? front : back;
+  target.innerHTML = html;
+  target.classList.remove("hidden");
+}
+
+
+
+function renderBreakdownParts(parts){
+  const wrap = $("breakdownParts");
+  wrap.innerHTML = "";
+  const arr = Array.isArray(parts) ? parts : [];
+  if(!arr.length){
+    const empty = document.createElement("div");
+    empty.className = "mini muted";
+    empty.textContent = "No parts yet. Click “+ Add part” or Auto-fill.";
+    wrap.appendChild(empty);
+  }
+  for(let i=0;i<arr.length;i++){
+    const row = document.createElement("div");
+    row.className = "breakdownRow";
+
+    const part = document.createElement("input");
+    part.className = "input";
+    part.placeholder = "Part (e.g., Tae)";
+    part.value = arr[i].part || "";
+    part.setAttribute("data-idx", String(i));
+    part.setAttribute("data-field", "part");
+
+    const meaning = document.createElement("input");
+    meaning.className = "input";
+    meaning.placeholder = "Meaning (e.g., Foot)";
+    meaning.value = arr[i].meaning || "";
+    meaning.setAttribute("data-idx", String(i));
+    meaning.setAttribute("data-field", "meaning");
+
+    const del = document.createElement("button");
+    del.className = "secondary tinyBtn";
+    del.textContent = "✕";
+    del.title = "Remove part";
+    del.addEventListener("click", ()=>{
+      breakdownCurrentData.parts.splice(i,1);
+      renderBreakdownParts(breakdownCurrentData.parts);
+    });
+
+    row.appendChild(part);
+    row.appendChild(meaning);
+    row.appendChild(del);
+    wrap.appendChild(row);
+  }
+}
+
+async function openBreakdown(card){
+  if(!card) return;
+  breakdownCurrentCard = card;
+
+  const res = await jget(`/api/breakdown?id=${encodeURIComponent(card.id)}`);
+  const existing = res.breakdown || null;
+
+  breakdownCurrentData = {
+    id: card.id,
+    term: card.term || "",
+    parts: (existing && Array.isArray(existing.parts)) ? existing.parts.map(p=>({part:p.part||"", meaning:p.meaning||""})) : [],
+    literal: (existing && existing.literal) ? existing.literal : "",
+    notes: (existing && existing.notes) ? existing.notes : "",
+    updated_at: (existing && existing.updated_at) ? existing.updated_at : null,
+    updated_by: (existing && existing.updated_by) ? existing.updated_by : null
+  };
+
+  $("breakdownTitle").textContent = `Breakdown: ${card.term || ""}`;
+  $("breakdownLiteral").value = breakdownCurrentData.literal || "";
+  $("breakdownNotes").value = breakdownCurrentData.notes || "";
+
+  const meta = $("breakdownMeta");
+  if(breakdownCurrentData.updated_at){
+    const d = new Date(breakdownCurrentData.updated_at*1000);
+    meta.textContent = `Last saved: ${d.toLocaleString()}${breakdownCurrentData.updated_by ? " • " + breakdownCurrentData.updated_by : ""}`;
+  } else {
+    meta.textContent = "Not saved yet.";
+  }
+
+  // Only admin (sidscri) can overwrite an existing saved breakdown
+  const saveBtn = $("breakdownSaveBtn");
+  if(saveBtn){
+    const readOnly = !!existing && !isAdminUser();
+    saveBtn.disabled = readOnly;
+    saveBtn.classList.toggle("disabled", readOnly);
+    if(readOnly){
+      meta.textContent = (meta.textContent ? meta.textContent + " • " : "") + "Read-only (admin only)";
+    }
+  }
+
+  renderBreakdownParts(breakdownCurrentData.parts);
+
+  // Update the Auto-fill button label based on server AI availability
+  const autoBtn = $("breakdownAutoBtn");
+  if(autoBtn){
+    const hasAI = !!(aiStatus && (aiStatus.openai_available || aiStatus.gemini_available));
+    if(hasAI){
+      autoBtn.textContent = "Auto-fill (AI)";
+      const prov = (aiStatus.selected_provider || "auto").toLowerCase();
+      const bits = [];
+      if(aiStatus.openai_available) bits.push(`OpenAI: ${aiStatus.openai_model || "available"}`);
+      if(aiStatus.gemini_available) bits.push(`Gemini: ${aiStatus.gemini_model || "available"}`);
+      autoBtn.title = `AI provider: ${prov}. ${bits.join(" • ")}`;
+    } else {
+      autoBtn.textContent = "Auto-fill";
+      autoBtn.title = "Uses built-in suggestions unless server AI is configured";
+    }
+  }
+
+  $("breakdownOverlay").classList.remove("hidden");
+}
+
+function closeBreakdown(){
+  $("breakdownOverlay").classList.add("hidden");
+  breakdownCurrentCard = null;
+  breakdownCurrentData = null;
+}
+
+async function loadBreakdownsList(){
+  const q = ($("breakdownsSearch").value || "").trim();
+  const qParam = q ? `?q=${encodeURIComponent(q)}` : "";
+  const res = await jget(`/api/breakdowns${qParam}`);
+  const items = (res.items || []);
+  const list = $("breakdownsList");
+  list.innerHTML = "";
+  if(!items.length){
+    const empty = document.createElement("div");
+    empty.className = "mini muted";
+    empty.textContent = "No saved breakdowns yet.";
+    list.appendChild(empty);
+    return;
+  }
+  for(const it of items){
+    const row = document.createElement("div");
+    row.className = "breakdownListItem";
+    const title = document.createElement("div");
+    title.className = "bTitle";
+    title.textContent = it.term || "(unknown)";
+    const sub = document.createElement("div");
+    sub.className = "mini muted";
+    const parts = (it.parts||[]).filter(p=>p && (p.part||p.meaning)).map(p=>`${p.part}${p.meaning ? " = " + p.meaning : ""}`).join(" • ");
+    sub.textContent = (it.literal ? it.literal : parts);
+    row.appendChild(title);
+    row.appendChild(sub);
+    row.addEventListener("click", async ()=>{
+      // Need the card to open by id; fall back to a minimal object
+      await openBreakdown({id: it.id, term: it.term});
+    });
+    list.appendChild(row);
+  }
+}
+
+
+function buildDeck(cards, settings){
+  // All Cards (across groups)
+  if(allCardsMode){
+    if(settings.all_mode === "flat"){
+      const d = cards.slice();
+      if(settings.randomize) shuffle(d);
+      else if(settings.card_order === "alpha"){
+        d.sort((a,b)=> (a.term||"").localeCompare(b.term||""));
+      }
+      return d;
+    }
+
+    // grouped
+    const byGroup = new Map();
+    for(const c of cards){
+      const g = c.group || "General";
+      if(!byGroup.has(g)) byGroup.set(g, []);
+      byGroup.get(g).push(c);
+    }
+
+    let groupList = Array.from(byGroup.keys());
+    if(settings.group_order === "alpha"){
+      groupList.sort((a,b)=> a.localeCompare(b));
+    }
+
+    const out = [];
+    for(const g of groupList){
+      const arr = byGroup.get(g);
+      if(settings.randomize){
+        shuffle(arr);
+      } else if(settings.card_order === "alpha"){
+        arr.sort((a,b)=> (a.term||"").localeCompare(b.term||""));
+      }
+      out.push(...arr);
+    }
+    return out;
+  }
+
+  // Studying a specific group
+  const d = cards.slice();
+  if(settings.randomize) shuffle(d);
+  else if(settings.card_order === "alpha"){
+    d.sort((a,b)=> (a.term||"").localeCompare(b.term||""));
+  }
+  return d;
+}
+
+function renderStudyCard(){
+  $("card").classList.remove("flipped");
+
+  if(!deck.length){
+    $("pillLabel").textContent = scopeGroup ? scopeGroup : "All Cards";
+    $("frontText").textContent = "No cards left 🎉";
+    $("frontSub").textContent = "";
+    $("backText").textContent = "Everything here has been moved out of this list.";
+    $("backSub").textContent = "";
+    $("cardPos").textContent = "Card 0 / 0";
+    // Clear any inline breakdown extras
+    updateStudyDefinitionExtras(null, window.__activeSettings || settingsAll || {});
+    return;
+  }
+
+  const c = deck[deckIndex];
+  const settings = window.__activeSettings || settingsAll || {};
+
+  const label = labelFor(c, settings);
+  $("pillLabel").textContent = label;
+  $("pillLabel").style.visibility = label ? "visible" : "hidden";
+
+  const reversed = !!settings.reverse_faces;
+
+  const frontMain = reversed ? c.meaning : c.term;
+  const backMain  = reversed ? c.term : c.meaning;
+
+  const pron = (c.pron || "").trim();
+
+  // keep pron optional; hide if empty
+  $("frontSub").textContent = (!reversed && pron) ? `Pron: ${pron}` : "";
+  $("backSub").textContent  = (reversed && pron) ? `Pron: ${pron}` : "";
+
+  $("frontText").textContent = frontMain || "";
+  $("backText").textContent = backMain || "";
+
+  $("cardPos").textContent = `Card ${deckIndex+1} / ${deck.length}`;
+
+  // Optional: show saved breakdown + literal meaning on the definition side
+  updateStudyDefinitionExtras(c, settings);
+}
+
+function cleanPronunciationForSpeech(text){
+  if(!text) return text;
+  
+  let cleaned = text;
+  
+  // Remove ALL hyphens - replace with spaces
+  cleaned = cleaned.replace(/-/g, ' ');
+  
+  // Remove ALL periods - they cause TTS to spell things out
+  cleaned = cleaned.replace(/\./g, '');
+  
+  // Handle apostrophes that might cause issues
+  cleaned = cleaned.replace(/'/g, '');
+  
+  // Replace problematic phonetic patterns with real words or better phonetics
+  // These are specific fixes for syllables that TTS spells out
+  const specificFixes = {
+    // Double vowels at end that get spelled out - use real word sounds
+    '\\boo kee may\\b': 'oo kee may',
+    '\\boo kay\\b': 'oo kay', 
+    '\\bah ee\\b': 'eye',
+    '\\bkee ah ee\\b': 'kee eye',
+    '\\bah ee kee doh\\b': 'eye kee doe',
+    '\\btah ee kwon doh\\b': 'tie kwon doe',
+    '\\bsah ee\\b': 'sigh',
+    '\\bkw oon\\b': 'kwoon',
+    '\\bsh in\\b': 'shin',
+    // More general patterns
+    '\\bsoh keh\\b': 'so kay',
+    '\\broh shee\\b': 'roe shee'
+  };
+  
+  for(const [pattern, replacement] of Object.entries(specificFixes)){
+    const regex = new RegExp(pattern, 'gi');
+    cleaned = cleaned.replace(regex, replacement);
+  }
+  
+  // Handle remaining double vowels that might get spelled out
+  // Replace with phonetic equivalents using real word sounds
+  const doubleVowelFixes = {
+    '\\boo\\b': 'oo',      // Beginning is usually ok
+    '\\bee\\b': 'ee',      // Beginning is usually ok  
+    '\\bah ee\\b': 'eye',  // "ah ee" sounds like "eye"
+    '\\beh ee\\b': 'ay',   // "eh ee" sounds like "ay"
+    '\\boh ee\\b': 'oy',   // "oh ee" sounds like "oy"
+  };
+  
+  for(const [pattern, replacement] of Object.entries(doubleVowelFixes)){
+    const regex = new RegExp(pattern, 'gi');
+    cleaned = cleaned.replace(regex, replacement);
+  }
+  
+  // Expand standalone two-letter syllables that TTS spells out
+  const twoLetterExpansions = {
+    '\\bkoh\\b': 'koe',
+    '\\bkeh\\b': 'kay',
+    '\\bsoh\\b': 'so',
+    '\\btoh\\b': 'toe',
+    '\\bnoh\\b': 'no',
+    '\\bmoh\\b': 'moe',
+    '\\broh\\b': 'roe',
+    '\\bgoh\\b': 'go',
+    '\\bboh\\b': 'bow',
+    '\\bdoh\\b': 'doe',
+    '\\bhoh\\b': 'hoe',
+    '\\bjoh\\b': 'joe',
+    '\\bloh\\b': 'low',
+    '\\bpoh\\b': 'poe',
+    '\\bwoh\\b': 'woe',
+    '\\byoh\\b': 'yo',
+    '\\bah\\b': 'ah',
+    '\\boh\\b': 'oh',
+    '\\buh\\b': 'uh',
+    '\\beh\\b': 'eh',
+    '\\bsh\\b': 'sh'
+  };
+  
+  for(const [pattern, replacement] of Object.entries(twoLetterExpansions)){
+    const regex = new RegExp(pattern, 'gi');
+    cleaned = cleaned.replace(regex, replacement);
+  }
+  
+  // Clean up multiple spaces
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+  
+  return cleaned;
+}
+
+function speakCurrent(){
+  if(!deck.length) return;
+  const c = deck[deckIndex];
+  const settings = window.__activeSettings || settingsAll || {};
+  const reversed = !!settings.reverse_faces;
+
+  // Determine what to say based on which face is showing
+  let say;
+  if(isFlipped()){
+    // Back face showing
+    say = reversed ? c.term : c.meaning;
+  } else {
+    // Front face showing - use pronunciation if available for the term
+    if(reversed){
+      // Front shows meaning when reversed
+      say = c.meaning;
+    } else {
+      // Front shows term - prefer pronunciation
+      say = c.pron ? cleanPronunciationForSpeech(c.pron) : c.term;
+    }
+  }
+
+  if(!say) return;
+
+  if(!("speechSynthesis" in window)){
+    setStatus("Speech not supported in this browser.");
+    return;
+  }
+
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(say);
+  
+  // Apply voice settings
+  const rate = settings.speech_rate || 1.0;
+  const voiceName = settings.speech_voice || "";
+  
+  u.rate = rate;
+  
+  if(voiceName){
+    const voices = window.speechSynthesis.getVoices();
+    const voice = voices.find(v => v.name === voiceName);
+    if(voice) u.voice = voice;
+  }
+  
+  window.speechSynthesis.speak(u);
+}
+
+function speakCard(card){
+  if(!card) return;
+  
+  const settings = window.__activeSettings || settingsAll || {};
+  
+  // Use pronunciation if available, otherwise use term
+  const say = card.pron ? cleanPronunciationForSpeech(card.pron) : card.term;
+
+  if(!say) return;
+
+  if(!("speechSynthesis" in window)){
+    setStatus("Speech not supported in this browser.");
+    return;
+  }
+
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(say);
+  
+  // Apply voice settings
+  const rate = settings.speech_rate || 1.0;
+  const voiceName = settings.speech_voice || "";
+  
+  u.rate = rate;
+  
+  if(voiceName){
+    const voices = window.speechSynthesis.getVoices();
+    const voice = voices.find(v => v.name === voiceName);
+    if(voice) u.voice = voice;
+  }
+  
+  window.speechSynthesis.speak(u);
+}
+
+async function loadDeckForStudy(){
+  const settings = await getScopeSettings();
+  window.__activeSettings = settings;
+
+  const q = ($("searchBox").value || "").trim();
+  const groupParam = scopeGroup ? `&group=${encodeURIComponent(scopeGroup)}` : "";
+  const statusParam = `status=${encodeURIComponent(activeTab)}`;
+  const qParam = q ? `&q=${encodeURIComponent(q)}` : "";
+
+  const cards = await jget(`/api/cards?${statusParam}${groupParam}${qParam}`);
+  const deckSettings = Object.assign({}, settings);
+  deckSettings.randomize = getStudyRandomizeFlag(settings);
+  deck = buildDeck(cards, deckSettings);
+  deckIndex = 0;
+
+  updateRandomStudyUI();
+  renderStudyCard();
+}
+
+async function setCurrentStatus(status){
+  if(!deck.length) return;
+  const c = deck[deckIndex];
+  await jpost("/api/set_status", {id: c.id, status});
+
+  deck.splice(deckIndex, 1);
+  if(deckIndex >= deck.length) deckIndex = 0;
+
+  await refreshCounts();
+  renderStudyCard();
+}
+
+function nextCard(){
+  if(!deck.length) return;
+  deckIndex = (deckIndex + 1) % deck.length;
+  renderStudyCard();
+}
+function prevCard(){
+  if(!deck.length) return;
+  deckIndex = (deckIndex - 1 + deck.length) % deck.length;
+  renderStudyCard();
+}
+
+async function loadList(status){
+  // List settings (definitions shown/hidden)
+  const settings = await getScopeSettings();
+  const showDefsAll = (settings.show_definitions_all_list !== false);
+  const showDefsLearned = (settings.show_definitions_learned_list !== false);
+  const showAllUUButtons = (settings.all_list_show_unlearned_unsure_buttons !== false);
+  // Learned list-only settings
+  const showLearnedMoveButtons = (settings.learned_list_show_relearn_unsure_buttons !== false);
+  const showLearnedGroupLabel  = (settings.learned_list_show_group_label !== false);
+
+  const q = ($("searchBox").value || "").trim();
+  const groupParam = scopeGroup ? `&group=${encodeURIComponent(scopeGroup)}` : "";
+  const qParam = q ? `&q=${encodeURIComponent(q)}` : "";
+  const cards = await jget(`/api/cards?status=${encodeURIComponent(status)}${groupParam}${qParam}`);
+
+  const titleMap = {learned:"Learned", deleted:"Deleted", all:"All"};
+  $("listTitle").textContent = titleMap[status] || "List";
+
+  const bulk = $("bulkBtns");
+  bulk.innerHTML = "";
+
+  bulk.style.display = "none"; // bulk actions disabled
+  const mkBtn = (txt, cls, onClick) => {
+    const b = document.createElement("button");
+    b.textContent = txt;
+    b.className = cls;
+    b.addEventListener("click", onClick);
+    return b;
+  };
+
+  const selectedIds = () => Array.from(document.querySelectorAll("input[data-id]:checked")).map(x => x.getAttribute("data-id"));
+
+  if(status === "deleted"){
+    bulk.appendChild(mkBtn("Restore to Active", "secondary", async ()=>{
+      const ids = selectedIds(); if(!ids.length) return;
+      await jpost("/api/bulk_set_status", {ids, status:"active"});
+      await refresh();
+    }));
+    bulk.appendChild(mkBtn("Restore to Unsure", "secondary", async ()=>{
+      const ids = selectedIds(); if(!ids.length) return;
+      await jpost("/api/bulk_set_status", {ids, status:"unsure"});
+      await refresh();
+    }));
+  }
+
+  const list = $("list");
+  list.innerHTML = "";
+
+  if(!cards.length){
+    list.textContent = "No cards found in this list.";
+    return;
+  }
+
+  for(const c of cards){
+    const row = document.createElement("div");
+    row.className = "item";
+
+
+    const left = document.createElement("div");
+    left.className = "itemLeft";
+
+    let chk = null;
+
+
+    // No selection checkboxes (per-card move buttons are used instead)
+    chk = null;
+
+    const text = document.createElement("div");
+    const lbl = (c.group || "").trim();
+    const sName = (c.status || "").toString();
+    let sLabel = sName ? (sName.charAt(0).toUpperCase() + sName.slice(1)) : "";
+    if(status === "all" && sName === "active") sLabel = "Unlearned";
+    const showMeaning = (status === "all") ? showDefsAll : (status === "learned") ? showDefsLearned : true;
+
+    const lines = [];
+    if(showMeaning) lines.push(`<span class="defText">${escapeHtml(c.meaning)}</span>`);
+    if(c.pron) lines.push(`Pron: ${escapeHtml(c.pron)}`);
+    if(lbl && !(status === "learned" && !showLearnedGroupLabel)) lines.push(`${escapeHtml(lbl)}`);
+    if(status === "all" && sLabel) lines.push(`Status: ${escapeHtml(sLabel)}`);
+
+    text.innerHTML = `<b>${escapeHtml(c.term)}</b>${lines.length ? `<small>${lines.join("<br/>")}</small>` : ""}`;
+
+if(chk) left.appendChild(chk);
+    left.appendChild(text);
+
+    const right = document.createElement("div");
+    right.className = "itemRight";
+
+
+    // Actions for the All list: quick-move cards between statuses
+    if(status === "all"){
+      right.classList.add("itemActions");
+      const cur = (c.status || "active").toString();
+      const addMove = (label, to, cls) => {
+        if(cur === to) return;
+        const b = document.createElement("button");
+        b.className = "mini " + cls;
+        b.textContent = label;
+        b.addEventListener("click", async ()=>{
+          await jpost("/api/set_status", {id:c.id, status:to});
+          await refresh();
+        });
+        right.appendChild(b);
+      };
+      if(showAllUUButtons){
+        addMove("Unlearned", "active", "neutral");
+        addMove("Unsure", "unsure", "warn");
+      }
+      addMove("Learned", "learned", "good");
+    }
+    if(status === "all"){
+      const speakBtn = document.createElement("button");
+      speakBtn.className = "good"; speakBtn.textContent = "🔊 Speak";
+      speakBtn.addEventListener("click", ()=>{ speakCard(c); });
+      right.appendChild(speakBtn);
+
+      const brBtn = document.createElement("button");
+      brBtn.className = "secondary iconOnly"; brBtn.textContent = "🧩"; brBtn.title = "Breakdown"; brBtn.setAttribute("aria-label","Breakdown");
+      brBtn.addEventListener("click", ()=>{ openBreakdown(c); });
+      right.appendChild(brBtn);
+    }
+
+    if(status === "learned"){
+      // Match the "All" list layout: compact buttons on the right (no arrow labels)
+      const addMove = (label, to, cls) => {
+        const b = document.createElement("button");
+        b.className = cls;
+        b.textContent = label;
+        b.addEventListener("click", async ()=>{
+          await jpost("/api/set_status", {id:c.id, status:to});
+          await refresh();
+        });
+        right.appendChild(b);
+      };
+
+      // Learned cards can be moved back to Unlearned (active) or Unsure
+      // Rename buttons for the Learned page only
+      if(showLearnedMoveButtons){
+        addMove("Relearn", "active", "neutral");
+        addMove("Still Unsure", "unsure", "warn");
+      }
+
+      const speakBtn = document.createElement("button");
+      speakBtn.className = "good"; speakBtn.textContent = "🔊 Speak";
+      speakBtn.addEventListener("click", ()=>{ speakCard(c); });
+      right.appendChild(speakBtn);
+
+      const brBtn = document.createElement("button");
+      brBtn.className = "secondary iconOnly"; brBtn.textContent = "🧩"; brBtn.title = "Breakdown"; brBtn.setAttribute("aria-label","Breakdown");
+      brBtn.addEventListener("click", ()=>{ openBreakdown(c); });
+      right.appendChild(brBtn);
+    }
+
+    if(status === "deleted"){
+      const b1 = document.createElement("button");
+      b1.className = "secondary"; b1.textContent = "Restore";
+      b1.addEventListener("click", async ()=>{ await jpost("/api/set_status", {id:c.id, status:"active"}); await refresh(); });
+      right.appendChild(b1);
+    }
+
+    row.appendChild(left);
+    row.appendChild(right);
+    list.appendChild(row);
+  }
+}
+
+async function refresh(){
+  updateFilterHighlight();
+  updateLearnedViewHighlight();
+  if(!currentUser){
+    const ok = await ensureLoggedIn();
+    if(!ok) return;
+  }
+  await refreshCounts();
+
+  if(!$("viewSettings").classList.contains("hidden")){
+    return;
+  }
+
+  const isStudyMode = (activeTab === "active" || activeTab === "unsure" || (activeTab === "learned" && learnedViewMode === "study"));
+
+  const rWrap = $("randomStudyWrap");
+  if(rWrap){
+    rWrap.classList.toggle("hidden", !isStudyMode);
+    if(isStudyMode){
+      const s = await getScopeSettings();
+      $("randomStudyChk").checked = !!getStudyRandomizeFlag(s);
+      updateRandomStudyUI();
+    }
+  }
+
+  if(isStudyMode){
+    await loadDeckForStudy();
+    const s = window.__activeSettings || settingsAll || {};
+    const allLabel = (s.all_mode === "flat") ? "All (flat)" : "All (grouped)";
+    const studyLabel = (activeTab === "active") ? "Unlearned" : (activeTab === "learned" ? "Learned" : (activeTab === "unsure" ? "Unsure" : (activeTab||"")));
+    setStatus(`${(scopeGroup || (allCardsMode ? allLabel : ""))} • Studying: ${studyLabel}`);
+  } else {
+    $("viewStudy").classList.add("hidden");
+    $("viewList").classList.remove("hidden");
+    await loadList(activeTab);
+    setStatus(`${(scopeGroup||"All")} • Viewing: ${activeTab}`);
+  }
+}
+
+async function openSettings(){
+  if(!appInitialized){
+    try{ await postLoginInit(); } catch(e){}
+  }
+  $("viewSettings").classList.remove("hidden");
+  $("viewStudy").classList.add("hidden");
+  $("viewList").classList.add("hidden");
+
+  $("settingsScope").value = "all";
+  try{ aiStatus = await jget("/api/ai"); } catch(e){}
+  await loadSettingsForm("all");
+}
+
+async function loadSettingsForm(scope){
+  if(!scope) scope = "all";
+  const res = await jget(`/api/settings?scope=${encodeURIComponent(scope)}`);
+  const s = res.settings || {};
+
+  let effective = s;
+  if(scope !== "all"){
+    if(!settingsAll){
+      const g = await jget("/api/settings?scope=all");
+      settingsAll = g.settings;
+    }
+    effective = { ...settingsAll, ...s };
+  }
+
+  $("setRandomize").checked = !!effective.randomize;
+  if($("setLinkRandomize")) $("setLinkRandomize").checked = (effective.link_randomize_study_tabs !== false);
+  const baseRand = !!effective.randomize;
+  if($("setRandomizeUnlearned")) $("setRandomizeUnlearned").checked = (typeof effective.randomize_unlearned === "boolean") ? effective.randomize_unlearned : baseRand;
+  if($("setRandomizeUnsure")) $("setRandomizeUnsure").checked = (typeof effective.randomize_unsure === "boolean") ? effective.randomize_unsure : baseRand;
+  if($("setRandomizeLearnedStudy")) $("setRandomizeLearnedStudy").checked = (typeof effective.randomize_learned_study === "boolean") ? effective.randomize_learned_study : baseRand;
+
+$("setShowGroup").checked = effective.show_group_label !== false;
+  $("setShowSubgroup").checked = effective.show_subgroup_label !== false;
+  $("setReverseFaces").checked = !!effective.reverse_faces;
+  if($("setBreakdownApplyAll")) $("setBreakdownApplyAll").checked = !!effective.breakdown_apply_all_tabs;
+  if($("setBreakdownRemoveAll")) $("setBreakdownRemoveAll").checked = !!effective.breakdown_remove_all_tabs;
+  if($("setBreakdownRemoveUnlearned")) $("setBreakdownRemoveUnlearned").checked = !!effective.breakdown_remove_unlearned;
+  if($("setBreakdownRemoveUnsure")) $("setBreakdownRemoveUnsure").checked = !!effective.breakdown_remove_unsure;
+  if($("setBreakdownRemoveLearned")) $("setBreakdownRemoveLearned").checked = !!effective.breakdown_remove_learned_study;
+  if(typeof updateBreakdownSettingsUI === "function") updateBreakdownSettingsUI();
+
+  $("setAllMode").value = effective.all_mode || "grouped";
+  $("setGroupOrder").value = effective.group_order || "alpha";
+  $("setCardOrder").value = effective.card_order || "json";
+  
+  // Voice settings
+  $("setSpeechRate").value = effective.speech_rate || 1.0;
+  updateRateLabel(effective.speech_rate || 1.0);
+  
+  // Populate voice dropdown and select saved voice
+  await populateVoiceDropdown();
+  $("setSpeechVoice").value = effective.speech_voice || "";
+
+  updateBreakdownSettingsUI();
+
+  // List-page settings are global (All Groups only)
+  const listSection = $("listSettingsSection");
+  if(listSection) listSection.style.display = (scope === "all") ? "block" : "none";
+  if($("setShowDefAllList")) $("setShowDefAllList").checked = (effective.show_definitions_all_list !== false);
+  if($("setShowDefLearnedList")) $("setShowDefLearnedList").checked = (effective.show_definitions_learned_list !== false);
+  if($("setAllListShowUnlearnedUnsureBtns")) $("setAllListShowUnlearnedUnsureBtns").checked = (effective.all_list_show_unlearned_unsure_buttons !== false);
+  if($("setLearnedListShowMoveBtns")) $("setLearnedListShowMoveBtns").checked = (effective.learned_list_show_relearn_unsure_buttons !== false);
+  if($("setLearnedListShowGroupLabel")) $("setLearnedListShowGroupLabel").checked = (effective.learned_list_show_group_label !== false);
+
+  // AI breakdown provider (global)
+  const aiSection = $("aiSettingsSection");
+  if(aiSection) aiSection.style.display = (scope === "all") ? "block" : "none";
+  const provSel = $("setBreakdownProvider");
+  if(provSel) provSel.value = (effective.breakdown_ai_provider || "auto");
+  const provStatus = $("aiStatusLine");
+  if(provStatus){
+    const bits = [];
+    if(aiStatus && aiStatus.openai_available) bits.push(`OpenAI: ${aiStatus.openai_model || "available"}`);
+    if(aiStatus && aiStatus.gemini_available) bits.push(`Gemini: ${aiStatus.gemini_model || "available"}`);
+    provStatus.textContent = bits.length ? (`Available: ${bits.join(" • ")}`) : "No AI keys detected on server (will use built-in suggestions).";
+  }
+}
+
+
+function updateBreakdownSettingsUI(){
+  const applyAllEl = $("setBreakdownApplyAll");
+  const rowAll = $("rowBreakdownRemoveAll");
+  const removeAllEl = $("setBreakdownRemoveAll");
+  const rowU = $("rowBreakdownRemoveUnlearned");
+  const rowS = $("rowBreakdownRemoveUnsure");
+  const rowL = $("rowBreakdownRemoveLearned");
+  const rmU = $("setBreakdownRemoveUnlearned");
+  const rmS = $("setBreakdownRemoveUnsure");
+  const rmL = $("setBreakdownRemoveLearned");
+  if(!applyAllEl) return;
+
+  const applyAll = !!applyAllEl.checked;
+
+  // "All Study tabs" row is visible but disabled unless Apply-to-all is enabled (Option 2)
+  if(rowAll && removeAllEl){
+    removeAllEl.disabled = !applyAll;
+    rowAll.classList.toggle("disabled", !applyAll);
+  }
+
+  // Per-tab toggles grey out when Apply-to-all is enabled
+  const lock = applyAll;
+  const rows = [
+    [rowU, rmU],
+    [rowS, rmS],
+    [rowL, rmL]
+  ];
+  for(const [row, el] of rows){
+    if(!row || !el) continue;
+    el.disabled = lock;
+    row.classList.toggle("disabled", lock);
+  }
+}
+
+async function saveSettings(){
+  let scope = $("settingsScope").value;
+  if(!scope) scope = "all";
+
+  const patch = {
+    randomize: $("setRandomize").checked,
+    show_group_label: $("setShowGroup").checked,
+    show_subgroup_label: $("setShowSubgroup").checked,
+    reverse_faces: $("setReverseFaces").checked,
+    breakdown_apply_all_tabs: $("setBreakdownApplyAll") ? $("setBreakdownApplyAll").checked : false,
+    breakdown_remove_all_tabs: $("setBreakdownRemoveAll") ? $("setBreakdownRemoveAll").checked : false,
+    breakdown_remove_unlearned: $("setBreakdownRemoveUnlearned") ? $("setBreakdownRemoveUnlearned").checked : false,
+    breakdown_remove_unsure: $("setBreakdownRemoveUnsure") ? $("setBreakdownRemoveUnsure").checked : false,
+    breakdown_remove_learned_study: $("setBreakdownRemoveLearned") ? $("setBreakdownRemoveLearned").checked : false,
+    all_mode: $("setAllMode").value,
+    group_order: $("setGroupOrder").value,
+    card_order: $("setCardOrder").value,
+    speech_rate: parseFloat($("setSpeechRate").value) || 1.0,
+    speech_voice: $("setSpeechVoice").value || ""
+  };
+
+  // Only save tab-specific + list-page settings at the All-Groups scope
+  if(scope === "all"){
+    patch.link_randomize_study_tabs = $("setLinkRandomize") ? $("setLinkRandomize").checked : true;
+    patch.randomize_unlearned = $("setRandomizeUnlearned") ? $("setRandomizeUnlearned").checked : patch.randomize;
+    patch.randomize_unsure = $("setRandomizeUnsure") ? $("setRandomizeUnsure").checked : patch.randomize;
+    patch.randomize_learned_study = $("setRandomizeLearnedStudy") ? $("setRandomizeLearnedStudy").checked : patch.randomize;
+
+    patch.show_definitions_all_list = $("setShowDefAllList").checked;
+    patch.show_definitions_learned_list = $("setShowDefLearnedList").checked;
+    patch.all_list_show_unlearned_unsure_buttons = $("setAllListShowUnlearnedUnsureBtns").checked;
+    patch.learned_list_show_relearn_unsure_buttons = $("setLearnedListShowMoveBtns").checked;
+    patch.learned_list_show_group_label = $("setLearnedListShowGroupLabel").checked;
+    if($("setBreakdownProvider")) patch.breakdown_ai_provider = $("setBreakdownProvider").value || "auto";
+  }
+
+  await jpost("/api/settings", {scope, settings: patch});
+
+  settingsAll = null;
+  settingsGroup = {};
+  window.__activeSettings = null;
+
+  await refreshCounts();
+  await refresh();
+}
+
+function getErrorMessage(error){
+  const msg = error.message || "";
+  if(msg.includes("username_and_password_required")) return "Please enter both username and password.";
+  if(msg.includes("username_too_short")) return "Username must be at least 3 characters.";
+  if(msg.includes("password_too_short")) return "Password must be at least 4 characters.";
+  if(msg.includes("username_taken")) return "That username is already taken.";
+  if(msg.includes("invalid_credentials")) return "Invalid username or password.";
+  return "An error occurred. Please try again.";
+}
+
+function updateRateLabel(value){
+  const label = $("rateLabel");
+  if(label) label.textContent = `${value}x`;
+}
+
+async function populateVoiceDropdown(){
+  const sel = $("setSpeechVoice");
+  if(!sel) return;
+  
+  // Force voices to load by calling getVoices
+  let voices = window.speechSynthesis.getVoices();
+  
+  // If voices not loaded yet, wait for them
+  if(!voices.length){
+    await new Promise(resolve => {
+      const checkVoices = () => {
+        voices = window.speechSynthesis.getVoices();
+        if(voices.length > 0){
+          resolve();
+        }
+      };
+      
+      // Set up the event listener
+      window.speechSynthesis.onvoiceschanged = checkVoices;
+      
+      // Also poll in case the event doesn't fire (some browsers)
+      const interval = setInterval(() => {
+        voices = window.speechSynthesis.getVoices();
+        if(voices.length > 0){
+          clearInterval(interval);
+          resolve();
+        }
+      }, 100);
+      
+      // Timeout fallback after 2 seconds
+      setTimeout(() => {
+        clearInterval(interval);
+        resolve();
+      }, 2000);
+    });
+    
+    voices = window.speechSynthesis.getVoices();
+  }
+  
+  const currentValue = sel.value;
+  sel.innerHTML = "";
+  
+  // Default option
+  const defaultOpt = document.createElement("option");
+  defaultOpt.value = "";
+  defaultOpt.textContent = "Default voice";
+  sel.appendChild(defaultOpt);
+  
+  if(!voices.length){
+    const noVoices = document.createElement("option");
+    noVoices.value = "";
+    noVoices.textContent = "(No voices available)";
+    noVoices.disabled = true;
+    sel.appendChild(noVoices);
+    return;
+  }
+  
+  // Group voices by full language code (e.g., "EN-AU", "EN-US", "EN-GB")
+  const byLangCountry = new Map();
+  for(const v of voices){
+    // Parse language code like "en-AU" or "en_AU" or just "en"
+    const langParts = v.lang.replace('_', '-').split('-');
+    const lang = langParts[0].toUpperCase();
+    const country = langParts[1] ? langParts[1].toUpperCase() : '';
+    const key = country ? `${lang} > ${country}` : lang;
+    
+    if(!byLangCountry.has(key)) byLangCountry.set(key, []);
+    byLangCountry.get(key).push(v);
+  }
+  
+  // Sort language-country keys: EN first, then alphabetical, within EN sort by country
+  const keys = Array.from(byLangCountry.keys()).sort((a, b) => {
+    const aIsEN = a.startsWith("EN");
+    const bIsEN = b.startsWith("EN");
+    
+    // EN languages come first
+    if(aIsEN && !bIsEN) return -1;
+    if(!aIsEN && bIsEN) return 1;
+    
+    // Within same language prefix, sort alphabetically
+    return a.localeCompare(b);
+  });
+  
+  for(const key of keys){
+    const group = document.createElement("optgroup");
+    group.label = key;
+    
+    const langVoices = byLangCountry.get(key).sort((a, b) => a.name.localeCompare(b.name));
+    for(const v of langVoices){
+      const opt = document.createElement("option");
+      opt.value = v.name;
+      opt.textContent = v.name + (v.localService ? "" : " (online)");
+      group.appendChild(opt);
+    }
+    
+    sel.appendChild(group);
+  }
+  
+  // Restore selection
+  if(currentValue) sel.value = currentValue;
+}
+
+function testVoice(){
+  const voiceName = $("setSpeechVoice").value;
+  const rate = parseFloat($("setSpeechRate").value) || 1.0;
+  
+  if(!("speechSynthesis" in window)){
+    setStatus("Speech not supported in this browser.");
+    return;
+  }
+  
+  window.speechSynthesis.cancel();
+  
+  // Test with sample pronunciations including problematic ones
+  const testText = cleanPronunciationForSpeech("oo-kee-may, sh-in, kee-ah-ee, ah-ee-kee-doh, sah-ee, oo-kay");
+  const u = new SpeechSynthesisUtterance(testText);
+  u.rate = rate;
+  
+  // Get voices and apply selected one
+  const voices = window.speechSynthesis.getVoices();
+  
+  if(voiceName && voices.length > 0){
+    const voice = voices.find(v => v.name === voiceName);
+    if(voice){
+      u.voice = voice;
+    }
+  }
+  
+  // If voices aren't loaded yet, wait and try again
+  if(voices.length === 0){
+    window.speechSynthesis.onvoiceschanged = () => {
+      const loadedVoices = window.speechSynthesis.getVoices();
+      if(voiceName){
+        const voice = loadedVoices.find(v => v.name === voiceName);
+        if(voice) u.voice = voice;
+      }
+      window.speechSynthesis.speak(u);
+    };
+    return;
+  }
+  
+  window.speechSynthesis.speak(u);
+}
+
+function resetVoiceToDefault(){
+  $("setSpeechVoice").value = "";
+  $("setSpeechRate").value = 1.0;
+  updateRateLabel(1.0);
+}
+
+async function main(){
+
+  // Auth modal buttons - Login
+  bind("btnLogin","click", async ()=>{
+    const username = ($("loginUsername").value || "").trim();
+    const password = ($("loginPassword").value || "");
+    
+    if(!username || !password){
+      $("authMessage").textContent = "Please enter both username and password.";
+      return;
+    }
+    
+    try{
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({username, password})
+      }).then(r => r.json());
+      
+      if(res.error){
+        $("authMessage").textContent = getErrorMessage({message: res.error});
+        return;
+      }
+      
+      currentUser = res.user;
+      setUserLine();
+      hideAuthOverlay();
+      appInitialized = false;
+      await postLoginInit();
+      await refresh();
+    } catch(e){
+      $("authMessage").textContent = getErrorMessage(e);
+    }
+  });
+
+  // Switch to register view
+  bind("btnShowRegister","click", ()=>{
+    $("authMessage").textContent = "Create a new account";
+    clearAuthForms();
+    setAuthView("register");
+  });
+
+  // Switch to login view
+  bind("btnShowLogin","click", ()=>{
+    $("authMessage").textContent = "Sign in to continue";
+    clearAuthForms();
+    setAuthView("login");
+  });
+
+  // Register new user
+  bind("btnRegister","click", async ()=>{
+    const username = ($("regUsername").value || "").trim();
+    const password = ($("regPassword").value || "");
+    const displayName = ($("regDisplayName").value || "").trim();
+    
+    if(!username || !password){
+      $("authMessage").textContent = "Please enter both username and password.";
+      return;
+    }
+    
+    try{
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({username, password, display_name: displayName})
+      }).then(r => r.json());
+      
+      if(res.error){
+        $("authMessage").textContent = getErrorMessage({message: res.error});
+        return;
+      }
+      
+      currentUser = res.user;
+      setUserLine();
+      hideAuthOverlay();
+      appInitialized = false;
+      await postLoginInit();
+      await refresh();
+    } catch(e){
+      $("authMessage").textContent = getErrorMessage(e);
+    }
+  });
+
+  bind("logoutBtn","click", async ()=>{
+    try{ await jpost("/api/logout", {}); } catch(e){}
+    currentUser = null;
+    setUserLine();
+    appInitialized = false;
+    allGroups = [];
+    try{ $("groupSelect").innerHTML = ""; } catch(e){}
+    try{ $("settingsScope").innerHTML = ""; } catch(e){}
+    await ensureLoggedIn();
+  });
+  bind("tabActive","click", ()=>setTab("active"));
+  bind("tabUnsure","click", ()=>setTab("unsure"));
+  bind("tabLearned","click", ()=>setTab("learned"));
+  bind("tabAll","click", ()=>setTab("all"));
+
+  // Learned tab view toggle
+  bind("learnedViewListBtn","click", async ()=>{
+    learnedViewMode = "list";
+    // Use setTab so the active highlight updates correctly
+    setTab("learned");
+  });
+  bind("learnedViewStudyBtn","click", async ()=>{
+    learnedViewMode = "study";
+    // Use setTab so the active highlight updates correctly
+    setTab("learned");
+  });
+
+  bind("nextBtn","click", nextCard);
+  bind("prevBtn","click", prevCard);
+  bind("speakBtn","click", speakCurrent);
+
+
+  
+
+  bind("randomRefreshBtn","click", async ()=>{
+    try{
+      if(!$("randomStudyChk").checked) return;
+      if(deck && deck.length){
+        shuffle(deck);
+        deckIndex = 0;
+        renderStudyCard();
+      } else {
+        await refresh();
+      }
+    } catch(e){ console.error(e); }
+  });
+
+// Study random order toggle (per tab)
+  bind("randomStudyChk","change", async ()=>{
+    try{
+      const on = $("randomStudyChk").checked;
+      await setStudyRandomizeFlag(on);
+      updateRandomStudyUI();
+      await refresh();
+    } catch(e){ console.error(e); }
+  });
+
+
+
+  // Breakdown (study card)
+  bind("breakdownBtn","click", async ()=>{
+    try{
+      if(!deck.length) return;
+      const c = deck[deckIndex];
+      await openBreakdown(c);
+    } catch(e){ console.error(e); }
+  });
+
+  // Breakdown modal controls
+  bind("breakdownCloseBtn","click", closeBreakdown);
+  bind("breakdownAddPartBtn","click", ()=>{
+    if(!breakdownCurrentData) return;
+    breakdownCurrentData.parts.push({part:"", meaning:""});
+    renderBreakdownParts(breakdownCurrentData.parts);
+  });
+  bind("breakdownAutoBtn","click", async ()=>{
+    try{
+      if(!breakdownCurrentCard) return;
+      const res = await jpost("/api/breakdown_autofill", {
+        term: breakdownCurrentCard.term || "",
+        meaning: breakdownCurrentCard.meaning || "",
+        group: breakdownCurrentCard.group || ""
+      });
+      if(res && res.suggestion){
+        breakdownCurrentData.parts = (res.suggestion.parts || []).map(p=>({part:p.part||"", meaning:p.meaning||""}));
+        breakdownCurrentData.literal = res.suggestion.literal || "";
+        $("breakdownLiteral").value = breakdownCurrentData.literal || "";
+        renderBreakdownParts(breakdownCurrentData.parts);
+
+        // Update meta line to show where the suggestion came from
+        const meta = $("breakdownMeta");
+        if(meta){
+          const src = (res.source || "").toLowerCase();
+          if(src === "openai" || src === "gemini"){
+            const who = src === "openai" ? "AI (OpenAI)" : "AI (Gemini)";
+            meta.textContent = `Auto-filled using ${who}. Review and edit, then Save.`;
+          } else {
+            // curated fallback
+            const err = res.ai_error && res.ai_error.message ? String(res.ai_error.message) : "";
+            if(err){
+              meta.textContent = `AI auto-fill failed (${err}). Using built-in suggestions instead. Review and edit, then Save.`;
+            } else {
+              meta.textContent = "Auto-filled using built-in suggestions. Review and edit, then Save.";
+            }
+          }
+        }
+      }
+    } catch(e){ console.error(e); }
+  });
+  bind("breakdownSaveBtn","click", async ()=>{
+    try{
+      if(!breakdownCurrentCard || !breakdownCurrentData) return;
+      // pull latest from inputs
+      const inputs = Array.from(document.querySelectorAll("#breakdownParts input.input"));
+      const parts = [];
+      for(const el of inputs){
+        const idx = parseInt(el.getAttribute("data-idx")||"0",10);
+        const field = el.getAttribute("data-field");
+        if(!parts[idx]) parts[idx] = {part:"", meaning:""};
+        parts[idx][field] = el.value;
+      }
+      breakdownCurrentData.parts = parts.filter(p=>p && (p.part||p.meaning));
+      breakdownCurrentData.literal = $("breakdownLiteral").value || "";
+      breakdownCurrentData.notes = $("breakdownNotes").value || "";
+
+      await jpost("/api/breakdown", {
+        id: breakdownCurrentCard.id,
+        term: breakdownCurrentCard.term || breakdownCurrentData.term || "",
+        parts: breakdownCurrentData.parts,
+        literal: breakdownCurrentData.literal,
+        notes: breakdownCurrentData.notes
+      });
+      // Keep inline cache in sync so study cards can immediately show the saved breakdown
+      breakdownInlineCache[breakdownCurrentCard.id] = {
+        parts: breakdownCurrentData.parts,
+        literal: breakdownCurrentData.literal,
+        notes: breakdownCurrentData.notes
+      };
+      setStatus("Saved breakdown.");
+      closeBreakdown();
+    } catch(e){
+      console.error(e);
+      let msg = "Could not save breakdown.";
+      try{
+        const raw = (e && e.message) ? String(e.message) : "";
+        if(raw && raw.trim().startsWith("{")){
+          const j = JSON.parse(raw);
+          if(j && (j.message || j.error)) msg = j.message || j.error;
+        }
+      } catch(_){ }
+      setStatus(msg);
+    }
+  });
+
+  // Breakdowns list overlay
+  bind("breakdownsBtn","click", async ()=>{
+    $("breakdownsOverlay").classList.remove("hidden");
+    await loadBreakdownsList();
+  });
+  bind("breakdownsCloseBtn","click", ()=>{ $("breakdownsOverlay").classList.add("hidden"); });
+  bind("breakdownsRefreshBtn","click", loadBreakdownsList);
+  bind("breakdownsSearch","input", ()=>{
+    // lightweight debounce
+    clearTimeout(window.__bdSearchTimer);
+    window.__bdSearchTimer = setTimeout(loadBreakdownsList, 200);
+  });
+
+
+  bind("gotItBtn","click", ()=>{
+    // Default: mark learned
+    if(activeTab === "learned" && learnedViewMode === "study"){
+      // Learned study: move back to Unlearned
+      return setCurrentStatus("active");
+    }
+    return setCurrentStatus("learned");
+  });
+  bind("unsureBtn","click", ()=>{
+    if(activeTab === "learned" && learnedViewMode === "study"){
+      // Learned study: move to Unsure
+      return setCurrentStatus("unsure");
+    }
+    if(activeTab === "unsure") return setCurrentStatus("active");
+    return setCurrentStatus("unsure");
+  });
+bind("card","click", flip);
+  bind("card","keydown", (e)=>{
+    if(e.code === "Space" || e.code === "Enter"){
+      e.preventDefault(); flip();
+    }
+  });
+
+  bind("searchBox","input", async ()=>{ await refresh(); });
+
+  bind("allCardsBtn","click", async ()=>{
+    scopeGroup = "";
+    $("groupSelect").value = "";
+    allCardsMode = true;
+    updateFilterHighlight();
+  updateLearnedViewHighlight();
+    await refresh();
+  });
+
+  bind("settingsBtn","click", openSettings);
+  bind("closeSettingsBtn","click", async ()=>{
+    $("viewSettings").classList.add("hidden");
+    if(activeTab === "active" || activeTab === "unsure" || (activeTab === "learned" && learnedViewMode === "study")){
+      $("viewStudy").classList.remove("hidden");
+    } else {
+      $("viewList").classList.remove("hidden");
+    }
+    await refresh();
+  });
+
+  bind("settingsScope","change", async ()=>{
+    await loadSettingsForm($("settingsScope").value);
+  });
+
+  bind("setBreakdownApplyAll","change", ()=>{ updateBreakdownSettingsUI(); });
+
+  bind("saveSettingsBtn","click", saveSettings);
+  bind("resetSettingsBtn","click", async ()=>{
+    let scope = $("settingsScope").value;
+    if(!scope) scope = "all";
+    if(!confirm("Reset settings to defaults for this scope?")) return;
+    try{
+      await jpost("/api/settings_reset", {scope});
+      // clear cached settings + reload form
+      settingsAll = null;
+      settingsGroup = {};
+      window.__activeSettings = null;
+      await loadSettingsForm(scope);
+      await refresh();
+    } catch(e){
+      console.error(e);
+    }
+  });
+
+  // Voice settings bindings
+  bind("setSpeechRate","input", ()=>{
+    updateRateLabel($("setSpeechRate").value);
+  });
+  bind("testVoiceBtn","click", testVoice);
+  bind("resetVoiceBtn","click", resetVoiceToDefault);
+
+  // Allow Enter key to submit login/register forms
+  $("loginPassword").addEventListener("keydown", (e) => {
+    if(e.key === "Enter") $("btnLogin").click();
+  });
+  $("regPassword").addEventListener("keydown", (e) => {
+    if(e.key === "Enter") $("btnRegister").click();
+  });
+
+  const ok = await ensureLoggedIn();
+  if(!ok) return;
+  await postLoginInit();
+}
+
+main().catch(err=>{
+  console.error(err);
+  setStatus("Error: " + err.message);
+});
