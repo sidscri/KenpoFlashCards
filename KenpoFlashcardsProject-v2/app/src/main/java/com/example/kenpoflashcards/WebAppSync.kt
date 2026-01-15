@@ -464,5 +464,69 @@ object WebAppSync {
  *   "cardId1": "learned",
  *   "cardId2": "unsure",
  *   ...
- * }
- */
+ * data class AdminStatUser(
+    val username: String,
+    val lastSeen: String,
+    val lastPath: String,
+    val ip: String,
+    val userAgent: String
+)
+
+suspend fun getAdminLogs(serverUrl: String, token: String, type: String, lines: Int = 400): String = withContext(Dispatchers.IO) {
+    val url = URL("$serverUrl/api/sync/admin/logs?type=$type&lines=$lines")
+    val conn = url.openConnection() as HttpURLConnection
+    conn.requestMethod = "GET"
+    conn.setRequestProperty("Authorization", "Bearer $token")
+    conn.connectTimeout = 10000
+    conn.readTimeout = 15000
+    val code = conn.responseCode
+    val body = if (code in 200..299) conn.inputStream.bufferedReader().readText() else conn.errorStream?.bufferedReader()?.readText().orEmpty()
+    if (code != 200) throw RuntimeException("Logs request failed: $code $body")
+    val json = JSONObject(body)
+    json.optString("text","")
+}
+
+suspend fun resetAdminLogs(serverUrl: String, token: String, type: String): Boolean = withContext(Dispatchers.IO) {
+    val url = URL("$serverUrl/api/sync/admin/logs/reset?type=$type")
+    val conn = url.openConnection() as HttpURLConnection
+    conn.requestMethod = "POST"
+    conn.setRequestProperty("Authorization", "Bearer $token")
+    conn.setRequestProperty("Content-Type", "application/json")
+    conn.doOutput = true
+    conn.outputStream.use { it.write("{}".toByteArray()) }
+    conn.connectTimeout = 10000
+    conn.readTimeout = 15000
+    val code = conn.responseCode
+    val body = if (code in 200..299) conn.inputStream.bufferedReader().readText() else conn.errorStream?.bufferedReader()?.readText().orEmpty()
+    if (code != 200) throw RuntimeException("Reset logs failed: $code $body")
+    true
+}
+
+suspend fun getAdminStats(serverUrl: String, token: String): List<AdminStatUser> = withContext(Dispatchers.IO) {
+    val url = URL("$serverUrl/api/sync/admin/stats")
+    val conn = url.openConnection() as HttpURLConnection
+    conn.requestMethod = "GET"
+    conn.setRequestProperty("Authorization", "Bearer $token")
+    conn.connectTimeout = 10000
+    conn.readTimeout = 15000
+    val code = conn.responseCode
+    val body = if (code in 200..299) conn.inputStream.bufferedReader().readText() else conn.errorStream?.bufferedReader()?.readText().orEmpty()
+    if (code != 200) throw RuntimeException("Stats request failed: $code $body")
+    val json = JSONObject(body)
+    val arr = json.optJSONArray("users") ?: JSONArray()
+    val out = mutableListOf<AdminStatUser>()
+    for (i in 0 until arr.length()) {
+        val u = arr.optJSONObject(i) ?: continue
+        out.add(
+            AdminStatUser(
+                username = u.optString("username",""),
+                lastSeen = u.optString("last_seen",""),
+                lastPath = u.optString("last_path",""),
+                ip = u.optString("ip",""),
+                userAgent = u.optString("user_agent","")
+            )
+        )
+    }
+    out
+}
+}

@@ -340,7 +340,8 @@ private fun LandscapeStudyLayout(
                 // Action row
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Button(onPrimaryAction, Modifier.weight(1f).height(36.dp), colors = ButtonDefaults.buttonColors(containerColor = AccentGood)) { Text(primaryActionText, fontSize = 11.sp) }
-                    if (settings.showCustomSetButton) {
+                    {  // Custom Set button always shown (setting removed)
+
                     IconButton(onCustomToggle, modifier = Modifier.size(36.dp).background(DarkPanel2, RoundedCornerShape(6.dp))) { Icon(if (inCustomSet) Icons.Default.Star else Icons.Default.StarBorder, "Custom", tint = if (inCustomSet) Color.Yellow else DarkMuted, modifier = Modifier.size(18.dp)) }
                     }
                     IconButton(onBreakdown, modifier = Modifier.size(36.dp).background(DarkPanel2, RoundedCornerShape(6.dp))) { Icon(Icons.Default.Extension, "Breakdown", tint = if (currentBreakdown?.hasContent() == true) AccentBlue else DarkMuted, modifier = Modifier.size(18.dp)) }
@@ -452,7 +453,8 @@ fun StudyScreen(nav: NavHostController, repo: Repository, statusFilter: CardStat
                             Spacer(Modifier.height(4.dp))
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Button({ scope.launch { repo.setStatus(current.id, CardStatus.LEARNED); if (index >= filteredCards.size - 1) index = (filteredCards.size - 2).coerceAtLeast(0); showFront = true } }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = AccentGood)) { Text("Got it ✓") }
-                                if (settings.showCustomSetButton) {
+                                {  // Custom Set button always shown (setting removed)
+
                                     IconButton({ scope.launch { if (inCustomSet) repo.removeFromCustomSet(current.id) else repo.addToCustomSet(current.id) } }) { Icon(if (inCustomSet) Icons.Default.Star else Icons.Default.StarBorder, "Custom", tint = if (inCustomSet) Color.Yellow else DarkMuted) }
                                 }
                                 IconButton({ showBreakdown = true }) { Icon(Icons.Default.Info, "Breakdown", tint = if (currentBreakdown?.hasContent() == true) AccentBlue else DarkMuted) }
@@ -574,7 +576,8 @@ fun LearnedScreen(nav: NavHostController, repo: Repository) {
                         Spacer(Modifier.height(4.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                             OutlinedButton({ scope.launch { repo.setStatus(current.id, CardStatus.ACTIVE) } }, Modifier.weight(1f)) { Text("Relearn") }
-                                if (settings.showCustomSetButton) {
+                                {  // Custom Set button always shown (setting removed)
+
                             IconButton({ scope.launch { if (inCustomSet) repo.removeFromCustomSet(current.id) else repo.addToCustomSet(current.id) } }, modifier = Modifier.size(44.dp).background(DarkPanel2, RoundedCornerShape(8.dp))) { Icon(if (inCustomSet) Icons.Default.Star else Icons.Default.StarBorder, "Custom", tint = if (inCustomSet) Color.Yellow else DarkMuted) }
                                 }
                             IconButton({ showBreakdown = true; breakdownCard = current }, modifier = Modifier.size(44.dp).background(DarkPanel2, RoundedCornerShape(8.dp))) { Icon(Icons.Default.Extension, "Breakdown", tint = if (currentBreakdown?.hasContent() == true) AccentBlue else DarkMuted) }
@@ -644,7 +647,8 @@ fun AllCardsScreen(nav: NavHostController, repo: Repository) {
                         Column(Modifier.padding(10.dp)) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                 Text(c.term, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                                if (settings.showCustomSetButton) {
+                                {  // Custom Set button always shown (setting removed)
+
                                 IconButton({ scope.launch { if (inCustomSet) repo.removeFromCustomSet(c.id) else repo.addToCustomSet(c.id) } }, modifier = Modifier.size(28.dp)) { Icon(if (inCustomSet) Icons.Default.Star else Icons.Default.StarBorder, "Custom", tint = if (inCustomSet) Color.Yellow else DarkMuted, modifier = Modifier.size(18.dp)) }
                                 }
                                 IconButton({ breakdownCard = c; showBreakdown = true }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Extension, "Breakdown", tint = if (bd?.hasContent() == true) AccentBlue else DarkMuted, modifier = Modifier.size(18.dp)) }
@@ -845,7 +849,6 @@ fun SettingsScreen(nav: NavHostController, repo: Repository) {
             SettingToggle("Randomize Learned Study", settings.randomizeLearnedStudy) { scope.launch { repo.saveSettingsAll(settings.copy(randomizeLearnedStudy = it)) } }
             
             Spacer(Modifier.height(12.dp)); Text("Study Screens", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
-            SettingToggle("Show Custom Set (⭐) button", settings.showCustomSetButton) { scope.launch { repo.saveSettingsAll(settings.copy(showCustomSetButton = it)) } }
 
             Spacer(Modifier.height(12.dp)); Text("List Views", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
             SettingToggle("Show definitions in All list", settings.showDefinitionsInAllList) { scope.launch { repo.saveSettingsAll(settings.copy(showDefinitionsInAllList = it)) } }
@@ -918,9 +921,8 @@ fun AdminScreen(nav: NavHostController, repo: Repository) {
     val scope = rememberCoroutineScope()
     val adminSettings by repo.adminSettingsFlow().collectAsState(initial = AdminSettings())
     
-    // Simple admin check - use default admins list which includes "sidscri"
-    val isAdmin = adminSettings.username.isNotBlank() && 
-        adminSettings.username.trim().lowercase() in setOf("sidscri")
+    // Admin check (cached list from server; fallback includes "sidscri")
+    val isAdmin = AdminUsers.isAdmin(adminSettings.username)
     
     var chatGptKey by remember(adminSettings) { mutableStateOf(adminSettings.chatGptApiKey) }
     var chatGptModel by remember(adminSettings) { mutableStateOf(adminSettings.chatGptModel) }
@@ -1247,8 +1249,165 @@ fun LoginScreen(nav: NavHostController, repo: Repository) {
                     }
                 }
                 Spacer(Modifier.height(16.dp))
-                OutlinedButton({ scope.launch { repo.saveAdminSettings(adminSettings.copy(isLoggedIn = false, authToken = "", username = "")); statusMessage = "Logged out successfully" } }, Modifier.fillMaxWidth()) { 
-                    Icon(Icons.Default.Logout, "Logout"); Spacer(Modifier.width(8.dp)); Text("Logout") 
+
+// -------------------------
+// Admin: Logs + Stats
+// -------------------------
+if (adminSettings.isLoggedIn && isAdmin && adminSettings.authToken.isNotBlank()) {
+    var adminTab by remember { mutableStateOf(0) } // 0=Logs, 1=Stats
+    var logTab by remember { mutableStateOf(0) }   // 0=Server,1=Error,2=User
+    var logsText by remember { mutableStateOf("") }
+    var statsUsers by remember { mutableStateOf(listOf<WebAppSync.AdminStatUser>()) }
+    var adminError by remember { mutableStateOf("") }
+    var adminLoading by remember { mutableStateOf(false) }
+    val ctx = LocalContext.current
+    val clipboard = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+
+    Card(colors = CardDefaults.cardColors(containerColor = DarkCard), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Text("Admin Tools", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Spacer(Modifier.height(8.dp))
+
+            TabRow(selectedTabIndex = adminTab) {
+                Tab(selected = adminTab == 0, onClick = { adminTab = 0 }, text = { Text("Logs") })
+                Tab(selected = adminTab == 1, onClick = { adminTab = 1 }, text = { Text("Stats") })
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            if (adminTab == 0) {
+                TabRow(selectedTabIndex = logTab) {
+                    Tab(selected = logTab == 0, onClick = { logTab = 0 }, text = { Text("Server") })
+                    Tab(selected = logTab == 1, onClick = { logTab = 1 }, text = { Text("Error") })
+                    Tab(selected = logTab == 2, onClick = { logTab = 2 }, text = { Text("User") })
+                }
+                Spacer(Modifier.height(8.dp))
+
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                adminLoading = true
+                                adminError = ""
+                                try {
+                                    val t = if (logTab == 0) "server" else if (logTab == 1) "error" else "user"
+                                    logsText = WebAppSync.getAdminLogs(adminSettings.serverUrl, adminSettings.authToken, t, 800)
+                                } catch (e: Exception) {
+                                    adminError = e.message ?: "Failed to load logs"
+                                } finally { adminLoading = false }
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) { Text(if (adminLoading) "Loading..." else "Refresh") }
+
+                    OutlinedButton(
+                        onClick = {
+                            val clip = android.content.ClipData.newPlainText("Kenpo Logs", logsText)
+                            clipboard.setPrimaryClip(clip)
+                            statusMessage = "Logs copied to clipboard"
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Copy") }
+
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                adminLoading = true
+                                adminError = ""
+                                try {
+                                    val t = if (logTab == 0) "server" else if (logTab == 1) "error" else "user"
+                                    WebAppSync.resetAdminLogs(adminSettings.serverUrl, adminSettings.authToken, t)
+                                    logsText = ""
+                                    statusMessage = "Log reset: $t"
+                                } catch (e: Exception) {
+                                    adminError = e.message ?: "Failed to reset log"
+                                } finally { adminLoading = false }
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Reset") }
+                }
+
+                if (adminError.isNotBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(adminError, color = Color.Red, fontSize = 12.sp)
+                }
+                Spacer(Modifier.height(8.dp))
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 120.dp, max = 280.dp)
+                        .background(Color(0xFF101010))
+                        .padding(10.dp)
+                ) {
+                    Text(
+                        if (logsText.isBlank()) "Tap Refresh to load logs…" else logsText,
+                        color = Color(0xFFDDDDDD),
+                        fontSize = 11.sp
+                    )
+                }
+            } else {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                adminLoading = true
+                                adminError = ""
+                                try {
+                                    statsUsers = WebAppSync.getAdminStats(adminSettings.serverUrl, adminSettings.authToken)
+                                } catch (e: Exception) {
+                                    adminError = e.message ?: "Failed to load stats"
+                                } finally { adminLoading = false }
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) { Text(if (adminLoading) "Loading..." else "Refresh") }
+
+                    OutlinedButton(
+                        onClick = {
+                            val text = statsUsers.joinToString("\n") { u -> "${u.username} | ${u.lastSeen} | ${u.lastPath}" }
+                            val clip = android.content.ClipData.newPlainText("Kenpo Stats", text)
+                            clipboard.setPrimaryClip(clip)
+                            statusMessage = "Stats copied to clipboard"
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Copy") }
+                }
+
+                if (adminError.isNotBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(adminError, color = Color.Red, fontSize = 12.sp)
+                }
+                Spacer(Modifier.height(8.dp))
+
+                if (statsUsers.isEmpty()) {
+                    Text("No recent activity yet.", color = DarkMuted, fontSize = 12.sp)
+                } else {
+                    Column(Modifier.heightIn(max = 280.dp).verticalScroll(rememberScrollState())) {
+                        statsUsers.forEach { u ->
+                            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1D1D1D)), modifier = Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(10.dp)) {
+                                    Text(u.username, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text("Last seen: ${u.lastSeen}", color = DarkMuted, fontSize = 11.sp)
+                                    Text("Last action: ${u.lastPath}", color = DarkMuted, fontSize = 11.sp)
+                                    Text("IP: ${u.ip}", color = DarkMuted, fontSize = 10.sp)
+                                }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Spacer(Modifier.height(16.dp))
+}
+                // Logout control (compact)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    IconButton(onClick = { scope.launch { repo.saveAdminSettings(adminSettings.copy(isLoggedIn = false, authToken = "")) ; statusMessage = "Logged out successfully" } }) {
+                        Icon(Icons.Default.Logout, contentDescription = "Logout", tint = Color.White)
+                    }
+                }
                 }
             } else {
                 OutlinedTextField(serverUrl, { serverUrl = it }, Modifier.fillMaxWidth(), label = { Text("Server URL") }, singleLine = true, textStyle = LocalTextStyle.current.copy(fontSize = 12.sp), leadingIcon = { Icon(Icons.Default.Cloud, "Server") })

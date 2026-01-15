@@ -288,3 +288,8 @@ versionName "4.1.0"
   - Custom Set now uses **Custom Set Settings** for sort/random (instead of global study settings).
   - Added Settings action to **pick a number of random Unlearned cards** for the Custom Set (with 🎲 helper).
 
+## 4.5.0 (v23)
+
+- Admin tools: added Logs (Server/Error/User) + Stats panels (admin-only).
+- Removed settings toggle for ⭐ Custom Set button (⭐ is always shown).
+- Replaced old large Logout button with a compact logout icon control.
