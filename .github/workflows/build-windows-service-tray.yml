@@ -15,8 +15,9 @@ on:
 jobs:
   build:
     runs-on: windows-latest
-    env:
-      PROJECT_DIR: "KenpoFlashcardsWebServer_Service_Tray"
+    defaults:
+      run:
+        working-directory: KenpoFlashcardsWebServer_Service_Tray
 
     steps:
       - uses: actions/checkout@v4
@@ -26,71 +27,25 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install build tools
+      - name: Install tray build deps
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller
+          pip install -r windows_tray/requirements_tray.txt
 
-      - name: Install project dependencies (if present)
+      - name: Build tray EXE
         shell: pwsh
-        working-directory: ${{ env.PROJECT_DIR }}
         run: |
-          if (Test-Path "requirements.txt") { pip install -r requirements.txt }
+          pyinstaller --noconfirm --clean --noconsole ^
+            --name KenpoFlashcardsTray ^
+            --distpath dist ^
+            --workpath build ^
+            windows_tray/kenpo_tray.py
 
-      - name: Build portable EXE (preferred: scripts, fallback: PyInstaller)
-        shell: pwsh
-        working-directory: ${{ env.PROJECT_DIR }}
-        run: |
-          # Preferred: your own scripts (if present)
-          if (Test-Path "packaging\build_portable_exe.bat") {
-            cmd /c packaging\build_portable_exe.bat
-            exit 0
-          }
-          if (Test-Path "packaging\build_exe.bat") {
-            cmd /c packaging\build_exe.bat
-            exit 0
-          }
-
-          # Fallback: try common entrypoints
-          if (Test-Path "app.py") {
-            py -m PyInstaller --noconfirm --clean --onefile app.py
-            exit 0
-          }
-          if (Test-Path "server.py") {
-            py -m PyInstaller --noconfirm --clean --onefile server.py
-            exit 0
-          }
-          Write-Error "No build script or entrypoint found (expected packaging/*.bat or app.py/server.py)."
-
-      - name: Build installer EXE (optional)
-        shell: pwsh
-        working-directory: ${{ env.PROJECT_DIR }}
-        run: |
-          if (Test-Path "packaging\build_installer_exe.bat") {
-            cmd /c packaging\build_installer_exe.bat
-          } else {
-            Write-Host "No packaging/build_installer_exe.bat found; skipping."
-          }
-
-      - name: Build MSI (optional)
-        shell: pwsh
-        working-directory: ${{ env.PROJECT_DIR }}
-        run: |
-          if (Test-Path "packaging\build_msi.bat") {
-            cmd /c packaging\build_msi.bat
-          } else {
-            Write-Host "No packaging/build_msi.bat found; skipping."
-          }
-
-      - name: Upload artifacts
+      - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
         with:
-          name: KenpoFlashcardsWebServer_Service_Tray-artifacts
-          path: |
-            KenpoFlashcardsWebServer_Service_Tray/dist/**
-            KenpoFlashcardsWebServer_Service_Tray/build/**
-            KenpoFlashcardsWebServer_Service_Tray/release/**
-            KenpoFlashcardsWebServer_Service_Tray/**/*.exe
-            KenpoFlashcardsWebServer_Service_Tray/**/*.msi
+          name: KenpoFlashcardsWebServer_Service_Tray-tray
+          path: dist/**
           if-no-files-found: error
