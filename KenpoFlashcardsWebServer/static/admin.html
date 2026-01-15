@@ -60,6 +60,24 @@
       <button id="btnRefreshAI">Refresh</button>
     </div>
 
+
+<div class='card'>
+  <h2>Logs</h2>
+  <div style='display:flex; gap:8px; flex-wrap:wrap; align-items:center;'>
+    <button class='btn' id='logTabServer'>Server Logs</button>
+    <button class='btn' id='logTabError'>Error Logs</button>
+    <button class='btn' id='logTabUser'>User Logs</button>
+    <span style='flex:1'></span>
+    <button class='btn' id='logRefreshBtn'>⟳ Refresh</button>
+    <button class='btn' id='logDownloadBtn'>Download</button>
+    <button class='btn danger' id='logResetBtn'>Reset</button>
+  </div>
+  <div style='margin-top:10px; font-size:12px; opacity:0.85;'>
+    <div><b>Note:</b> Logs are available only when you open this page on the server machine (localhost).</div>
+  </div>
+  <pre id='logOutput' style='margin-top:10px; max-height:320px; overflow:auto; white-space:pre-wrap;'></pre>
+</div>
+
     <script>
       async function jget(url){
         const r = await fetch(url);
@@ -111,6 +129,40 @@
       document.getElementById("btnRefreshAI").onclick = loadAI;
 
       loadHealth(); loadVer(); loadAI();
+
+  // ---- Logs ----
+  let currentLogType = 'server';
+  async function loadLogs() {
+    try {
+      const res = await fetch(`/api/admin/logs?type=${currentLogType}&lines=800`);
+      const data = await res.json();
+      document.getElementById('logOutput').textContent = data.text || '';
+    } catch (e) {
+      document.getElementById('logOutput').textContent = 'Failed to load logs.';
+    }
+  }
+  function setLogTab(type) {
+    currentLogType = type;
+    loadLogs();
+  }
+  document.getElementById('logTabServer').addEventListener('click', () => setLogTab('server'));
+  document.getElementById('logTabError').addEventListener('click', () => setLogTab('error'));
+  document.getElementById('logTabUser').addEventListener('click', () => setLogTab('user'));
+  document.getElementById('logRefreshBtn').addEventListener('click', () => loadLogs());
+  document.getElementById('logDownloadBtn').addEventListener('click', () => {
+    window.location.href = `/api/admin/logs/download?type=${currentLogType}`;
+  });
+  document.getElementById('logResetBtn').addEventListener('click', async () => {
+    if (!confirm('Reset this log? This starts a new log file.')) return;
+    await fetch('/api/admin/logs/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: currentLogType })
+    });
+    loadLogs();
+  });
+  // Load initial logs
+  loadLogs();
     </script>
   </div>
 </body>

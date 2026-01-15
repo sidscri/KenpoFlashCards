@@ -270,3 +270,10 @@ KenpoFlashcardsWebServer/
 ## 📄 License
 
 Personal/educational use for learning American Kenpo Karate vocabulary.
+
+## Admin logs (v5.5.2 build v29)
+
+- Added a Logs panel to the admin page with tabs for **Server**, **Error**, and **User** logs.
+- Logs can be **refreshed**, **downloaded**, and **reset** (starts a new log file) from the GUI.
+- For safety, log endpoints are only accessible when opening the admin page on the server machine (localhost).
+

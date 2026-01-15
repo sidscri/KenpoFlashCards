@@ -185,3 +185,10 @@ The format is simple and practical:
 - **GitHub Actions**: Auto-generate changelog from commit messages using `conventional-changelog`
 - **Pre-commit hook**: Remind to update changelog if certain files changed
 - **Release script**: Prompt for changelog entry when bumping version
+
+## Admin logs (v5.5.2 build v29)
+
+- Added a Logs panel to the admin page with tabs for **Server**, **Error**, and **User** logs.
+- Logs can be **refreshed**, **downloaded**, and **reset** (starts a new log file) from the GUI.
+- For safety, log endpoints are only accessible when opening the admin page on the server machine (localhost).
+

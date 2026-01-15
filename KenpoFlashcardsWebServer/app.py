@@ -19,6 +19,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # - Login from any device with the same credentials
 # =========================================================
 
+import logging
+from flask import send_file, Response
 DEFAULT_KENPO_ROOT = r"C:\Users\Sidscri\Documents\GitHub\sidscri-apps"
 # Fallback (only used if auto-discovery fails)
 DEFAULT_KENPO_JSON_FALLBACK = r"C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v2\app\src\main\assets\kenpo_words.json"
@@ -57,6 +59,49 @@ KENPO_JSON_PATH = _resolve_kenpo_json_path()
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 DATA_DIR = os.path.join(APP_DIR, "data")
+
+# --- Logging ---
+LOG_DIR = os.path.join(DATA_DIR, 'logs')
+os.makedirs(LOG_DIR, exist_ok=True)
+SERVER_LOG_PATH = os.path.join(LOG_DIR, 'server.log')
+ERROR_LOG_PATH  = os.path.join(LOG_DIR, 'error.log')
+USER_LOG_PATH   = os.path.join(LOG_DIR, 'user.log')
+
+def _setup_logger(name: str, path: str, level=logging.INFO):
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.propagate = False
+    # Avoid duplicate handlers on reload
+    while logger.handlers:
+        logger.handlers.pop()
+    fh = logging.FileHandler(path, encoding='utf-8')
+    fh.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+    logger.addHandler(fh)
+    return logger
+
+server_logger = _setup_logger('kenpo_server', SERVER_LOG_PATH, logging.INFO)
+error_logger  = _setup_logger('kenpo_error',  ERROR_LOG_PATH,  logging.INFO)
+user_logger   = _setup_logger('kenpo_user',   USER_LOG_PATH,   logging.INFO)
+
+def _tail_lines(path: str, max_lines: int = 500) -> str:
+    try:
+        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
+        return ''.join(lines[-max_lines:])
+    except FileNotFoundError:
+        return ''
+
+def _log_path_for(kind: str) -> str:
+    kind = (kind or '').lower()
+    if kind == 'server':
+        return SERVER_LOG_PATH
+    if kind == 'error':
+        return ERROR_LOG_PATH
+    if kind == 'user':
+        return USER_LOG_PATH
+    raise ValueError('invalid log type')
+
+
 
 BREAKDOWNS_PATH = os.path.join(DATA_DIR, "breakdowns.json")
 
@@ -2074,6 +2119,50 @@ def _load_api_keys_on_startup():
             GEMINI_MODEL = keys['geminiModel']
         print(f"[STARTUP] Loaded encrypted API keys from {API_KEYS_PATH}")
 
+
+
+@app.route('/api/admin/logs')
+def api_admin_logs():
+    # For safety, allow only local requests (admin page)
+    if request.remote_addr not in ('127.0.0.1', '::1'):
+        return jsonify({'error': 'Logs endpoint is only available on localhost'}), 403
+    kind = request.args.get('type', 'server')
+    max_lines = int(request.args.get('lines', '500') or '500')
+    max_lines = max(1, min(max_lines, 5000))
+    try:
+        path = _log_path_for(kind)
+    except Exception:
+        return jsonify({'error': 'Invalid log type'}), 400
+    return jsonify({'type': kind, 'text': _tail_lines(path, max_lines)})
+
+@app.route('/api/admin/logs/download')
+def api_admin_logs_download():
+    if request.remote_addr not in ('127.0.0.1', '::1'):
+        return jsonify({'error': 'Logs download is only available on localhost'}), 403
+    kind = request.args.get('type', 'server')
+    try:
+        path = _log_path_for(kind)
+    except Exception:
+        return jsonify({'error': 'Invalid log type'}), 400
+    # If missing, send empty file response
+    if not os.path.exists(path):
+        return Response('', mimetype='text/plain')
+    return send_file(path, as_attachment=True, download_name=f'{kind}.log', mimetype='text/plain')
+
+@app.route('/api/admin/logs/reset', methods=['POST'])
+def api_admin_logs_reset():
+    if request.remote_addr not in ('127.0.0.1', '::1'):
+        return jsonify({'error': 'Logs reset is only available on localhost'}), 403
+    data = request.get_json(silent=True) or {}
+    kind = (data.get('type') or 'server').lower()
+    try:
+        path = _log_path_for(kind)
+    except Exception:
+        return jsonify({'error': 'Invalid log type'}), 400
+    # Truncate and write a fresh header line
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(f'Reset {kind} log\n')
+    return jsonify({'ok': True, 'type': kind})
 
 if __name__ == "__main__":
     # Load encrypted API keys from file (overrides environment variables)
