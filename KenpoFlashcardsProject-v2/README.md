@@ -267,6 +267,3 @@ Built for the Kenpo community to support vocabulary mastery and martial arts edu
   - Custom Set now uses **Custom Set Settings** for sort/random (instead of global study settings).
   - Added Settings action to **pick a number of random Unlearned cards** for the Custom Set (with 🎲 helper).
 
-## 4.5.0 (v23)
-
-- Admin panel includes tabs for Logs and Stats (requires admin + server token endpoints).

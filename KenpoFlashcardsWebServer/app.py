@@ -12,62 +12,6 @@ import requests
 from flask import Flask, jsonify, request, send_from_directory, session
 from werkzeug.security import generate_password_hash, check_password_hash
 
-### KFCS_LOGGING_SETUP ###
-import logging
-from logging.handlers import RotatingFileHandler
-import traceback
-from datetime import datetime
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-LOG_DIR = os.path.join(BASE_DIR, "logs")
-os.makedirs(LOG_DIR, exist_ok=True)
-SERVER_LOG_PATH = os.path.join(LOG_DIR, "server.log")
-USER_LOG_PATH = os.path.join(LOG_DIR, "user.log")
-ERROR_LOG_PATH = os.path.join(LOG_DIR, "error.log")
-
-def _setup_loggers():
-    server_logger = logging.getLogger("kfc_server")
-    server_logger.setLevel(logging.INFO)
-    if not any(isinstance(h, RotatingFileHandler) and getattr(h, 'baseFilename', '').endswith("server.log") for h in server_logger.handlers):
-        h = RotatingFileHandler(SERVER_LOG_PATH, maxBytes=1_000_000, backupCount=5, encoding="utf-8")
-        h.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
-        server_logger.addHandler(h)
-
-    user_logger = logging.getLogger("kfc_user")
-    user_logger.setLevel(logging.INFO)
-    if not any(isinstance(h, RotatingFileHandler) and getattr(h, 'baseFilename', '').endswith("user.log") for h in user_logger.handlers):
-        h2 = RotatingFileHandler(USER_LOG_PATH, maxBytes=1_000_000, backupCount=5, encoding="utf-8")
-        h2.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
-        user_logger.addHandler(h2)
-
-    err_logger = logging.getLogger("kfc_error")
-    err_logger.setLevel(logging.ERROR)
-    if not any(isinstance(h, RotatingFileHandler) and getattr(h, 'baseFilename', '').endswith("error.log") for h in err_logger.handlers):
-        h3 = RotatingFileHandler(ERROR_LOG_PATH, maxBytes=2_000_000, backupCount=5, encoding="utf-8")
-        h3.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
-        err_logger.addHandler(h3)
-    return server_logger, user_logger, err_logger
-
-SERVER_LOGGER, USER_LOGGER, ERROR_LOGGER = _setup_loggers()
-
-# In-memory activity tracking (admin stats)
-ACTIVE_USERS = {}
-
-def _now_iso():
-    return datetime.utcnow().isoformat() + "Z"
-
-def _track_activity(username: str, path: str, ua: str, ip: str):
-    if not username:
-        return
-    key = username.strip()
-    ACTIVE_USERS[key] = {
-        "username": key,
-        "last_seen": _now_iso(),
-        "last_path": path or "",
-        "ip": ip or "",
-        "user_agent": (ua or "")[:200],
-    }
-    USER_LOGGER.info(f"user={key} ip={ip} path={path} ua={(ua or '')[:120]}")
 # =========================================================
 # Kenpo Flashcards Web (Multi-user with Username/Password Auth)
 # - Users create a profile with username/password
@@ -489,17 +433,6 @@ ADMIN_USERNAMES = _load_admin_usernames()
 
 PORT = int(os.environ.get("KENPO_WEB_PORT", "8009"))
 app = Flask(__name__, static_folder="static")
-
-@app.before_request
-def _before_request_track():
-    try:
-        user_id = session.get("user_id")
-        if user_id:
-            user = _get_user(user_id) or {}
-            uname = user.get("username", "")
-            _track_activity(uname, request.path, request.headers.get("User-Agent",""), request.remote_addr or "")
-    except Exception:
-        pass
 
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(USERS_DIR, exist_ok=True)
@@ -1710,89 +1643,11 @@ def android_auth_required(f):
         if not result:
             return jsonify({'error': 'Invalid or expired token'}), 401
         request.android_uid, request.android_user = result
-        try:
-            _track_activity(request.android_user.get('username',''), request.path, request.headers.get('User-Agent',''), request.remote_addr or '')
-        except Exception:
-            pass
         return f(*args, **kwargs)
     return decorated
 
 
 @app.post("/api/sync/login")
-
-
-def _android_admin_required():
-    """Return (uid, user_dict) if Bearer token is valid AND user is admin."""
-    auth_header = request.headers.get('Authorization', '')
-    if not auth_header.startswith('Bearer '):
-        return None
-    token = auth_header[7:]
-    result = _verify_android_token(token)
-    if not result:
-        return None
-    uid, user = result
-    username = (user or {}).get("username","")
-    if not _is_admin_user(username):
-        return None
-    return uid, user
-
-def _read_last_lines(path: str, lines: int = 400) -> str:
-    try:
-        if lines <= 0:
-            lines = 200
-        if not os.path.exists(path):
-            return ""
-        with open(path, "r", encoding="utf-8", errors="ignore") as f:
-            data = f.read().splitlines()
-        return "\n".join(data[-lines:])
-    except Exception as e:
-        ERROR_LOGGER.error("read_last_lines failed: %s", e)
-        return ""
-
-def _rotate_log(path: str):
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    if os.path.exists(path) and os.path.getsize(path) > 0:
-        backup = path + "." + ts + ".bak"
-        try:
-            os.rename(path, backup)
-        except Exception:
-            pass
-    try:
-        with open(path, "w", encoding="utf-8") as f:
-            f.write("")
-    except Exception as e:
-        ERROR_LOGGER.error("rotate_log failed: %s", e)
-
-@app.get("/api/sync/admin/logs")
-def api_sync_admin_logs():
-    au = _android_admin_required()
-    if not au:
-        return jsonify({"error":"forbidden"}), 403
-    log_type = (request.args.get("type") or "server").lower()
-    lines = int(request.args.get("lines") or "400")
-    path = SERVER_LOG_PATH if log_type == "server" else ERROR_LOG_PATH if log_type == "error" else USER_LOG_PATH
-    return jsonify({"ok": True, "type": log_type, "text": _read_last_lines(path, lines)})
-
-@app.post("/api/sync/admin/logs/reset")
-def api_sync_admin_logs_reset():
-    au = _android_admin_required()
-    if not au:
-        return jsonify({"error":"forbidden"}), 403
-    log_type = (request.args.get("type") or "server").lower()
-    path = SERVER_LOG_PATH if log_type == "server" else ERROR_LOG_PATH if log_type == "error" else USER_LOG_PATH
-    _rotate_log(path)
-    SERVER_LOGGER.info("Admin reset log: %s", log_type)
-    return jsonify({"ok": True})
-
-@app.get("/api/sync/admin/stats")
-def api_sync_admin_stats():
-    au = _android_admin_required()
-    if not au:
-        return jsonify({"error":"forbidden"}), 403
-    items = list(ACTIVE_USERS.values())
-    items.sort(key=lambda x: x.get("last_seen",""), reverse=True)
-    return jsonify({"ok": True, "users": items})
-
 def api_android_login():
     """Android app login endpoint.
     
@@ -2251,16 +2106,6 @@ def _load_api_keys_on_startup():
             GEMINI_MODEL = keys['geminiModel']
         print(f"[STARTUP] Loaded encrypted API keys from {API_KEYS_PATH}")
 
-
-
-
-@app.errorhandler(Exception)
-def _handle_exception(e):
-    try:
-        ERROR_LOGGER.error("Unhandled exception: %s\n%s", e, traceback.format_exc())
-    except Exception:
-        pass
-    return jsonify({"error":"server_error"}), 500
 
 if __name__ == "__main__":
     # Load encrypted API keys from file (overrides environment variables)

@@ -282,7 +282,3 @@ Personal/educational use for learning American Kenpo Karate vocabulary.
 
 The admin Logs panel no longer requires localhost. It now requires an **authenticated admin session**.
 
-## 5.6.0 (v30)
-
-- Android Admin panel can read/reset logs and view recent activity via token-auth endpoints.
-- Logs are stored under `/logs/`.

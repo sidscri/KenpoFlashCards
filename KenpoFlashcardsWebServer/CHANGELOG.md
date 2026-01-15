@@ -197,8 +197,3 @@ The format is simple and practical:
 
 The admin Logs panel no longer requires localhost. It now requires an **authenticated admin session**.
 
-## 5.6.0 (v30)
-
-- Added rotating log files under `/logs/`: `server.log`, `error.log`, `user.log`.
-- Added Android admin endpoints (Bearer token + admin required): `/api/sync/admin/logs`, `/api/sync/admin/logs/reset`, `/api/sync/admin/stats`.
-- Added lightweight activity tracking for Admin Stats (last seen/action/IP).

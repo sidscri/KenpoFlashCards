@@ -1,7 +1,7 @@
 {
   "name": "KenpoFlashcardsWebServer",
-  "version": "5.6.0",
-  "build": 30,
-  "released": "2026-01-15",
-  "notes": "Medium release: logs/stats endpoints for Android admin; rotating log files."
+  "version": "5.5.2",
+  "build": 29,
+  "released": "2026-01-13",
+  "notes": "Patch release: version/docs sync for Android 4.4.2 (no server code changes)."
 }
