@@ -1,0 +1,30 @@
+START Thu 01/15/2026 13:59:21.35
+BASE=C:\Users\Sidscri\Documents\GitHub\sidscri-apps
+SRC=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged
+VERJSON=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\version.json
+SEVENZIP=C:\Program Files\7-Zip\7z.exe
+RAW_VER=beta
+RAW_BUILD=1
+ZIPPATH=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged-vbeta v1.zip
+STAGE=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage
+
+ROBOCOPY_EXIT_CODE=1
+Could Not Find C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage\KenpoFlashcardsWebServer_Packaged\*.pyc
+Running 7z (from stage)...
+
+7-Zip 25.01 (x64) : Copyright (c) 1999-2025 Igor Pavlov : 2025-08-03
+
+Scanning the drive:
+12 folders, 39 files, 33173629 bytes (32 MiB)
+
+Creating archive: C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged-vbeta v1.zip
+
+Add new data to archive: 12 folders, 39 files, 33173629 bytes (32 MiB)
+
+
+Files read from disk: 39
+Archive size: 31358623 bytes (30 MiB)
+Everything is Ok
+7Z_EXIT_CODE=0
+Verified: no .venv paths detected
+SUCCESS

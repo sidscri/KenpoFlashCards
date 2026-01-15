@@ -2,7 +2,7 @@ name: build-windows-packaging-exe-msi
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
     paths:
       - "KenpoFlashcardsWebServer_Packaged_in_exe_msi/**"
       - ".github/workflows/build-windows-packaging-exe-msi.yml"
@@ -33,14 +33,45 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r packaging/requirements_packaging.txt
 
-      - name: Build tray EXE via spec
+      - name: Build tray EXE (PyInstaller spec)
         shell: pwsh
         run: |
           python -m PyInstaller packaging/pyinstaller/kenpo_tray.spec --noconfirm
 
-      - name: Upload EXE artifact
+      - name: Build server EXE (PyInstaller spec)
+        shell: pwsh
+        run: |
+          python -m PyInstaller packaging/pyinstaller/kenpo_server.spec --noconfirm
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup -y
+
+      - name: Build installer (Inno)
+        shell: pwsh
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) { $iscc = "iscc.exe" }
+          & $iscc "packaging\installer_inno.iss"
+
+      - name: Upload tray artifact
         uses: actions/upload-artifact@v4
         with:
-          name: KenpoFlashcardsWebServer_Packaged_in_exe_msi-tray
-          path: dist/KenpoFlashcardsTray/**
+          name: KenpoFlashcardsTray
+          path: KenpoFlashcardsWebServer_Packaged_in_exe_msi/dist/KenpoFlashcardsTray/**
+          if-no-files-found: error
+
+      - name: Upload server artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KenpoFlashcardsWebServer
+          path: KenpoFlashcardsWebServer_Packaged_in_exe_msi/dist/KenpoFlashcardsWebServer/**
+          if-no-files-found: error
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KenpoFlashcardsWebSetup
+          path: KenpoFlashcardsWebServer_Packaged_in_exe_msi/packaging/output/*.exe
           if-no-files-found: error

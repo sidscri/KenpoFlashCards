@@ -15,6 +15,13 @@ The format is simple and practical:
 
 ---
 
+## 4.4.3 (v23) — 2026-01-15
+### Changed
+- Landscape **Study** decks now use more vertical space by expanding the flashcard height (reduces unused background area).
+
+### Fixed
+- **Learned → Study (landscape)** now matches the overall To Study / Unsure study layout proportions by using the same expanded card height.
+
 ## 4.4.2 (v22) — 2026-01-14
 ### Added
 - **Settings toggle to show/hide the Custom Set (⭐) button (default ON).

@@ -163,7 +163,10 @@ fun FlipCard(card: FlashCard, breakdown: TermBreakdown?, showFront: Boolean, set
     val showFrontSide = rotation.absoluteValue <= 90f
     var dragTotal by remember { mutableStateOf(0f) }
     val landscape = isLandscape()
-    val cardHeight = if (landscape) 180.dp else 260.dp
+    val cfg = LocalConfiguration.current
+    // Use more of the vertical space in landscape so the card layout matches the To Study / Unsure decks.
+    val landscapeH = (cfg.screenHeightDp * 0.68f).toInt().coerceIn(220, 360)
+    val cardHeight = if (landscape) landscapeH.dp else 260.dp
     Card(
         modifier = Modifier.fillMaxWidth().height(cardHeight)
             .pointerInput(Unit) { detectHorizontalDragGestures(onDragStart = { dragTotal = 0f }, onHorizontalDrag = { _, d -> dragTotal += d }, onDragEnd = { if (dragTotal <= -90f) onSwipeNext(); if (dragTotal >= 90f) onSwipePrev(); dragTotal = 0f }) }

@@ -18,7 +18,7 @@ BASE_DIR = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 # Ensure app.py sees a stable project dir for static paths
 os.environ.setdefault("KENPO_WEBAPP_BASE_DIR", BASE_DIR)
 
-PORT = int(os.environ.get("KENPO_PORT", "8009"))
+PORT = int(os.environ.get("KENPO_WEB_PORT", "8009"))
 HOST = os.environ.get("KENPO_HOST", "127.0.0.1")
 URL = f"http://{HOST}:{PORT}"
 
