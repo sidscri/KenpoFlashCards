@@ -4,23 +4,33 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - "KenpoFlashcardsWebServer_Service_Tray/**"
+      - "**/windows_tray/**"
       - ".github/workflows/build-windows-service-tray.yml"
   pull_request:
     paths:
-      - "KenpoFlashcardsWebServer_Service_Tray/**"
+      - "**/windows_tray/**"
       - ".github/workflows/build-windows-service-tray.yml"
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: KenpoFlashcardsWebServer_Service_Tray
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Locate tray project dir
+        shell: pwsh
+        run: |
+          $req = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Filter requirements_tray.txt |
+            Where-Object { $_.FullName -match "windows_tray\\requirements_tray\.txt$" } |
+            Select-Object -First 1
+          if (-not $req) { throw "Could not find windows_tray/requirements_tray.txt anywhere in the repo." }
+
+          $projectRoot = Split-Path -Parent $req.DirectoryName
+          "TRAY_DIR=$projectRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Tray project root: $projectRoot"
+          Get-ChildItem -Path $projectRoot | Select-Object Name
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -29,6 +39,7 @@ jobs:
 
       - name: Install tray build deps
         shell: pwsh
+        working-directory: ${{ env.TRAY_DIR }}
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller
@@ -36,6 +47,7 @@ jobs:
 
       - name: Build tray EXE
         shell: pwsh
+        working-directory: ${{ env.TRAY_DIR }}
         run: |
           pyinstaller --noconfirm --clean --noconsole `
             --name KenpoFlashcardsTray `
@@ -48,5 +60,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KenpoFlashcardsTray
-          path: KenpoFlashcardsWebServer_Service_Tray/dist/KenpoFlashcardsTray/**
+          path: ${{ env.TRAY_DIR }}/dist/KenpoFlashcardsTray/**
           if-no-files-found: error
