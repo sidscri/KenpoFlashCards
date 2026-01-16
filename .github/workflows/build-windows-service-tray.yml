@@ -37,15 +37,16 @@ jobs:
       - name: Build tray EXE
         shell: pwsh
         run: |
-          pyinstaller --noconfirm --clean --noconsole ^
-            --name KenpoFlashcardsTray ^
-            --distpath dist ^
-            --workpath build ^
+          pyinstaller --noconfirm --clean --noconsole `
+            --name KenpoFlashcardsTray `
+            --add-data "windows_tray/icon.png;." `
+            --distpath dist `
+            --workpath build `
             windows_tray/kenpo_tray.py
 
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
         with:
-          name: KenpoFlashcardsWebServer_Service_Tray-tray
-          path: dist/**
+          name: KenpoFlashcardsTray
+          path: KenpoFlashcardsWebServer_Service_Tray/dist/KenpoFlashcardsTray/**
           if-no-files-found: error
