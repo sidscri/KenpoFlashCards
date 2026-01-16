@@ -18,6 +18,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Debug - list repo root
+        shell: pwsh
+        run: |
+          Write-Host "Workspace: $env:GITHUB_WORKSPACE"
+          Get-ChildItem -Path $env:GITHUB_WORKSPACE | Select-Object Name
+          Get-ChildItem -Path "$env:GITHUB_WORKSPACE\.github\workflows" | Select-Object Name
 
       - name: Locate tray project dir
         shell: pwsh
