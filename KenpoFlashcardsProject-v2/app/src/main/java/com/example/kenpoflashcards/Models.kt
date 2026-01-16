@@ -11,6 +11,45 @@ enum class CardStatus {
 }
 
 /**
+ * Study Deck - a collection of flashcards that can be studied
+ * Default deck is "kenpo" which loads from kenpo_words.json
+ */
+data class StudyDeck(
+    val id: String,              // Unique deck identifier
+    val name: String,            // Display name (e.g., "Kenpo Vocabulary")
+    val description: String,     // Brief description
+    val isDefault: Boolean,      // If true, loads on app start
+    val isBuiltIn: Boolean,      // If true, cannot be deleted (e.g., kenpo deck)
+    val sourceFile: String?,     // For built-in decks: asset filename (e.g., "kenpo_words.json")
+    val cardCount: Int,          // Number of cards in deck
+    val createdAt: Long,         // Unix timestamp
+    val updatedAt: Long          // Unix timestamp
+) {
+    companion object {
+        // Default Kenpo deck - built-in and cannot be deleted
+        val KENPO_DEFAULT = StudyDeck(
+            id = "kenpo",
+            name = "Kenpo Vocabulary",
+            description = "Korean martial arts terminology for Kenpo students",
+            isDefault = true,
+            isBuiltIn = true,
+            sourceFile = "kenpo_words.json",
+            cardCount = 88,
+            createdAt = 0L,
+            updatedAt = 0L
+        )
+    }
+}
+
+/**
+ * Deck settings - which deck is active, etc.
+ */
+data class DeckSettings(
+    val activeDeckId: String = "kenpo",    // Currently selected deck
+    val availableDecks: List<String> = listOf("kenpo")  // List of deck IDs
+)
+
+/**
  * Flash card data model
  */
 data class FlashCard(
@@ -20,6 +59,7 @@ data class FlashCard(
     val term: String,
     val pron: String?,
     val meaning: String,
+    val deckId: String = "kenpo"  // Which deck this card belongs to
 )
 
 /**

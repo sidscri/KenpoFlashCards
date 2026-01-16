@@ -1077,7 +1077,11 @@ fun SettingsScreen(nav: NavHostController, repo: Repository) {
             
             OutlinedButton({ nav.navigate(Route.Deleted.path) }, Modifier.fillMaxWidth()) { Text("View Deleted Cards") }
             Spacer(Modifier.height(6.dp))
-            OutlinedButton({ csvLauncher.launch(arrayOf("text/*", "text/csv")) }, Modifier.fillMaxWidth()) { Text("Import CSV") }
+            // Manage Decks - Future feature placeholder
+            OutlinedButton({ /* TODO: nav.navigate(Route.ManageDecks.path) */ }, Modifier.fillMaxWidth(), enabled = false) { 
+                Icon(Icons.Default.Dashboard, "Decks"); Spacer(Modifier.width(8.dp))
+                Text("Manage Decks (Coming Soon)") 
+            }
             Spacer(Modifier.height(6.dp))
             OutlinedButton({ scope.launch { repo.saveSettingsAll(getDefaultSettings()) } }, Modifier.fillMaxWidth()) { Text("Reset to Default Settings") }
             

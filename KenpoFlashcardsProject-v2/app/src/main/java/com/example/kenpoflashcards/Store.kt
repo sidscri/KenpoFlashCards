@@ -228,4 +228,221 @@ class Store(private val context: Context) {
             )
         } catch (_: Exception) { AdminSettings() }
     }
+
+    // ==================== DECK MANAGEMENT (Future Feature) ====================
+    private val KEY_DECKS_JSON = stringPreferencesKey("decks_json")
+    private val KEY_DECK_SETTINGS_JSON = stringPreferencesKey("deck_settings_json")
+    private val KEY_USER_CARDS_JSON = stringPreferencesKey("user_cards_json")  // User-created cards
+
+    /**
+     * Get list of available decks (built-in + user-created)
+     */
+    fun decksFlow(): Flow<List<StudyDeck>> = context.dataStore.data.map { prefs ->
+        val raw = prefs[KEY_DECKS_JSON]
+        val decks = mutableListOf(StudyDeck.KENPO_DEFAULT)  // Always include default
+        if (!raw.isNullOrBlank()) {
+            try {
+                val arr = JSONArray(raw)
+                for (i in 0 until arr.length()) {
+                    arr.optJSONObject(i)?.let { decks.add(decodeDeck(it)) }
+                }
+            } catch (_: Exception) {}
+        }
+        decks
+    }
+
+    /**
+     * Get deck settings (active deck, etc.)
+     */
+    fun deckSettingsFlow(): Flow<DeckSettings> = context.dataStore.data.map { prefs ->
+        val raw = prefs[KEY_DECK_SETTINGS_JSON]
+        if (raw.isNullOrBlank()) return@map DeckSettings()
+        try {
+            val o = JSONObject(raw)
+            val availableArr = o.optJSONArray("availableDecks")
+            val available = mutableListOf<String>()
+            if (availableArr != null) {
+                for (i in 0 until availableArr.length()) available.add(availableArr.getString(i))
+            } else {
+                available.add("kenpo")
+            }
+            DeckSettings(
+                activeDeckId = o.optString("activeDeckId", "kenpo"),
+                availableDecks = available
+            )
+        } catch (_: Exception) { DeckSettings() }
+    }
+
+    /**
+     * Save deck settings
+     */
+    suspend fun saveDeckSettings(settings: DeckSettings) {
+        context.dataStore.edit { prefs ->
+            val o = JSONObject()
+            o.put("activeDeckId", settings.activeDeckId)
+            val arr = JSONArray()
+            settings.availableDecks.forEach { arr.put(it) }
+            o.put("availableDecks", arr)
+            prefs[KEY_DECK_SETTINGS_JSON] = o.toString()
+        }
+    }
+
+    /**
+     * Add a new user-created deck
+     */
+    suspend fun addDeck(deck: StudyDeck) {
+        context.dataStore.edit { prefs ->
+            val raw = prefs[KEY_DECKS_JSON] ?: "[]"
+            val arr = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
+            arr.put(encodeDeck(deck))
+            prefs[KEY_DECKS_JSON] = arr.toString()
+        }
+    }
+
+    /**
+     * Delete a user-created deck (cannot delete built-in decks)
+     */
+    suspend fun deleteDeck(deckId: String) {
+        if (deckId == "kenpo") return  // Cannot delete default deck
+        context.dataStore.edit { prefs ->
+            val raw = prefs[KEY_DECKS_JSON] ?: "[]"
+            val arr = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
+            val newArr = JSONArray()
+            for (i in 0 until arr.length()) {
+                val obj = arr.optJSONObject(i)
+                if (obj?.optString("id") != deckId) newArr.put(obj)
+            }
+            prefs[KEY_DECKS_JSON] = newArr.toString()
+            // Also remove user cards for this deck
+            val cardsRaw = prefs[KEY_USER_CARDS_JSON] ?: "[]"
+            val cardsArr = try { JSONArray(cardsRaw) } catch (_: Exception) { JSONArray() }
+            val newCardsArr = JSONArray()
+            for (i in 0 until cardsArr.length()) {
+                val obj = cardsArr.optJSONObject(i)
+                if (obj?.optString("deckId") != deckId) newCardsArr.put(obj)
+            }
+            prefs[KEY_USER_CARDS_JSON] = newCardsArr.toString()
+        }
+    }
+
+    /**
+     * Get user-created cards (cards not in built-in decks)
+     */
+    fun userCardsFlow(): Flow<List<FlashCard>> = context.dataStore.data.map { prefs ->
+        val raw = prefs[KEY_USER_CARDS_JSON] ?: "[]"
+        try {
+            val arr = JSONArray(raw)
+            val cards = mutableListOf<FlashCard>()
+            for (i in 0 until arr.length()) {
+                arr.optJSONObject(i)?.let { cards.add(decodeUserCard(it)) }
+            }
+            cards
+        } catch (_: Exception) { emptyList() }
+    }
+
+    /**
+     * Add a single user card
+     */
+    suspend fun addUserCard(card: FlashCard) {
+        context.dataStore.edit { prefs ->
+            val raw = prefs[KEY_USER_CARDS_JSON] ?: "[]"
+            val arr = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
+            arr.put(encodeUserCard(card))
+            prefs[KEY_USER_CARDS_JSON] = arr.toString()
+        }
+    }
+
+    /**
+     * Add multiple user cards at once
+     */
+    suspend fun addUserCards(cards: List<FlashCard>) {
+        context.dataStore.edit { prefs ->
+            val raw = prefs[KEY_USER_CARDS_JSON] ?: "[]"
+            val arr = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
+            cards.forEach { arr.put(encodeUserCard(it)) }
+            prefs[KEY_USER_CARDS_JSON] = arr.toString()
+        }
+    }
+
+    /**
+     * Delete a user card
+     */
+    suspend fun deleteUserCard(cardId: String) {
+        context.dataStore.edit { prefs ->
+            val raw = prefs[KEY_USER_CARDS_JSON] ?: "[]"
+            val arr = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
+            val newArr = JSONArray()
+            for (i in 0 until arr.length()) {
+                val obj = arr.optJSONObject(i)
+                if (obj?.optString("id") != cardId) newArr.put(obj)
+            }
+            prefs[KEY_USER_CARDS_JSON] = newArr.toString()
+        }
+    }
+
+    /**
+     * Update a user card
+     */
+    suspend fun updateUserCard(card: FlashCard) {
+        context.dataStore.edit { prefs ->
+            val raw = prefs[KEY_USER_CARDS_JSON] ?: "[]"
+            val arr = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
+            val newArr = JSONArray()
+            for (i in 0 until arr.length()) {
+                val obj = arr.optJSONObject(i)
+                if (obj?.optString("id") == card.id) {
+                    newArr.put(encodeUserCard(card))
+                } else {
+                    newArr.put(obj)
+                }
+            }
+            prefs[KEY_USER_CARDS_JSON] = newArr.toString()
+        }
+    }
+
+    // Deck encoding/decoding helpers
+    private fun encodeDeck(deck: StudyDeck): JSONObject {
+        val o = JSONObject()
+        o.put("id", deck.id); o.put("name", deck.name); o.put("description", deck.description)
+        o.put("isDefault", deck.isDefault); o.put("isBuiltIn", deck.isBuiltIn)
+        deck.sourceFile?.let { o.put("sourceFile", it) }
+        o.put("cardCount", deck.cardCount); o.put("createdAt", deck.createdAt); o.put("updatedAt", deck.updatedAt)
+        return o
+    }
+
+    private fun decodeDeck(o: JSONObject): StudyDeck {
+        return StudyDeck(
+            id = o.optString("id", ""),
+            name = o.optString("name", ""),
+            description = o.optString("description", ""),
+            isDefault = o.optBoolean("isDefault", false),
+            isBuiltIn = o.optBoolean("isBuiltIn", false),
+            sourceFile = o.optString("sourceFile", null)?.takeIf { it.isNotBlank() },
+            cardCount = o.optInt("cardCount", 0),
+            createdAt = o.optLong("createdAt", 0),
+            updatedAt = o.optLong("updatedAt", 0)
+        )
+    }
+
+    // User card encoding/decoding helpers
+    private fun encodeUserCard(card: FlashCard): JSONObject {
+        val o = JSONObject()
+        o.put("id", card.id); o.put("group", card.group); o.put("term", card.term); o.put("meaning", card.meaning)
+        card.subgroup?.let { o.put("subgroup", it) }
+        card.pron?.let { o.put("pron", it) }
+        o.put("deckId", card.deckId)
+        return o
+    }
+
+    private fun decodeUserCard(o: JSONObject): FlashCard {
+        return FlashCard(
+            id = o.optString("id", ""),
+            group = o.optString("group", ""),
+            subgroup = o.optString("subgroup", null)?.takeIf { it.isNotBlank() },
+            term = o.optString("term", ""),
+            pron = o.optString("pron", null)?.takeIf { it.isNotBlank() },
+            meaning = o.optString("meaning", ""),
+            deckId = o.optString("deckId", "kenpo")
+        )
+    }
 }

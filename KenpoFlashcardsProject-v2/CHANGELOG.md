@@ -15,19 +15,27 @@ The format is simple and practical:
 
 ---
 
-## 4.4.5 (v25) — 2026-01-16
+## 4.5.0 (v26) — 2026-01-16
+### Added
+- **Deck Management groundwork**: Data models and storage for future multi-deck support
+  - `StudyDeck` model with id, name, description, isDefault, isBuiltIn flags
+  - `DeckSettings` for tracking active deck selection
+  - Storage methods for decks and user-created cards
+  - "Manage Decks (Coming Soon)" placeholder button in Settings
+
 ### Removed
-- **"Show Custom Set Button" setting**: Removed unnecessary setting from Settings screen
+- **Import CSV button**: Replaced with future Deck Management feature
+- **"Show Custom Set Button" setting**: Unnecessary setting removed
 
 ### Fixed
-- **Custom Set settings dialog**: "Reflect status in Main Decks" toggle now wraps text properly
-- **Custom Set "ALL" filter**: Now shows all cards in custom set (was incorrectly filtering out cards marked as Unsure/Learned)
-- **Custom Set status counts**: Increased row height and font size to prevent text cutoff
-- **Custom Set Learned view**: "Got it" button now shows "Relearn" when viewing Learned cards in Custom Set
+- **Custom Set settings dialog**: "Reflect status in Main Decks" toggle wraps properly
+- **Custom Set "ALL" filter**: Shows all cards (was incorrectly filtering)
+- **Custom Set status counts**: Increased height/font to prevent text cutoff
+- **Custom Set Learned view**: Shows "Relearn" button instead of "Got it"
 
 ### Changed
-- **API keys auto-pull on login**: Progress and API keys sync automatically when logging in
-- **Push/Pull buttons restored**: Manual sync buttons available in Sync Progress screen
+- **API keys auto-pull on login**: Progress and API keys sync automatically
+- **Push/Pull buttons restored**: Manual sync available in Sync Progress screen
 
 ---
 
