@@ -1,15 +1,15 @@
-name: build-windows-packaging-exe-msi
+name: build-windows-packaged
 
 on:
   push:
     branches: [ "main" ]
     paths:
       - "KenpoFlashcardsWebServer_Packaged/**"
-      - ".github/workflows/build-windows-packaging-exe-msi.yml"
+      - ".github/workflows/build-windows-packaged.yml"
   pull_request:
     paths:
       - "KenpoFlashcardsWebServer_Packaged/**"
-      - ".github/workflows/build-windows-packaging-exe-msi.yml"
+      - ".github/workflows/build-windows-packaged.yml"
   workflow_dispatch:
 
 jobs:
@@ -37,7 +37,9 @@ jobs:
       - name: Build Tray EXE
         shell: pwsh
         run: |
-          python -m PyInstaller packaging/pyinstaller/kenpo_tray.spec --noconfirm
+          $specPath = Join-Path $PWD "packaging/pyinstaller/kenpo_tray.spec"
+          Write-Host "Building with spec: $specPath"
+          python -m PyInstaller $specPath --noconfirm
 
       - name: Install Inno Setup
         shell: pwsh
