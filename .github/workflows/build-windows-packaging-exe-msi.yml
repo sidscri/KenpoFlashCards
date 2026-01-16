@@ -51,6 +51,16 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r packaging/requirements_packaging.txt
 
+      - name: Debug - verify tray launcher present
+        shell: pwsh
+        run: |
+          cd "$env:PROJ_DIR"
+          Write-Host "PROJ_DIR=$env:PROJ_DIR"
+          if (!(Test-Path ".\KenpoFlashcardsTrayLauncher.py")) {
+            Write-Host "Repo root contents:"; Get-ChildItem | Select-Object Name
+            throw "Missing KenpoFlashcardsTrayLauncher.py in PROJ_DIR"
+          }
+
       - name: Build Tray EXE
         shell: pwsh
         run: |

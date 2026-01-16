@@ -487,33 +487,3 @@ button.danger{background:#321313;border-color:#6e2222}
 .settingRow.disabled *{pointer-events:none}
 
 .settingRow .switch{margin-top:2px;flex:0 0 auto}
-
-/* User menu dropdown */
-.userMenu{
-  position: absolute;
-  right: 18px;
-  top: 58px;
-  min-width: 220px;
-  z-index: 999;
-  background: rgba(20, 20, 22, 0.98);
-  border: 1px solid rgba(255,255,255,0.14);
-  border-radius: 14px;
-  padding: 10px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.35);
-  backdrop-filter: blur(6px);
-}
-.userMenu.hidden{ display: none; }
-.userMenuRow{ padding: 6px 6px; }
-.userMenuLink{
-  display: block;
-  padding: 10px 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.10);
-  text-decoration: none;
-  color: inherit;
-  background: rgba(255,255,255,0.03);
-}
-.userMenuLink:hover{ background: rgba(255,255,255,0.08); }
-.mutedSmall{ opacity: 0.85; font-size: 12px; }
-#userLine{ cursor: pointer; user-select: none; }
-#userLine:focus{ outline: 2px solid rgba(255,255,255,0.18); outline-offset: 2px; border-radius: 10px; }
