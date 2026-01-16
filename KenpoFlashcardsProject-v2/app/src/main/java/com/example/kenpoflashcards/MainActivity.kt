@@ -510,11 +510,7 @@ fun LearnedScreen(nav: NavHostController, repo: Repository) {
     val inCustomSet = current?.let { customSet.contains(it.id) } ?: false
     val atEnd = index >= learnedCards.size - 1 && learnedCards.isNotEmpty()
     
-    Scaffold(topBar = { TopAppBar(title = { Text("Learned", fontSize = 14.sp) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkPanel), actions = {
-        FilterChip(viewMode == LearnedViewMode.LIST, { viewMode = LearnedViewMode.LIST }, { Text("List", fontSize = 10.sp) }); Spacer(Modifier.width(2.dp))
-        FilterChip(viewMode == LearnedViewMode.STUDY, { viewMode = LearnedViewMode.STUDY }, { Text("Study", fontSize = 10.sp) }); Spacer(Modifier.width(4.dp))
-        if (viewMode == LearnedViewMode.STUDY && !landscape) { GroupFilterDropdown(groups, settings.studyFilterGroup) { scope.launch { repo.saveSettingsAll(settings.copy(studyFilterGroup = it)) } }; Spacer(Modifier.width(4.dp)) }
-    }) }, bottomBar = { NavBar(nav, Route.Learned.path) }) { pad ->
+    Scaffold(bottomBar = { NavBar(nav, Route.Learned.path) }) { pad ->
         var searchExpanded by remember { mutableStateOf(false) }
         if (landscape && viewMode == LearnedViewMode.STUDY) {
             Box(Modifier.fillMaxSize().padding(pad)) {
@@ -539,11 +535,18 @@ fun LearnedScreen(nav: NavHostController, repo: Repository) {
             }
         } else {
             Column(Modifier.fillMaxSize().padding(pad).padding(horizontal = 12.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                // Header row with title + search icon (matching To Study/Unsure pattern)
+                // Header row matching Unsure pattern: title + List/Study chips + search icon + group filter
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(if (viewMode == LearnedViewMode.LIST) "Learned List" else "Learned Study", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (viewMode == LearnedViewMode.LIST) "Learned List" else "Learned Study", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                        Spacer(Modifier.width(8.dp))
+                        FilterChip(viewMode == LearnedViewMode.LIST, { viewMode = LearnedViewMode.LIST }, { Text("List", fontSize = 9.sp) }, modifier = Modifier.height(28.dp))
+                        Spacer(Modifier.width(4.dp))
+                        FilterChip(viewMode == LearnedViewMode.STUDY, { viewMode = LearnedViewMode.STUDY }, { Text("Study", fontSize = 9.sp) }, modifier = Modifier.height(28.dp))
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton({ searchExpanded = !searchExpanded }) { Icon(Icons.Default.Search, "Search", tint = DarkMuted) }
+                        if (viewMode == LearnedViewMode.STUDY) { GroupFilterDropdown(groups, settings.studyFilterGroup) { scope.launch { repo.saveSettingsAll(settings.copy(studyFilterGroup = it)) } } }
                     }
                 }
                 if (searchExpanded) {
@@ -559,7 +562,7 @@ fun LearnedScreen(nav: NavHostController, repo: Repository) {
                     )
                     Spacer(Modifier.height(6.dp))
                 }
-                // Show counts row without redundant "Learned: ##" below
+                // Show counts row
                 CountsRow(progress, allCards)
                 Spacer(Modifier.height(6.dp))
                 if (viewMode == LearnedViewMode.LIST) {
@@ -637,18 +640,17 @@ fun AllCardsScreen(nav: NavHostController, repo: Repository) {
         sortCards(searched, settings.sortMode, false)
     }
     
-    Scaffold(topBar = { TopAppBar(title = { Text("All Cards", fontSize = 14.sp) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkPanel), actions = {
-        IconButton({ searchExpanded = !searchExpanded }) { Icon(Icons.Default.Search, "Search", tint = DarkMuted) }
-        OutlinedButton({ showGroupFilter = true }, Modifier.height(32.dp)) { Text(settings.filterGroup ?: "All Groups", fontSize = 10.sp); Icon(Icons.Default.ArrowDropDown, "Filter", Modifier.size(16.dp)) }
-        DropdownMenu(showGroupFilter, { showGroupFilter = false }) { groups.forEach { g -> DropdownMenuItem(text = { Text(g, color = Color.White, fontSize = 12.sp) }, onClick = { scope.launch { repo.saveSettingsAll(settings.copy(filterGroup = if (g == "All Groups") null else g)) }; showGroupFilter = false }) } }
-        Spacer(Modifier.width(8.dp))
-    }) }, bottomBar = { NavBar(nav, Route.AllCards.path) }) { pad ->
+    Scaffold(bottomBar = { NavBar(nav, Route.AllCards.path) }) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).padding(horizontal = 12.dp, vertical = 4.dp)) {
-            // Header row with counts
+            // Header row matching Unsure pattern: title + search icon + group filter
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Total: ${displayedCards.size}", color = DarkMuted, fontSize = 11.sp)
+                Text("All Cards", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton({ searchExpanded = !searchExpanded }) { Icon(Icons.Default.Search, "Search", tint = DarkMuted) }
+                    OutlinedButton({ showGroupFilter = true }, Modifier.height(32.dp)) { Text(settings.filterGroup ?: "All Groups", fontSize = 10.sp); Icon(Icons.Default.ArrowDropDown, "Filter", Modifier.size(16.dp)) }
+                    DropdownMenu(showGroupFilter, { showGroupFilter = false }) { groups.forEach { g -> DropdownMenuItem(text = { Text(g, color = Color.White, fontSize = 12.sp) }, onClick = { scope.launch { repo.saveSettingsAll(settings.copy(filterGroup = if (g == "All Groups") null else g)) }; showGroupFilter = false }) } }
+                }
             }
-            if (!landscape) { CountsRow(progress, allCards) }
             // Search field (shown when expanded)
             if (searchExpanded) {
                 OutlinedTextField(
@@ -663,7 +665,10 @@ fun AllCardsScreen(nav: NavHostController, repo: Repository) {
                 )
                 Spacer(Modifier.height(6.dp))
             }
-                        OutlinedTextField(search, { search = it }, Modifier.background(DarkPanel2, RoundedCornerShape(12.dp)).weight(1f).height(40.dp), singleLine = true, placeholder = { Text("Search", fontSize = 11.sp) }, colors = OutlinedTextFieldDefaults.colors(), textStyle = LocalTextStyle.current.copy(fontSize = 12.sp))
+            // Counts row and total
+            CountsRow(progress, allCards)
+            Text("Total: ${displayedCards.size}", color = DarkMuted, fontSize = 11.sp)
+            Spacer(Modifier.height(6.dp))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(displayedCards, key = { it.id }) { c ->
                     val status = progress.getStatus(c.id); val bd = breakdowns[c.id]; val inCustomSet = customSet.contains(c.id)
@@ -771,14 +776,7 @@ fun CustomSetScreen(nav: NavHostController, repo: Repository) {
         }
     }
     
-    Scaffold(topBar = { TopAppBar(title = { Text("Custom Set", fontSize = 14.sp) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkPanel), actions = { 
-        IconButton({ showSettings = true }) { Icon(Icons.Default.Settings, "Settings", tint = DarkMuted) }
-        if (customSet.isNotEmpty()) { 
-            IconButton({ 
-                if (current != null) showRemoveConfirm = true 
-            }) { Icon(Icons.Default.Delete, "Remove Card", tint = DarkMuted) } 
-        } 
-    }) }, bottomBar = { NavBar(nav, Route.CustomSet.path) }) { pad ->
+    Scaffold(bottomBar = { NavBar(nav, Route.CustomSet.path) }) { pad ->
         if (landscape) {
             // Landscape layout with Unsure button instead of Remove
             Box(Modifier.fillMaxSize().padding(pad)) {
@@ -801,10 +799,14 @@ fun CustomSetScreen(nav: NavHostController, repo: Repository) {
                     Spacer(Modifier.width(8.dp))
                     // Right: Controls
                     Column(Modifier.weight(0.6f).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
-                        // Title row with search icon
+                        // Title row with search icon and settings
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Custom", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
-                            IconButton({ searchExpanded = !searchExpanded }, Modifier.size(32.dp)) { Icon(Icons.Default.Search, "Search", tint = DarkMuted, modifier = Modifier.size(20.dp)) }
+                            Row {
+                                IconButton({ searchExpanded = !searchExpanded }, Modifier.size(32.dp)) { Icon(Icons.Default.Search, "Search", tint = DarkMuted, modifier = Modifier.size(20.dp)) }
+                                IconButton({ showSettings = true }, Modifier.size(32.dp)) { Icon(Icons.Default.Settings, "Settings", tint = DarkMuted, modifier = Modifier.size(20.dp)) }
+                                if (current != null) { IconButton({ showRemoveConfirm = true }, Modifier.size(32.dp)) { Icon(Icons.Default.Delete, "Remove", tint = DarkMuted, modifier = Modifier.size(20.dp)) } }
+                            }
                         }
                         if (searchExpanded) {
                             OutlinedTextField(search, { search = it; index = 0; showFront = true }, Modifier.background(DarkPanel2, RoundedCornerShape(12.dp)).fillMaxWidth().height(48.dp), singleLine = true, placeholder = { Text("Search", fontSize = 10.sp) }, colors = OutlinedTextFieldDefaults.colors(), textStyle = LocalTextStyle.current.copy(fontSize = 11.sp),
@@ -843,7 +845,7 @@ fun CustomSetScreen(nav: NavHostController, repo: Repository) {
         } else {
             // Portrait layout
             Column(Modifier.fillMaxSize().padding(pad).padding(horizontal = 12.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                // Header row with title + search icon
+                // Header row matching Unsure pattern: title + Card count + icons
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Custom", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
@@ -852,6 +854,8 @@ fun CustomSetScreen(nav: NavHostController, repo: Repository) {
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton({ searchExpanded = !searchExpanded }) { Icon(Icons.Default.Search, "Search", tint = DarkMuted) }
+                        IconButton({ showSettings = true }) { Icon(Icons.Default.Settings, "Settings", tint = DarkMuted) }
+                        if (current != null) { IconButton({ showRemoveConfirm = true }) { Icon(Icons.Default.Delete, "Remove", tint = DarkMuted) } }
                     }
                 }
                 // Custom status counts row (compact, clickable to filter)

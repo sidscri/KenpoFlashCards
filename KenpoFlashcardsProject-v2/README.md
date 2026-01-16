@@ -7,7 +7,7 @@ An Android flash-card app designed to help students of **American Kenpo Karate**
 
 This app focuses on **active recall**, **progress tracking**, and **organized learning**, making it ideal for beginners through advanced practitioners.
 
-**Current Version:** v4.4.3 (versionCode 23)  
+**Current Version:** v4.4.4 (versionCode 24)  
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -201,6 +201,7 @@ app/src/main/
 
 | Version | Code | Key Changes |
 |---------|------|-------------|
+| **4.4.4** | 24 | Removed redundant top bar headers, consistent UI pattern across all screens matching Unsure page layout |
 | **4.4.3** | 23 | Custom Set isolated status, search X clear button, landscape card height fix, status filter within Custom Set |
 | **4.4.2** | 22 | API keys pulled for ALL users on login (not just admins), new `/api/sync/apikeys` endpoint |
 | **4.4.0** | 20 | Admin screen loading fix, (Admin) labels, key validation indicators, first-login auto-sync, admin auto-pulls API keys |

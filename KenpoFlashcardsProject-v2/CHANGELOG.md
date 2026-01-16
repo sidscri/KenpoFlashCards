@@ -15,6 +15,16 @@ The format is simple and practical:
 
 ---
 
+## 4.4.4 (v24) — 2026-01-15
+### Changed
+- **Removed redundant top bar headers**: Learned, All Cards, and Custom screens no longer have separate TopAppBar title - header is now inline with controls (matching Unsure pattern)
+- **Learned screen**: List/Study chips moved inline with "Learned List" or "Learned Study" title, search icon and group filter on right
+- **All Cards screen**: Title + search icon + group filter all in single header row
+- **Custom screen**: Title + Card count + search/settings/delete icons in single header row
+- **Consistent UI pattern**: All screens now follow same header layout as Unsure page
+
+---
+
 ## 4.4.3 (v23) — 2026-01-15
 ### Added
 - **Custom Set isolated status tracking**: Custom set now has its own status (Active/Unsure/Learned) separate from main decks
