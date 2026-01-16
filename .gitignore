@@ -62,3 +62,9 @@ yarn-error.log*
 ~$*.xlsx
 ~$*.xls
 ~$*.xlsm
+
+# Allow PyInstaller spec files for the Windows packaging project
+!KenpoFlashcardsWebServer_Packaged_in_exe_msi/packaging/pyinstaller/*.spec
+
+# Allow PyInstaller spec files for Kenpo packaging
+!KenpoFlashcardsWebServer_Packaged_in_exe_msi/packaging/pyinstaller/*.spec
