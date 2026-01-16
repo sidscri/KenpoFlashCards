@@ -5,15 +5,15 @@ REM ============================================================
 REM make_zip.bat (STAGING COPY METHOD - BULLETPROOF)
 REM Put this BAT in: ...\sidscri-apps\
 REM Creates ZIP in the SAME folder as this BAT:
-REM   KenpoFlashcardsWebServer_Packaged_in_exe_msi-v<major.minor> v<build>.zip
+REM   KenpoFlashcardsWebServer_Packagedv<major.minor> v<build>.zip
 REM ZIP contents root:
-REM   KenpoFlashcardsWebServer_Packaged_in_exe_msi\...
+REM   KenpoFlashcardsWebServer_Packaged\...
 REM Reads:
-REM   .\KenpoFlashcardsWebServer_Packaged_in_exe_msi\version.json
+REM   .\KenpoFlashcardsWebServer_Packaged\version.json
 REM Excludes (recursively, guaranteed):
 REM   .venv, __pycache__, *.pyc
 REM Writes log:
-REM   logs\KenpoFlashcardsWebServer_Packaging.log
+REM   logs\KenpoFlashcardsWebServer_Packaged.log
 REM ============================================================
 
 REM Always run from the BAT's folder
@@ -21,11 +21,11 @@ set "BASE=%~dp0"
 if "%BASE:~-1%"=="\" set "BASE=%BASE:~0,-1%"
 pushd "%BASE%" >nul
 
-set "LOG=%BASE%\logs\KenpoFlashcardsWebServerPackaging.log"
+set "LOG=%BASE%\logs\KenpoFlashcardsWebServerPackaged.log"
 > "%LOG%" echo START %DATE% %TIME%
 >>"%LOG%" echo BASE=%BASE%
 
-set "PROJ=KenpoFlashcardsWebServer_Packaged_in_exe_msi"
+set "PROJ=KenpoFlashcardsWebServer_Packaged"
 set "SRC=%BASE%\%PROJ%"
 set "VERJSON=%SRC%\version.json"
 

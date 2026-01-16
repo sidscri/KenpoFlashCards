@@ -1,11 +1,11 @@
-START Fri 01/16/2026  0:43:29.23
+START Fri 01/16/2026  8:35:40.46
 BASE=C:\Users\Sidscri\Documents\GitHub\sidscri-apps
 SRC=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Service_Tray
 VERJSON=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Service_Tray\version.json
 SEVENZIP=C:\Program Files\7-Zip\7z.exe
 RAW_VER=beta
-RAW_BUILD=1
-ZIPPATH=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Service_Tray-vbeta v1.zip
+RAW_BUILD=2
+ZIPPATH=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Service_Tray-vbeta v2.zip
 STAGE=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage
 
 ROBOCOPY_EXIT_CODE=1
@@ -17,7 +17,7 @@ Running 7z (from stage)...
 Scanning the drive:
 10 folders, 31 files, 33162092 bytes (32 MiB)
 
-Creating archive: C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Service_Tray-vbeta v1.zip
+Creating archive: C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Service_Tray-vbeta v2.zip
 
 Add new data to archive: 10 folders, 31 files, 33162092 bytes (32 MiB)
 

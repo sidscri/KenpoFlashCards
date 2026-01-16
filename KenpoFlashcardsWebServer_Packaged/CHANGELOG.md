@@ -1,4 +1,4 @@
-# Changelog — KenpoFlashcardsWebServer_Packaged_in_exe_msi
+# Changelog — KenpoFlashcardsWebServer_Packaged
 
 Windows installer/packaged distribution of KenpoFlashcardsWebServer.
 
@@ -15,13 +15,29 @@ The format is simple and practical:
 
 ---
 
-## v1.0.0 (build 1) — 2026-01-12 [BETA]
+## vbeta v2 (build 2) — 2026-01-16
+### Fixed
+- GitHub Actions workflow now builds successfully
+- Fixed `kenpo_tray.spec` to use actual project structure (`ic_launcher.png` in root)
+- Fixed workflow paths to match folder name `KenpoFlashcardsWebServer_Packaged`
+- Added Flask and requests to hidden imports for PyInstaller
+- Removed reference to non-existent `kenpo_server.spec`
+
+### Changed
+- Simplified workflow to build only tray EXE + Inno installer
+- Workflow uses `working-directory` for cleaner step commands
+- Spec file now bundles `app.py` for tray launcher import
+
+---
+
+## vbeta v1 (build 1) — 2026-01-12
 ### Added
 - Initial packaged release
-- EXE installer for standalone deployment
-- MSI installer for enterprise/managed deployment
+- EXE installer for standalone deployment (Inno Setup)
+- MSI installer for enterprise/managed deployment (WiX)
 - Packaging scripts and build instructions
 - GitHub Actions workflow for automated builds
+- KenpoFlashcardsTrayLauncher for Sonarr-style tray app
 
 ### Notes
 - **Beta release**: Testing installer functionality and deployment scenarios
@@ -43,11 +59,11 @@ The format is simple and practical:
 
 ## Build Process
 ```bash
-# Build EXE (PyInstaller):
-pyinstaller --onefile --windowed app.py
+# Build Tray EXE (PyInstaller):
+python -m PyInstaller packaging/pyinstaller/kenpo_tray.spec --noconfirm
 
-# Build MSI (requires WiX Toolset or similar):
-# See packaging/README.md for detailed instructions
+# Build Installer (Inno Setup):
+iscc packaging/installer_inno.iss
 ```
 
 ## Relationship to Core Server
