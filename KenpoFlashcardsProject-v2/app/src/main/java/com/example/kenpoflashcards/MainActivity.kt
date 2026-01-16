@@ -858,12 +858,13 @@ fun CustomSetScreen(nav: NavHostController, repo: Repository) {
                         if (current != null) { IconButton({ showRemoveConfirm = true }) { Icon(Icons.Default.Delete, "Remove", tint = DarkMuted) } }
                     }
                 }
-                // Custom status counts row (compact, clickable to filter)
-                Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    TextButton({ customViewMode = "ALL" }, Modifier.height(28.dp)) { Text("Custom: ${customCounts.first}", color = if (customViewMode == "ALL") AccentBlue else DarkMuted, fontSize = 10.sp) }
-                    TextButton({ customViewMode = "UNSURE" }, Modifier.height(28.dp)) { Text("Unsure: ${customCounts.second}", color = if (customViewMode == "UNSURE") AccentBlue else DarkMuted, fontSize = 10.sp) }
-                    TextButton({ customViewMode = "LEARNED" }, Modifier.height(28.dp)) { Text("Learned: ${customCounts.third}", color = if (customViewMode == "LEARNED") AccentBlue else DarkMuted, fontSize = 10.sp) }
+                // Custom status counts row (clickable to filter) - increased height
+                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                    TextButton({ customViewMode = "ALL" }, Modifier.height(32.dp)) { Text("Custom: ${customCounts.first}", color = if (customViewMode == "ALL") AccentBlue else DarkMuted, fontSize = 11.sp) }
+                    TextButton({ customViewMode = "UNSURE" }, Modifier.height(32.dp)) { Text("Unsure: ${customCounts.second}", color = if (customViewMode == "UNSURE") AccentBlue else DarkMuted, fontSize = 11.sp) }
+                    TextButton({ customViewMode = "LEARNED" }, Modifier.height(32.dp)) { Text("Learned: ${customCounts.third}", color = if (customViewMode == "LEARNED") AccentBlue else DarkMuted, fontSize = 11.sp) }
                 }
+                Spacer(Modifier.height(4.dp))
                 if (searchExpanded) {
                     OutlinedTextField(
                         value = search,
@@ -891,9 +892,15 @@ fun CustomSetScreen(nav: NavHostController, repo: Repository) {
                                 OutlinedButton({ if (index < customCards.size - 1) { index++; showFront = true } }, enabled = index < customCards.size - 1, modifier = Modifier.weight(1f)) { Text("Next") }
                             }
                             Spacer(Modifier.height(4.dp))
-                            // Action row - Got it + Unsure (not Remove)
+                            // Action row - changes based on view mode
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Button({ handleStatusChange(current.id, CustomCardStatus.LEARNED); if (index >= customCards.size - 1) index = (customCards.size - 2).coerceAtLeast(0); showFront = true }, Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = AccentGood)) { Text("Got it ✓") }
+                                if (customViewMode == "LEARNED") {
+                                    // In Learned view: Relearn (back to active) + Unsure
+                                    OutlinedButton({ handleStatusChange(current.id, CustomCardStatus.ACTIVE); if (index >= customCards.size - 1) index = (customCards.size - 2).coerceAtLeast(0); showFront = true }, Modifier.weight(1f)) { Text("Relearn") }
+                                } else {
+                                    // In ALL or UNSURE view: Got it (mark learned)
+                                    Button({ handleStatusChange(current.id, CustomCardStatus.LEARNED); if (index >= customCards.size - 1) index = (customCards.size - 2).coerceAtLeast(0); showFront = true }, Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = AccentGood)) { Text("Got it ✓") }
+                                }
                                 IconButton({ showBreakdown = true }, modifier = Modifier.size(44.dp).background(DarkPanel2, RoundedCornerShape(8.dp))) { Icon(Icons.Default.Extension, "Breakdown", tint = if (currentBreakdown?.hasContent() == true) AccentBlue else DarkMuted) }
                                 OutlinedButton({ handleStatusChange(current.id, CustomCardStatus.UNSURE); if (index >= customCards.size - 1) index = (customCards.size - 2).coerceAtLeast(0); showFront = true }, Modifier.weight(1f)) { Text("Unsure") }
                             }
@@ -1595,9 +1602,35 @@ fun SyncProgressScreen(nav: NavHostController, repo: Repository) {
             Spacer(Modifier.height(20.dp))
             Text("Web App Sync", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
             Spacer(Modifier.height(4.dp))
-            Text("Progress syncs automatically on login", color = DarkMuted, fontSize = 11.sp)
+            Text("Sync your study progress with the web server", color = DarkMuted, fontSize = 11.sp)
             if (adminSettings.lastSyncTime > 0) {
                 Text("Last sync: ${java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(adminSettings.lastSyncTime))}", color = DarkMuted, fontSize = 11.sp)
+            }
+            Spacer(Modifier.height(12.dp))
+            
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button({ 
+                    if (!adminSettings.isLoggedIn) { statusMessage = "Please login first"; return@Button }
+                    if (adminSettings.authToken.isBlank()) { statusMessage = "Error: No auth token"; return@Button }
+                    isLoading = true
+                    scope.launch { 
+                        val result = repo.syncPushProgressWithToken(adminSettings.authToken, adminSettings.webAppUrl)
+                        statusMessage = if (result.success) "Progress pushed!" else "Error: ${result.error}"
+                        if (result.success) { repo.saveAdminSettings(adminSettings.copy(lastSyncTime = System.currentTimeMillis(), pendingSync = false)) }
+                        isLoading = false 
+                    } 
+                }, Modifier.weight(1f), enabled = !isLoading && adminSettings.isLoggedIn) { Text(if (isLoading) "..." else "Push") }
+                Button({ 
+                    if (!adminSettings.isLoggedIn) { statusMessage = "Please login first"; return@Button }
+                    if (adminSettings.authToken.isBlank()) { statusMessage = "Error: No auth token"; return@Button }
+                    isLoading = true
+                    scope.launch { 
+                        val result = repo.syncPullProgressWithToken(adminSettings.authToken, adminSettings.webAppUrl)
+                        statusMessage = if (result.success) "Progress pulled!" else "Error: ${result.error}"
+                        if (result.success) repo.saveAdminSettings(adminSettings.copy(lastSyncTime = System.currentTimeMillis()))
+                        isLoading = false 
+                    } 
+                }, Modifier.weight(1f), enabled = !isLoading && adminSettings.isLoggedIn) { Text(if (isLoading) "..." else "Pull") }
             }
             
             Spacer(Modifier.height(20.dp)); HorizontalDivider(color = DarkBorder); Spacer(Modifier.height(16.dp))

@@ -15,17 +15,19 @@ The format is simple and practical:
 
 ---
 
-## 4.4.5 (v25) — 2026-01-15
+## 4.4.5 (v25) — 2026-01-16
 ### Removed
 - **"Show Custom Set Button" setting**: Removed unnecessary setting from Settings screen
-- **Push/Pull buttons**: Removed from Sync Progress screen (progress syncs automatically on login)
 
 ### Fixed
 - **Custom Set settings dialog**: "Reflect status in Main Decks" toggle now wraps text properly
 - **Custom Set "ALL" filter**: Now shows all cards in custom set (was incorrectly filtering out cards marked as Unsure/Learned)
+- **Custom Set status counts**: Increased row height and font size to prevent text cutoff
+- **Custom Set Learned view**: "Got it" button now shows "Relearn" when viewing Learned cards in Custom Set
 
 ### Changed
-- **Simplified sync**: Progress and API keys sync automatically on login, no manual push/pull needed
+- **API keys auto-pull on login**: Progress and API keys sync automatically when logging in
+- **Push/Pull buttons restored**: Manual sync buttons available in Sync Progress screen
 
 ---
 

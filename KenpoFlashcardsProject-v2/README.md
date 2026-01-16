@@ -201,7 +201,7 @@ app/src/main/
 
 | Version | Code | Key Changes |
 |---------|------|-------------|
-| **4.4.5** | 25 | Removed Show Custom Set Button setting, removed Push/Pull buttons (auto-sync on login), fixed Custom Set filtering |
+| **4.4.5** | 25 | Removed Show Custom Set Button setting, fixed Custom status text cutoff, Relearn button in Custom Learned view, Push/Pull buttons restored |
 | **4.4.4** | 24 | Removed redundant top bar headers, consistent UI pattern across all screens matching Unsure page layout |
 | **4.4.3** | 23 | Custom Set isolated status, search X clear button, landscape card height fix, status filter within Custom Set |
 | **4.4.2** | 22 | API keys pulled for ALL users on login (not just admins), new `/api/sync/apikeys` endpoint |
