@@ -1,7 +1,0 @@
-{
-  "name": "KenpoFlashcardsWebServer",
-  "version": "5.5.2",
-  "build": 29,
-  "released": "2026-01-13",
-  "notes": "Patch release: version/docs sync for Android 4.4.2 (no server code changes)."
-}

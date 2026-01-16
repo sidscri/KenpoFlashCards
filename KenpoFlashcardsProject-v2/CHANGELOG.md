@@ -16,11 +16,27 @@ The format is simple and practical:
 ---
 
 ## 4.4.3 (v23) — 2026-01-15
+### Added
+- **Custom Set isolated status tracking**: Custom set now has its own status (Active/Unsure/Learned) separate from main decks
+- **Custom Set status filter**: Tap "Custom: ##", "Unsure: ##", "Learned: ##" to filter cards within custom set
+- **"Reflect status changes in Main Decks" toggle**: Optional setting in Custom Set settings to sync status changes to main decks
+- **Custom Set settings dialog**: Accessible via settings icon in Custom Set screen
+- **Search X clear button**: All search fields now have an X icon to clear search text
+- **Remove card confirmation**: Trash icon in Custom Set now removes only current card with confirmation dialog
+
 ### Changed
-- Landscape **Study** decks now use more vertical space by expanding the flashcard height (reduces unused background area).
+- **Custom Set "Remove" button changed to "Unsure"**: Secondary action now marks card as Unsure within custom set instead of removing
+- **Landscape card height increased**: Cards fill more vertical space in landscape mode (180dp → 220dp)
+- **Search text size reduced in landscape**: Prevents "Search" placeholder text from being cut off
+- **Learned screen**: Removed redundant "Learned: ##" count below status row, uses search icon toggle like other screens
+- **All Cards screen**: Now uses search icon toggle in portrait mode (matching To Study/Unsure pattern)
+- **Custom Set portrait layout**: Shows Custom/Unsure/Learned counts in compact row, Card position inline with title
 
 ### Fixed
-- **Learned → Study (landscape)** now matches the overall To Study / Unsure study layout proportions by using the same expanded card height.
+- **Custom Set status isolation**: Status changes in Custom Set no longer affect main deck status (unless "Reflect" setting is ON)
+- **Search tap-outside behavior**: Tapping outside search field closes it but keeps filtered results
+
+---
 
 ## 4.4.2 (v22) — 2026-01-14
 ### Added

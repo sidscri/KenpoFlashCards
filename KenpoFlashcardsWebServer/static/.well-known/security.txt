@@ -1,7 +1,0 @@
-# security.txt — RFC 9116
-# Update the Contact line to an email you actually monitor.
-Contact: mailto:sidscri@yahoo.com
-# Optional: a page describing your vulnerability disclosure process
-Policy: https://example.com/security
-Expires: 2030-01-01T00:00:00Z
-Preferred-Languages: en

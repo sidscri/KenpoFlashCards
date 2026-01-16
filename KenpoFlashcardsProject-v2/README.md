@@ -201,8 +201,8 @@ app/src/main/
 
 | Version | Code | Key Changes |
 |---------|------|-------------|
+| **4.4.3** | 23 | Custom Set isolated status, search X clear button, landscape card height fix, status filter within Custom Set |
 | **4.4.2** | 22 | API keys pulled for ALL users on login (not just admins), new `/api/sync/apikeys` endpoint |
-| **4.4.1** | 21 | API keys pulled for ALL users on login (not just admins), new `/api/sync/apikeys` endpoint |
 | **4.4.0** | 20 | Admin screen loading fix, (Admin) labels, key validation indicators, first-login auto-sync, admin auto-pulls API keys |
 | **4.3.0** | 19 | AI model selection, admin button fix, server-based admin users SoT |
 | **4.2.0** | 18 | About Screen, User Guide, Gemini AI, Dedicated Login/Sync screens, Auto-sync, API key sync |
