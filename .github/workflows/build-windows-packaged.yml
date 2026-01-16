@@ -34,12 +34,18 @@ jobs:
           python -m pip install -r packaging/requirements_packaging.txt
           python -m pip install -r requirements.txt
 
+      - name: Debug - List files
+        shell: pwsh
+        run: |
+          Write-Host "Current directory: $PWD"
+          Write-Host "Listing packaging/pyinstaller:"
+          Get-ChildItem -Path .\packaging\pyinstaller\ -ErrorAction SilentlyContinue
+          Write-Host "Spec file exists: $(Test-Path '.\packaging\pyinstaller\kenpo_tray.spec')"
+
       - name: Build Tray EXE
         shell: pwsh
         run: |
-          $specPath = Join-Path $PWD "packaging/pyinstaller/kenpo_tray.spec"
-          Write-Host "Building with spec: $specPath"
-          python -m PyInstaller $specPath --noconfirm
+          pyinstaller .\packaging\pyinstaller\kenpo_tray.spec --noconfirm
 
       - name: Install Inno Setup
         shell: pwsh
@@ -49,7 +55,7 @@ jobs:
       - name: Build Inno installer
         shell: pwsh
         run: |
-          & iscc packaging/installer_inno.iss
+          & iscc .\packaging\installer_inno.iss
 
       - name: Upload Tray artifact
         uses: actions/upload-artifact@v4
