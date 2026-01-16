@@ -11,8 +11,8 @@ android {
         applicationId "com.example.kenpoflashcards"
         minSdk 21
         targetSdk 34
-        versionCode 24
-        versionName "4.4.4"
+        versionCode 25
+        versionName "4.4.5"
     }
 
     buildFeatures { compose true }

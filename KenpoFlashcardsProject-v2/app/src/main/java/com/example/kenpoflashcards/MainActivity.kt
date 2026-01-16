@@ -734,7 +734,7 @@ fun CustomSetScreen(nav: NavHostController, repo: Repository) {
         val filtered = when (customViewMode) {
             "UNSURE" -> inSet.filter { customSetStatus[it.id] == CustomCardStatus.UNSURE }
             "LEARNED" -> inSet.filter { customSetStatus[it.id] == CustomCardStatus.LEARNED }
-            else -> inSet.filter { customSetStatus[it.id] != CustomCardStatus.UNSURE && customSetStatus[it.id] != CustomCardStatus.LEARNED }
+            else -> inSet // "ALL" shows all cards in custom set
         }
         val searched = if (search.isBlank()) filtered else filtered.filter { it.term.contains(search, true) || it.meaning.contains(search, true) }
         val cs = settings.customSetSettings
@@ -942,7 +942,11 @@ fun CustomSetScreen(nav: NavHostController, repo: Repository) {
                     Spacer(Modifier.height(8.dp))
                     Divider(color = DarkBorder)
                     Spacer(Modifier.height(8.dp))
-                    SettingToggle("Reflect status changes in Main Decks", cs.reflectInMainDecks) { scope.launch { repo.saveSettingsAll(settings.copy(customSetSettings = cs.copy(reflectInMainDecks = it))) } }
+                    // Custom toggle with wrapping text for "Reflect status changes in Main Decks"
+                    Row(Modifier.fillMaxWidth().clickable { scope.launch { repo.saveSettingsAll(settings.copy(customSetSettings = cs.copy(reflectInMainDecks = !cs.reflectInMainDecks))) } }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Reflect status in Main Decks", fontSize = 13.sp, color = Color.White, modifier = Modifier.weight(1f))
+                        Switch(cs.reflectInMainDecks, { scope.launch { repo.saveSettingsAll(settings.copy(customSetSettings = cs.copy(reflectInMainDecks = it))) } })
+                    }
                     Text("When ON, marking cards as Learned/Unsure in Custom will also update their status in main decks.", color = DarkMuted, fontSize = 10.sp)
                     Spacer(Modifier.height(12.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -1049,9 +1053,6 @@ fun SettingsScreen(nav: NavHostController, repo: Repository) {
             SettingToggle("Randomize To Study", settings.randomizeUnlearned) { scope.launch { repo.saveSettingsAll(settings.copy(randomizeUnlearned = it)) } }
             SettingToggle("Randomize Unsure", settings.randomizeUnsure) { scope.launch { repo.saveSettingsAll(settings.copy(randomizeUnsure = it)) } }
             SettingToggle("Randomize Learned Study", settings.randomizeLearnedStudy) { scope.launch { repo.saveSettingsAll(settings.copy(randomizeLearnedStudy = it)) } }
-            
-            Spacer(Modifier.height(12.dp)); Text("Study Screens", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
-            SettingToggle("Show Custom Set (⭐) button", settings.showCustomSetButton) { scope.launch { repo.saveSettingsAll(settings.copy(showCustomSetButton = it)) } }
 
             Spacer(Modifier.height(12.dp)); Text("List Views", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
             SettingToggle("Show definitions in All list", settings.showDefinitionsInAllList) { scope.launch { repo.saveSettingsAll(settings.copy(showDefinitionsInAllList = it)) } }
@@ -1594,35 +1595,9 @@ fun SyncProgressScreen(nav: NavHostController, repo: Repository) {
             Spacer(Modifier.height(20.dp))
             Text("Web App Sync", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
             Spacer(Modifier.height(4.dp))
-            Text("Sync your study progress with the web server", color = DarkMuted, fontSize = 11.sp)
+            Text("Progress syncs automatically on login", color = DarkMuted, fontSize = 11.sp)
             if (adminSettings.lastSyncTime > 0) {
                 Text("Last sync: ${java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(adminSettings.lastSyncTime))}", color = DarkMuted, fontSize = 11.sp)
-            }
-            Spacer(Modifier.height(12.dp))
-            
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button({ 
-                    if (!adminSettings.isLoggedIn) { statusMessage = "Please login first"; return@Button }
-                    if (adminSettings.authToken.isBlank()) { statusMessage = "Error: No auth token"; return@Button }
-                    isLoading = true
-                    scope.launch { 
-                        val result = repo.syncPushProgressWithToken(adminSettings.authToken, adminSettings.webAppUrl)
-                        statusMessage = if (result.success) "Progress pushed!" else "Error: ${result.error}"
-                        if (result.success) { repo.saveAdminSettings(adminSettings.copy(lastSyncTime = System.currentTimeMillis(), pendingSync = false)) }
-                        isLoading = false 
-                    } 
-                }, Modifier.weight(1f), enabled = !isLoading && adminSettings.isLoggedIn) { Text(if (isLoading) "..." else "Push") }
-                Button({ 
-                    if (!adminSettings.isLoggedIn) { statusMessage = "Please login first"; return@Button }
-                    if (adminSettings.authToken.isBlank()) { statusMessage = "Error: No auth token"; return@Button }
-                    isLoading = true
-                    scope.launch { 
-                        val result = repo.syncPullProgressWithToken(adminSettings.authToken, adminSettings.webAppUrl)
-                        statusMessage = if (result.success) "Progress pulled!" else "Error: ${result.error}"
-                        if (result.success) repo.saveAdminSettings(adminSettings.copy(lastSyncTime = System.currentTimeMillis()))
-                        isLoading = false 
-                    } 
-                }, Modifier.weight(1f), enabled = !isLoading && adminSettings.isLoggedIn) { Text(if (isLoading) "..." else "Pull") }
             }
             
             Spacer(Modifier.height(20.dp)); HorizontalDivider(color = DarkBorder); Spacer(Modifier.height(16.dp))

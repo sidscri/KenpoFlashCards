@@ -15,6 +15,20 @@ The format is simple and practical:
 
 ---
 
+## 4.4.5 (v25) — 2026-01-15
+### Removed
+- **"Show Custom Set Button" setting**: Removed unnecessary setting from Settings screen
+- **Push/Pull buttons**: Removed from Sync Progress screen (progress syncs automatically on login)
+
+### Fixed
+- **Custom Set settings dialog**: "Reflect status in Main Decks" toggle now wraps text properly
+- **Custom Set "ALL" filter**: Now shows all cards in custom set (was incorrectly filtering out cards marked as Unsure/Learned)
+
+### Changed
+- **Simplified sync**: Progress and API keys sync automatically on login, no manual push/pull needed
+
+---
+
 ## 4.4.4 (v24) — 2026-01-15
 ### Changed
 - **Removed redundant top bar headers**: Learned, All Cards, and Custom screens no longer have separate TopAppBar title - header is now inline with controls (matching Unsure pattern)
