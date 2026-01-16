@@ -2,25 +2,42 @@ name: build-windows-packaging-exe-msi
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
     paths:
-      - "KenpoFlashcardsWebServer_Packaged_in_exe_msi/**"
+      - "KenpoFlashcardsWebServer_Packaged_in_exe_msi*/**"
       - ".github/workflows/build-windows-packaging-exe-msi.yml"
   pull_request:
     paths:
-      - "KenpoFlashcardsWebServer_Packaged_in_exe_msi/**"
+      - "KenpoFlashcardsWebServer_Packaged_in_exe_msi*/**"
       - ".github/workflows/build-windows-packaging-exe-msi.yml"
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: KenpoFlashcardsWebServer_Packaged_in_exe_msi
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Locate packaged project folder
+        shell: pwsh
+        run: |
+          $candidates = Get-ChildItem -Directory | Where-Object {
+            Test-Path (Join-Path $_.FullName "packaging/pyinstaller/kenpo_tray.spec")
+          }
+
+          if (-not $candidates) {
+            Write-Host "ERROR: Could not find packaging/pyinstaller/kenpo_tray.spec in any top-level folder."
+            Write-Host "Top-level folders:"
+            Get-ChildItem -Directory | Select-Object Name
+            Write-Host "`nRepo tree (first 3 levels):"
+            tree /F /A | Select-Object -First 200
+            exit 1
+          }
+
+          $proj = $candidates[0].FullName
+          "PROJ_DIR=$proj" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "Using PROJ_DIR=$proj"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -30,17 +47,20 @@ jobs:
       - name: Install packaging deps
         shell: pwsh
         run: |
+          cd "$env:PROJ_DIR"
           python -m pip install --upgrade pip
           python -m pip install -r packaging/requirements_packaging.txt
 
-      - name: Build tray EXE (PyInstaller spec)
+      - name: Build Tray EXE
         shell: pwsh
         run: |
+          cd "$env:PROJ_DIR"
           python -m PyInstaller packaging/pyinstaller/kenpo_tray.spec --noconfirm
 
-      - name: Build server EXE (PyInstaller spec)
+      - name: Build Server EXE
         shell: pwsh
         run: |
+          cd "$env:PROJ_DIR"
           python -m PyInstaller packaging/pyinstaller/kenpo_server.spec --noconfirm
 
       - name: Install Inno Setup
@@ -48,30 +68,29 @@ jobs:
         run: |
           choco install innosetup -y
 
-      - name: Build installer (Inno)
+      - name: Build Inno installer
         shell: pwsh
         run: |
-          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-          if (!(Test-Path $iscc)) { $iscc = "iscc.exe" }
-          & $iscc "packaging\installer_inno.iss"
+          cd "$env:PROJ_DIR"
+          & iscc packaging/installer_inno.iss
 
-      - name: Upload tray artifact
+      - name: Upload Tray artifact
         uses: actions/upload-artifact@v4
         with:
           name: KenpoFlashcardsTray
-          path: KenpoFlashcardsWebServer_Packaged_in_exe_msi/dist/KenpoFlashcardsTray/**
+          path: ${{ env.PROJ_DIR }}\dist\KenpoFlashcardsTray\**
           if-no-files-found: error
 
-      - name: Upload server artifact
+      - name: Upload Server artifact
         uses: actions/upload-artifact@v4
         with:
           name: KenpoFlashcardsWebServer
-          path: KenpoFlashcardsWebServer_Packaged_in_exe_msi/dist/KenpoFlashcardsWebServer/**
+          path: ${{ env.PROJ_DIR }}\dist\KenpoFlashcardsWebServer\**
           if-no-files-found: error
 
-      - name: Upload installer artifact
+      - name: Upload Installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: KenpoFlashcardsWebSetup
-          path: KenpoFlashcardsWebServer_Packaged_in_exe_msi/packaging/output/*.exe
+          path: ${{ env.PROJ_DIR }}\packaging\output\*.exe
           if-no-files-found: error
