@@ -1,0 +1,122 @@
+name: build-windows-packaging-exe-msi
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "KenpoFlashcardsWebServer_Packaged/**"
+      - "KenpoFlashcardsWebServer_Packaged*.zip"
+      - ".github/workflows/build-windows-packaging-exe-msi.yml"
+  pull_request:
+    paths:
+      - "KenpoFlashcardsWebServer_Packaged/**"
+      - "KenpoFlashcardsWebServer_Packaged*.zip"
+      - ".github/workflows/build-windows-packaging-exe-msi.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      PROJ_DIR: KenpoFlashcardsWebServer_Packaged
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve project directory (folder or zip)
+        shell: pwsh
+        run: |
+          $repo = $env:GITHUB_WORKSPACE
+          $proj = Join-Path $repo $env:PROJ_DIR
+          $traySpec = Join-Path $proj 'packaging\pyinstaller\kenpo_tray.spec'
+          $srvSpec  = Join-Path $proj 'packaging\pyinstaller\kenpo_server.spec'
+
+          if ((Test-Path $traySpec) -and (Test-Path $srvSpec)) {
+            "PROJ_PATH=$proj" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            Write-Host "Using project folder: $proj"
+            exit 0
+          }
+
+          $zip = Get-ChildItem -Path $repo -Filter 'KenpoFlashcardsWebServer_Packaged*.zip' -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $zip) { throw "Project folder missing specs and no KenpoFlashcardsWebServer_Packaged*.zip found in repo root." }
+
+          $dest = Join-Path $env:RUNNER_TEMP 'KenpoFlashcardsWebServer_Packaged_extract'
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          Expand-Archive -Path $zip.FullName -DestinationPath $dest -Force
+
+          $proj2 = Join-Path $dest $env:PROJ_DIR
+          $traySpec2 = Join-Path $proj2 'packaging\pyinstaller\kenpo_tray.spec'
+          $srvSpec2  = Join-Path $proj2 'packaging\pyinstaller\kenpo_server.spec'
+          if (-not ((Test-Path $traySpec2) -and (Test-Path $srvSpec2))) {
+            $top = Get-ChildItem -Path $dest | Where-Object { $_.PSIsContainer } | Select-Object -First 1
+            if (-not $top) { throw "Extracted zip but found no folders under $dest" }
+            $proj2 = $top.FullName
+          }
+
+          "PROJ_PATH=$proj2" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Using extracted project folder: $proj2"
+
+      - name: Debug - list packaging folder
+        shell: pwsh
+        run: |
+          Write-Host "PROJ_PATH: $env:PROJ_PATH"
+          Get-ChildItem -Path (Join-Path $env:PROJ_PATH 'packaging') -ErrorAction SilentlyContinue | Select-Object Name
+          Get-ChildItem -Path (Join-Path $env:PROJ_PATH 'packaging\pyinstaller') -ErrorAction SilentlyContinue | Select-Object Name
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install packaging deps
+        shell: pwsh
+        working-directory: ${{ env.PROJ_PATH }}
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller
+          python -m pip install -r packaging/requirements_packaging.txt
+          python -m pip install -r requirements.txt
+
+      - name: Build Tray EXE
+        shell: pwsh
+        working-directory: ${{ env.PROJ_PATH }}
+        run: |
+          pyinstaller packaging/pyinstaller/kenpo_tray.spec --noconfirm
+
+      - name: Build Server EXE
+        shell: pwsh
+        working-directory: ${{ env.PROJ_PATH }}
+        run: |
+          pyinstaller packaging/pyinstaller/kenpo_server.spec --noconfirm
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup -y
+
+      - name: Build Inno installer
+        shell: pwsh
+        working-directory: ${{ env.PROJ_PATH }}
+        run: |
+          & iscc packaging/installer_inno.iss
+
+      - name: Upload Tray artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KenpoFlashcardsTray
+          path: ${{ env.PROJ_PATH }}/dist/KenpoFlashcardsTray/**
+          if-no-files-found: error
+
+      - name: Upload Server artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KenpoFlashcardsWebServer
+          path: ${{ env.PROJ_PATH }}/dist/KenpoFlashcardsWebServer/**
+          if-no-files-found: error
+
+      - name: Upload Installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KenpoFlashcardsInstaller
+          path: ${{ env.PROJ_PATH }}/packaging/output/*.exe
+          if-no-files-found: error
