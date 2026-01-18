@@ -210,9 +210,6 @@ object WebAppSync {
      * Get shared breakdowns from server
      * Server reads from data/breakdowns.json
      */
- from server
-     * Server reads from data/breakdowns.json
-     */
     suspend fun getBreakdowns(serverUrl: String): Pair<SyncResult, Map<String, TermBreakdown>?> = withContext(Dispatchers.IO) {
         try {
             val url = URL("$serverUrl/api/sync/breakdowns")
