@@ -84,13 +84,14 @@ class Store(private val context: Context) {
 
     // ---------- Web App Sync helpers (timestamped progress + offline queue) ----------
 
+    data class MergeResult(val mergedCount: Int, val pendingCount: Int)
+
     /**
      * Returns full progress entries (including ACTIVE entries) with updated_at.
      * Backwards compatible with legacy progress_json where value is a string.
      */
     suspend fun getProgressEntries(): Map<String, ProgressEntry> {
-        val prefs = context.dataStore.data
-        val snap = prefs.map { it }.first()
+        val snap = context.dataStore.data.map { it }.first()
         val raw = snap[KEY_PROGRESS_JSON] ?: "{}"
         return decodeProgressEntries(raw)
     }
@@ -107,44 +108,45 @@ class Store(private val context: Context) {
         context.dataStore.edit { prefs -> prefs[KEY_PENDING_PROGRESS_JSON] = "{}" }
     }
 
-    /**
-     * Apply a merged set of progress entries as the new local truth.
-     * Also updates the pending queue to keep any entries that are newer locally than the last pull.
-     */
-    suspend fun applyMergedProgress(merged: Map<String, ProgressEntry>, pending: Map<String, ProgressEntry>) {
+    /** Remove only the specified ids from the pending queue. */
+    suspend fun clearPendingProgressEntries(ids: Set<String>) {
         context.dataStore.edit { prefs ->
-            prefs[KEY_PROGRESS_JSON] = encodeProgressEntries(merged)
-            prefs[KEY_PENDING_PROGRESS_JSON] = encodeProgressEntries(pending)
+            val pendingRaw = prefs[KEY_PENDING_PROGRESS_JSON] ?: "{}"
+            val pendingObj = try { org.json.JSONObject(pendingRaw) } catch (_: Exception) { org.json.JSONObject() }
+            ids.forEach { pendingObj.remove(it) }
+            prefs[KEY_PENDING_PROGRESS_JSON] = pendingObj.toString()
         }
-
-
-    data class MergeResult(val mergedCount: Int, val pendingCount: Int)
+    }
 
     /**
      * Add a pending progress entry (delta) without touching other entries.
-     * This is used by Repository so offline changes can be queued.
+     * Repository calls this so offline changes can be queued.
      */
     suspend fun markPendingProgressEntry(id: String, status: CardStatus) {
         val now = System.currentTimeMillis() / 1000
         context.dataStore.edit { prefs ->
-            val entry = JSONObject().apply {
+            val entry = org.json.JSONObject().apply {
                 put("status", status.name.lowercase())
                 put("updated_at", now)
             }
             val pendingRaw = prefs[KEY_PENDING_PROGRESS_JSON] ?: "{}"
-            val pendingObj = try { JSONObject(pendingRaw) } catch (_: Exception) { JSONObject() }
+            val pendingObj = try { org.json.JSONObject(pendingRaw) } catch (_: Exception) { org.json.JSONObject() }
             pendingObj.put(id, entry)
             prefs[KEY_PENDING_PROGRESS_JSON] = pendingObj.toString()
         }
     }
 
-    /** Remove only the specified ids from the pending queue. */
-    suspend fun clearPendingProgressEntries(ids: Set<String>) {
+    /**
+     * Apply a merged set of progress entries as the new local truth.
+     * Also updates the pending queue to keep any entries that are newer locally than remote.
+     */
+    private suspend fun applyMergedProgress(
+        merged: Map<String, ProgressEntry>,
+        pending: Map<String, ProgressEntry>
+    ) {
         context.dataStore.edit { prefs ->
-            val pendingRaw = prefs[KEY_PENDING_PROGRESS_JSON] ?: "{}"
-            val pendingObj = try { JSONObject(pendingRaw) } catch (_: Exception) { JSONObject() }
-            ids.forEach { pendingObj.remove(it) }
-            prefs[KEY_PENDING_PROGRESS_JSON] = pendingObj.toString()
+            prefs[KEY_PROGRESS_JSON] = encodeProgressEntries(merged)
+            prefs[KEY_PENDING_PROGRESS_JSON] = encodeProgressEntries(pending)
         }
     }
 
@@ -186,9 +188,8 @@ class Store(private val context: Context) {
         applyMergedProgress(local, pending)
         return MergeResult(mergedCount = mergedCount, pendingCount = pending.size)
     }
-    }
 
-    private fun decodeProgressEntries(raw: String): Map<String, ProgressEntry> {
+private fun decodeProgressEntries(raw: String): Map<String, ProgressEntry> {
         val out = mutableMapOf<String, ProgressEntry>()
         val obj = try { JSONObject(raw) } catch (_: Exception) { JSONObject() }
         obj.keys().forEach { key ->
