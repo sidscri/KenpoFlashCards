@@ -1,31 +1,32 @@
-START Sun 01/18/2026 14:44:36.35
+START Sun 01/18/2026 15:56:47.54
 BASE=C:\Users\Sidscri\Documents\GitHub\sidscri-apps
 SRC=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v2
 GRADLE=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v2\app\build.gradle
 SEVENZIP=C:\Program Files\7-Zip\7z.exe
-PARSED_versionCode=26
-PARSED_versionName=4.5.0
-ZIPPATH=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v4.5.0 v26.zip
-FIXES_NAME=Fixes v4.5.0 v26.txt
+PARSED_versionCode=27
+PARSED_versionName=4.5.1
+ZIPPATH=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v4.5.1 v27.zip
+FIXES_NAME=Fixes v4.5.1 v27.txt
 STAGE=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage_kfproject
 
 ROBOCOPY_EXIT_CODE=1
 Could Not Find C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage_kfproject\KenpoFlashcardsProject-v2\*.iml
-Creating fixes file: "C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage_kfproject\KenpoFlashcardsProject-v2\Fixes v4.5.0 v26.txt"
+Renaming fixes file: "C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage_kfproject\KenpoFlashcardsProject-v2\Fixes v4.5.0 v26.txt" > "C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage_kfproject\KenpoFlashcardsProject-v2\Fixes v4.5.1 v27.txt"
+Could Not Find C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage_kfproject\KenpoFlashcardsProject-v2\Fixes v4.5.1 v27.txt
 Running 7z (from stage)...
 
 7-Zip 25.01 (x64) : Copyright (c) 1999-2025 Igor Pavlov : 2025-08-03
 
 Scanning the drive:
-39 folders, 71 files, 1802576 bytes (1761 KiB)
+39 folders, 71 files, 1815195 bytes (1773 KiB)
 
-Creating archive: C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v4.5.0 v26.zip
+Creating archive: C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v4.5.1 v27.zip
 
-Add new data to archive: 39 folders, 71 files, 1802576 bytes (1761 KiB)
+Add new data to archive: 39 folders, 71 files, 1815195 bytes (1773 KiB)
 
 
 Files read from disk: 71
-Archive size: 1570177 bytes (1534 KiB)
+Archive size: 1572739 bytes (1536 KiB)
 Everything is Ok
 7Z_EXIT_CODE=0
 SUCCESS

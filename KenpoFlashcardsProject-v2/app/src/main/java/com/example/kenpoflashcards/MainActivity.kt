@@ -1521,7 +1521,9 @@ fun LoginScreen(nav: NavHostController, repo: Repository) {
                                 statusMessage = "Login successful! Syncing..."
                                 val pullResult = repo.syncPullProgressWithToken(result.token, effectiveUrl)
                                 val breakdownResult = repo.syncBreakdowns()
-                                statusMessage = if (pullResult.success && breakdownResult.success) {
+                                // If local had newer offline changes, try pushing them back up (best-effort)
+                                val pushPendingResult = repo.syncPushPendingProgressWithToken(result.token, effectiveUrl)
+                                statusMessage = if (pullResult.success && breakdownResult.success && pushPendingResult.success) {
                                     "Login successful! Progress and breakdowns synced."
                                 } else {
                                     "Login successful! Some sync errors occurred."

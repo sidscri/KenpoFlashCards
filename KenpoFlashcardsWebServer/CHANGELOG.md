@@ -15,6 +15,12 @@ The format is simple and practical:
 
 ---
 
+## 5.5.3 (build 30) — 2026-01-18
+
+- Sync: progress entries now include per-card `updated_at` timestamps
+- Sync: push/pull merge uses `updated_at` (newer wins); supports offline pending queue on Android
+- API: /api/sync/push and /api/sync/pull accept/return object-form progress entries
+
 ## 5.5.2 (build 29) — 2026-01-14
 ### Added
 - **Version/docs sync with Android App 4.4.2 (v22)

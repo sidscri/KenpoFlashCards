@@ -1,5 +1,14 @@
 # Changelog — KenpoFlashcardsProject-v2 (Android)
 
+## 4.5.1 (build 27) — 2026-01-18
+
+### Fixed
+- Web App Sync now uses per-card `updated_at` timestamps for conflict-free merging across devices.
+- Offline progress changes are queued and pushed when online (auto-push best-effort).
+
+### Changed
+- Server and app sync payloads now use `{status, updated_at}` entries (legacy string payloads still supported).
+
 All notable changes to this project will be documented in this file.
 
 The format is simple and practical:

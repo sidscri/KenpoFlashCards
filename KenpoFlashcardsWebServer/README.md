@@ -5,7 +5,7 @@
 
 Flask-based web application providing sync API and web UI for Kenpo Flashcards.
 
-**Current Version:** v5.5.2 (build 29)  
+**Current Version:** v5.5.3 (build 30)  
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -208,7 +208,7 @@ Should return JSON with `version`, `term_to_id`, `cards`
 ```
 http://localhost:8009/api/version
 ```
-Should return `{"version": "5.5.2", "build": 28, ...}`
+Should return `{"version": "5.5.3", "build": 30, ...}`
 
 ### 3. Test Admin Users Endpoint
 ```

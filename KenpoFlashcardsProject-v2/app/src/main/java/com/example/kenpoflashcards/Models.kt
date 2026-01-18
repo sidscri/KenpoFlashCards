@@ -10,6 +10,12 @@ enum class CardStatus {
     DELETED   // Hidden from all views
 }
 
+
+// Progress entry with last-modified timestamp (unix seconds) used for Web App Sync merges
+data class ProgressEntry(
+    val status: CardStatus,
+    val updatedAt: Long
+)
 /**
  * Study Deck - a collection of flashcards that can be studied
  * Default deck is "kenpo" which loads from kenpo_words.json

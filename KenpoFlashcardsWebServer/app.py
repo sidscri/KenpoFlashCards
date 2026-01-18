@@ -1756,62 +1756,129 @@ def api_breakdowns_save_android():
 @app.get("/api/sync/pull")
 @android_auth_required
 def api_sync_pull():
-    """Pull progress from server to Android app."""
+    """Pull progress from server to Android app.
+
+    Returns canonical card IDs mapped to an object: {status, updated_at}.
+    Backwards compatible: Android may still accept plain status strings.
+    """
     uid = request.android_uid
     progress = load_progress(uid)
-    
-    # Extract just the card statuses (not settings)
-    statuses = {}
+
+    # Extract just the card progress entries (not settings/internal keys).
+    entries = {}
     for key, value in progress.items():
-        if key.startswith('__'):  # Skip internal keys like __settings__
+        if isinstance(key, str) and key.startswith('__'):
             continue
+        if not isinstance(key, str):
+            continue
+
+        # Stored format on server is typically {status, updated_at}.
         if isinstance(value, dict) and 'status' in value:
-            statuses[key] = value['status']
-    
-    return jsonify({'progress': statuses})
+            status = str(value.get('status') or '').lower().strip()
+            if status not in ('active', 'unsure', 'learned', 'deleted'):
+                continue
+            updated_at = int(value.get('updated_at') or 0)
+            entries[key] = {'status': status, 'updated_at': updated_at}
+        elif isinstance(value, str):
+            # Legacy server data (unlikely)
+            status = value.lower().strip()
+            if status not in ('active', 'unsure', 'learned', 'deleted'):
+                continue
+            entries[key] = {'status': status, 'updated_at': 0}
+
+    return jsonify({'progress': entries})
 
 
 @app.post("/api/sync/push")
-@android_auth_required  
+@android_auth_required
 def api_sync_push():
-    """Push progress from Android app to server."""
+    """Push progress from Android app to server.
+
+    Accepts BOTH formats for backwards compatibility:
+      - Legacy: progress[id] = "learned"
+      - New:    progress[id] = {"status": "learned", "updated_at": 1737042271}
+
+    Merge rule (per card): keep the entry with the newer updated_at.
+    If legacy format is provided, server assigns updated_at = now.
+    """
     uid = request.android_uid
     payload = request.get_json(force=True, silent=True) or {}
     incoming_progress = payload.get('progress', {})
-    
+
     if not isinstance(incoming_progress, dict):
         return jsonify({'error': 'Invalid progress data'}), 400
-    
-    # Load existing progress
+
     current = load_progress(uid)
-    
-    # Merge incoming progress (accept either 16-hex IDs or raw terms)
+
+    now = int(time.time())
     applied = 0
     skipped_unknown = 0
-    for card_key, status in incoming_progress.items():
-        if not isinstance(status, str):
-            continue
-        status_lower = status.lower().strip()
-        if status_lower not in ('active', 'unsure', 'learned', 'deleted'):
-            continue
+    skipped_older = 0
 
+    def _parse_incoming(v):
+        # returns (status, updated_at) or (None, None)
+        if isinstance(v, str):
+            st = v.lower().strip()
+            if st not in ('active', 'unsure', 'learned', 'deleted'):
+                return None, None
+            return st, now
+        if isinstance(v, dict):
+            st = str(v.get('status') or '').lower().strip()
+            if st not in ('active', 'unsure', 'learned', 'deleted'):
+                return None, None
+            try:
+                ua = int(v.get('updated_at') or 0)
+            except Exception:
+                ua = 0
+            if ua <= 0:
+                ua = now
+            return st, ua
+        return None, None
+
+    for card_key, v in incoming_progress.items():
         ck = card_key if isinstance(card_key, str) else str(card_key)
+
+        status_lower, incoming_updated_at = _parse_incoming(v)
+        if not status_lower:
+            continue
 
         # Canonicalize key to the 16-hex ID used by the web UI.
         canonical_id = ck.lower() if _ID16_RE.match(ck) else (_canonical_id_for_term(ck) or "")
         if not canonical_id or not _ID16_RE.match(canonical_id):
             skipped_unknown += 1
             continue
+        canonical_id = canonical_id.lower()
 
-        current[canonical_id.lower()] = {
-            'status': status_lower,
-            'updated_at': int(time.time())
-        }
-        applied += 1
-    
-    # Save
+        cur = current.get(canonical_id)
+        cur_status = None
+        cur_updated = 0
+        if isinstance(cur, dict) and 'status' in cur:
+            cur_status = str(cur.get('status') or '').lower().strip()
+            try:
+                cur_updated = int(cur.get('updated_at') or 0)
+            except Exception:
+                cur_updated = 0
+        elif isinstance(cur, str):
+            cur_status = cur.lower().strip()
+            cur_updated = 0
+
+        if incoming_updated_at >= cur_updated:
+            current[canonical_id] = {
+                'status': status_lower,
+                'updated_at': int(incoming_updated_at)
+            }
+            applied += 1
+        else:
+            skipped_older += 1
+
     save_progress(uid, current)
-    return jsonify({'success': True, 'message': 'Progress synced', 'applied': applied, 'skipped_unknown': skipped_unknown})
+    return jsonify({
+        'success': True,
+        'message': 'Progress synced',
+        'applied': applied,
+        'skipped_unknown': skipped_unknown,
+        'skipped_older': skipped_older
+    })
 
 
 @app.get("/api/sync/helper")

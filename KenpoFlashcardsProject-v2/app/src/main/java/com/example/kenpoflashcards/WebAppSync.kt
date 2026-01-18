@@ -90,13 +90,20 @@ object WebAppSync {
         } catch (e: Exception) {
             LoginResult(success = false, error = e.message ?: "Connection failed")
         }
-    }
-    
-    /**
-     * Push local progress to server
-     * Server saves to users/{userId}/progress.json
+    }    /**
+     * Push local progress to server (legacy wrapper)
      */
-    suspend fun pushProgress(serverUrl: String, token: String, progress: ProgressState): SyncResult = withContext(Dispatchers.IO) {
+    suspend fun pushProgress(serverUrl: String, token: String, progress: ProgressState): SyncResult {
+        val nowSec = System.currentTimeMillis() / 1000
+        val entries = progress.statuses.mapValues { ProgressEntry(it.value, nowSec) }
+        return pushProgressEntries(serverUrl, token, entries)
+    }
+
+    /**
+     * Push progress entries to server.
+     * Sends: progress[id] = {status, updated_at}
+     */
+    suspend fun pushProgressEntries(serverUrl: String, token: String, entries: Map<String, ProgressEntry>): SyncResult = withContext(Dispatchers.IO) {
         try {
             val url = URL("$serverUrl/api/sync/push")
             val conn = url.openConnection() as HttpURLConnection
@@ -106,34 +113,49 @@ object WebAppSync {
             conn.doOutput = true
             conn.connectTimeout = 10000
             conn.readTimeout = 10000
-            
+
             val progressJson = JSONObject()
-            progress.statuses.forEach { (id, status) ->
-                progressJson.put(id, status.name.lowercase())
+            entries.forEach { (id, entry) ->
+                val obj = JSONObject()
+                obj.put("status", entry.status.name.lowercase())
+                obj.put("updated_at", entry.updatedAt)
+                progressJson.put(id, obj)
             }
-            
+
             val body = JSONObject().apply {
                 put("progress", progressJson)
                 put("timestamp", System.currentTimeMillis())
             }
-            
+
             conn.outputStream.use { it.write(body.toString().toByteArray()) }
-            
+
             if (conn.responseCode == 200) {
                 SyncResult(success = true, message = "Progress synced successfully")
             } else {
-                SyncResult(success = false, error = "Sync failed: ${conn.responseCode}")
+                val err = try { conn.errorStream?.bufferedReader()?.readText() ?: "" } catch (_: Exception) { "" }
+                SyncResult(success = false, error = "Sync failed: ${conn.responseCode} ${err.take(120)}")
             }
         } catch (e: Exception) {
             SyncResult(success = false, error = e.message ?: "Sync failed")
         }
     }
-    
+
     /**
      * Pull progress from server
      * Server reads from users/{userId}/progress.json
      */
-    suspend fun pullProgress(serverUrl: String, token: String): Pair<SyncResult, ProgressState?> = withContext(Dispatchers.IO) {
+    suspend fun pullProgress(serverUrl: String, token: String): Pair<SyncResult, ProgressState?> {
+        val (res, entries) = pullProgressEntries(serverUrl, token)
+        if (!res.success || entries == null) return Pair(res, null)
+        val statuses = entries.mapValues { it.value.status }
+        return Pair(res, ProgressState(statuses))
+    }
+
+    /**
+     * Pull progress entries from server.
+     * Accepts legacy server payloads where progress[id] is a string.
+     */
+    suspend fun pullProgressEntries(serverUrl: String, token: String): Pair<SyncResult, Map<String, ProgressEntry>?> = withContext(Dispatchers.IO) {
         try {
             val url = URL("$serverUrl/api/sync/pull")
             val conn = url.openConnection() as HttpURLConnection
@@ -141,24 +163,41 @@ object WebAppSync {
             conn.setRequestProperty("Authorization", "Bearer $token")
             conn.connectTimeout = 10000
             conn.readTimeout = 10000
-            
+
             if (conn.responseCode == 200) {
                 val response = conn.inputStream.bufferedReader().readText()
                 val json = JSONObject(response)
                 val progressJson = json.optJSONObject("progress") ?: JSONObject()
-                
-                val statuses = mutableMapOf<String, CardStatus>()
+
+                val entries = mutableMapOf<String, ProgressEntry>()
                 progressJson.keys().forEach { key ->
-                    val statusStr = progressJson.optString(key, "active")
-                    statuses[key] = when (statusStr.lowercase()) {
-                        "learned" -> CardStatus.LEARNED
-                        "unsure" -> CardStatus.UNSURE
-                        "deleted" -> CardStatus.DELETED
-                        else -> CardStatus.ACTIVE
+                    val v = progressJson.opt(key)
+                    when (v) {
+                        is String -> {
+                            val st = when (v.lowercase()) {
+                                "learned" -> CardStatus.LEARNED
+                                "unsure" -> CardStatus.UNSURE
+                                "deleted" -> CardStatus.DELETED
+                                else -> CardStatus.ACTIVE
+                            }
+                            entries[key] = ProgressEntry(st, 0)
+                        }
+                        is JSONObject -> {
+                            val statusStr = v.optString("status", "active")
+                            val st = when (statusStr.lowercase()) {
+                                "learned" -> CardStatus.LEARNED
+                                "unsure" -> CardStatus.UNSURE
+                                "deleted" -> CardStatus.DELETED
+                                else -> CardStatus.ACTIVE
+                            }
+                            val ua = v.optLong("updated_at", 0)
+                            entries[key] = ProgressEntry(st, ua)
+                        }
+                        else -> {}
                     }
                 }
-                
-                Pair(SyncResult(success = true, message = "Progress loaded"), ProgressState(statuses))
+
+                Pair(SyncResult(success = true, message = "Progress loaded"), entries)
             } else {
                 Pair(SyncResult(success = false, error = "Pull failed: ${conn.responseCode}"), null)
             }
@@ -166,9 +205,12 @@ object WebAppSync {
             Pair(SyncResult(success = false, error = e.message ?: "Pull failed"), null)
         }
     }
-    
+
     /**
      * Get shared breakdowns from server
+     * Server reads from data/breakdowns.json
+     */
+ from server
      * Server reads from data/breakdowns.json
      */
     suspend fun getBreakdowns(serverUrl: String): Pair<SyncResult, Map<String, TermBreakdown>?> = withContext(Dispatchers.IO) {

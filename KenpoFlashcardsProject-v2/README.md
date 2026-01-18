@@ -7,7 +7,7 @@ An Android flash-card app designed to help students of **American Kenpo Karate**
 
 This app focuses on **active recall**, **progress tracking**, and **organized learning**, making it ideal for beginners through advanced practitioners.
 
-**Current Version:** v4.5.0 (versionCode 26)  
+**Current Version:** v4.5.1 (build 27)
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---

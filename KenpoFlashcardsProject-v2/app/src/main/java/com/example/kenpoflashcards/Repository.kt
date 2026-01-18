@@ -37,10 +37,18 @@ class Repository(private val context: Context, private val store: Store) {
     suspend fun saveAdminSettings(s: AdminSettings) = store.saveAdminSettings(s)
 
     // Status management
-    suspend fun setStatus(id: String, status: CardStatus) = store.setStatus(id, status)
-    suspend fun setLearned(id: String, learned: Boolean) = store.setLearned(id, learned)
-    suspend fun setDeleted(id: String, deleted: Boolean) = store.setDeleted(id, deleted)
-    suspend fun setUnsure(id: String, unsure: Boolean) = store.setUnsure(id, unsure)
+    suspend fun setStatus(id: String, status: CardStatus) {
+        store.setStatus(id, status)
+        // Queue change for offline sync
+        store.markPendingProgressEntry(id, status)
+        // Set pendingSync flag if auto-push is enabled
+        markPendingSync()
+        // Try auto-push if enabled and logged in
+        attemptAutoPushIfEnabled()
+    }
+    suspend fun setLearned(id: String, learned: Boolean) = setStatus(id, if (learned) CardStatus.LEARNED else CardStatus.ACTIVE)
+    suspend fun setDeleted(id: String, deleted: Boolean) = setStatus(id, if (deleted) CardStatus.DELETED else CardStatus.ACTIVE)
+    suspend fun setUnsure(id: String, unsure: Boolean) = setStatus(id, if (unsure) CardStatus.UNSURE else CardStatus.ACTIVE)
 
     suspend fun replaceCustomCards(cards: List<FlashCard>) = store.replaceCustomCards(cards)
     suspend fun clearAllProgress() = store.clearAllProgress()
@@ -99,19 +107,44 @@ suspend fun deleteBreakdown(cardId: String) = store.deleteBreakdown(cardId)
     suspend fun syncPushProgressWithToken(token: String, serverUrl: String): WebAppSync.SyncResult {
         if (token.isBlank()) return WebAppSync.SyncResult(false, error = "No auth token")
         val url = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
-        val progress = progressFlow().first()
-        return WebAppSync.pushProgress(url, token, progress)
+
+        // If there are pending deltas, prefer pushing those.
+        val pending = store.getPendingProgressEntries()
+        if (pending.isNotEmpty()) {
+            val res = WebAppSync.pushProgressEntries(url, token, pending)
+            if (res.success) {
+                store.clearPendingProgressEntries(pending.keys)
+                clearPendingSync()
+            }
+            return res
+        }
+
+        // Otherwise push full progress (timestamped with local updatedAt values).
+        val full = store.getProgressEntries()
+        val res = WebAppSync.pushProgressEntries(url, token, full)
+        if (res.success) {
+            clearPendingSync()
+        }
+        return res
     }
+
     
     suspend fun syncPullProgressWithToken(token: String, serverUrl: String): WebAppSync.SyncResult {
         if (token.isBlank()) return WebAppSync.SyncResult(false, error = "No auth token")
         val url = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
-        val (result, progress) = WebAppSync.pullProgress(url, token)
-        if (result.success && progress != null) {
-            progress.statuses.forEach { (id, status) -> store.setStatus(id, status) }
+
+        val (result, remoteEntries) = WebAppSync.pullProgressEntries(url, token)
+        if (result.success && remoteEntries != null) {
+            // Merge remote -> local by updated_at; keep local newer changes in pending queue.
+            val merge = store.mergeRemoteProgress(remoteEntries)
+            if (merge.pendingCount > 0) {
+                // Mark pending if auto-push is enabled
+                markPendingSync()
+            }
         }
         return result
     }
+
     
     suspend fun syncPullProgress(): WebAppSync.SyncResult {
         val admin = store.adminSettingsFlow().first()
@@ -122,15 +155,16 @@ suspend fun deleteBreakdown(cardId: String) = store.deleteBreakdown(cardId)
             return WebAppSync.SyncResult(false, error = "No auth token - please login again")
         }
         val serverUrl = admin.webAppUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
-        val (result, progress) = WebAppSync.pullProgress(serverUrl, admin.authToken)
-        if (result.success && progress != null) {
-            // Apply pulled progress
-            progress.statuses.forEach { (id, status) ->
-                store.setStatus(id, status)
+        val (result, remoteEntries) = WebAppSync.pullProgressEntries(serverUrl, admin.authToken)
+        if (result.success && remoteEntries != null) {
+            val merge = store.mergeRemoteProgress(remoteEntries)
+            if (merge.pendingCount > 0) {
+                markPendingSync()
             }
         }
         return result
     }
+
     
     suspend fun syncBreakdowns(): WebAppSync.SyncResult {
         val admin = adminSettingsFlow().first()
@@ -223,6 +257,39 @@ suspend fun deleteBreakdown(cardId: String) = store.deleteBreakdown(cardId)
         return WebAppSync.pullApiKeysForUser(url, token)
     }
     
+
+    // Push only pending progress deltas (if any)
+    suspend fun syncPushPendingProgressWithToken(token: String, serverUrl: String): WebAppSync.SyncResult {
+        if (token.isBlank()) return WebAppSync.SyncResult(false, error = "No auth token")
+        val url = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+        val pending = store.getPendingProgressEntries()
+        if (pending.isEmpty()) {
+            return WebAppSync.SyncResult(true, message = "No pending changes")
+        }
+        val res = WebAppSync.pushProgressEntries(url, token, pending)
+        if (res.success) {
+            store.clearPendingProgressEntries(pending.keys)
+            clearPendingSync()
+        }
+        return res
+    }
+
+    suspend fun syncPushPendingProgress(): WebAppSync.SyncResult {
+        val admin = store.adminSettingsFlow().first()
+        if (!admin.isLoggedIn) return WebAppSync.SyncResult(false, error = "Not logged in")
+        if (admin.authToken.isBlank()) return WebAppSync.SyncResult(false, error = "No auth token - please login again")
+        return syncPushPendingProgressWithToken(admin.authToken, admin.webAppUrl)
+    }
+
+    private suspend fun attemptAutoPushIfEnabled() {
+        val admin = adminSettingsFlow().first()
+        if (!admin.autoPushOnChange) return
+        if (!admin.isLoggedIn) return
+        if (admin.authToken.isBlank()) return
+        // Best-effort: push pending deltas; if it fails we keep the queue.
+        syncPushPendingProgressWithToken(admin.authToken, admin.webAppUrl)
+    }
+
     // Mark pending sync (for offline changes)
     suspend fun markPendingSync() {
         val admin = adminSettingsFlow().first()

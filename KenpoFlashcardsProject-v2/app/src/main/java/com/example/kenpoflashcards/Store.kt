@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -14,6 +15,7 @@ private val Context.dataStore by preferencesDataStore(name = "kenpo_flashcards_s
 class Store(private val context: Context) {
 
     private val KEY_PROGRESS_JSON = stringPreferencesKey("progress_json")
+    private val KEY_PENDING_PROGRESS_JSON = stringPreferencesKey("pending_progress_json")
     private val KEY_CUSTOM_CARDS_JSON = stringPreferencesKey("custom_cards_json")
     private val KEY_BREAKDOWNS_JSON = stringPreferencesKey("breakdowns_json")
     private val KEY_SETTINGS_SINGLE_JSON = stringPreferencesKey("settings_single_json")
@@ -22,7 +24,6 @@ class Store(private val context: Context) {
     private val KEY_DELETED_JSON = stringPreferencesKey("deleted_json")
     private val KEY_CUSTOM_SET_JSON = stringPreferencesKey("custom_set_json")
     private val KEY_ADMIN_JSON = stringPreferencesKey("admin_json")
-
     fun progressFlow(): Flow<ProgressState> =
         context.dataStore.data.map { prefs ->
             val progressRaw = prefs[KEY_PROGRESS_JSON]
@@ -30,7 +31,12 @@ class Store(private val context: Context) {
                 val obj = JSONObject(progressRaw)
                 val statuses = mutableMapOf<String, CardStatus>()
                 obj.keys().forEach { key ->
-                    val statusStr = obj.optString(key, "active")
+                    val v = obj.opt(key)
+                    val statusStr = when (v) {
+                        is JSONObject -> v.optString("status", "active")
+                        is String -> v
+                        else -> "active"
+                    }
                     statuses[key] = when (statusStr.lowercase()) {
                         "learned" -> CardStatus.LEARNED
                         "unsure" -> CardStatus.UNSURE
@@ -40,6 +46,8 @@ class Store(private val context: Context) {
                 }
                 return@map ProgressState(statuses)
             }
+
+            // Legacy keys (pre-progress_json) fallback
             val learnedRaw = prefs[KEY_LEARNED_JSON] ?: "{}"
             val deletedRaw = prefs[KEY_DELETED_JSON] ?: "{}"
             val learnedObj = JSONObject(learnedRaw)
@@ -51,17 +59,181 @@ class Store(private val context: Context) {
         }
 
     suspend fun setStatus(id: String, status: CardStatus) {
+        val now = System.currentTimeMillis() / 1000
         context.dataStore.edit { prefs ->
             val raw = prefs[KEY_PROGRESS_JSON] ?: "{}"
-            val obj = JSONObject(raw)
-            if (status == CardStatus.ACTIVE) obj.remove(id) else obj.put(id, status.name.lowercase())
+            val obj = try { JSONObject(raw) } catch (_: Exception) { JSONObject() }
+            val entry = JSONObject().apply {
+                put("status", status.name.lowercase())
+                put("updated_at", now)
+            }
+            obj.put(id, entry)
             prefs[KEY_PROGRESS_JSON] = obj.toString()
+
+            // Also queue this change for the next push
+            val pendingRaw = prefs[KEY_PENDING_PROGRESS_JSON] ?: "{}"
+            val pendingObj = try { JSONObject(pendingRaw) } catch (_: Exception) { JSONObject() }
+            pendingObj.put(id, entry)
+            prefs[KEY_PENDING_PROGRESS_JSON] = pendingObj.toString()
         }
     }
 
     suspend fun setLearned(id: String, learned: Boolean) = setStatus(id, if (learned) CardStatus.LEARNED else CardStatus.ACTIVE)
     suspend fun setDeleted(id: String, deleted: Boolean) = setStatus(id, if (deleted) CardStatus.DELETED else CardStatus.ACTIVE)
     suspend fun setUnsure(id: String, unsure: Boolean) = setStatus(id, if (unsure) CardStatus.UNSURE else CardStatus.ACTIVE)
+
+    // ---------- Web App Sync helpers (timestamped progress + offline queue) ----------
+
+    /**
+     * Returns full progress entries (including ACTIVE entries) with updated_at.
+     * Backwards compatible with legacy progress_json where value is a string.
+     */
+    suspend fun getProgressEntries(): Map<String, ProgressEntry> {
+        val prefs = context.dataStore.data
+        val snap = prefs.map { it }.first()
+        val raw = snap[KEY_PROGRESS_JSON] ?: "{}"
+        return decodeProgressEntries(raw)
+    }
+
+    /** Returns pending (queued) entries to be pushed when online. */
+    suspend fun getPendingProgressEntries(): Map<String, ProgressEntry> {
+        val snap = context.dataStore.data.map { it }.first()
+        val raw = snap[KEY_PENDING_PROGRESS_JSON] ?: "{}"
+        return decodeProgressEntries(raw)
+    }
+
+    /** Clears the pending queue (after successful push). */
+    suspend fun clearPendingProgressEntries() {
+        context.dataStore.edit { prefs -> prefs[KEY_PENDING_PROGRESS_JSON] = "{}" }
+    }
+
+    /**
+     * Apply a merged set of progress entries as the new local truth.
+     * Also updates the pending queue to keep any entries that are newer locally than the last pull.
+     */
+    suspend fun applyMergedProgress(merged: Map<String, ProgressEntry>, pending: Map<String, ProgressEntry>) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_PROGRESS_JSON] = encodeProgressEntries(merged)
+            prefs[KEY_PENDING_PROGRESS_JSON] = encodeProgressEntries(pending)
+        }
+
+
+    data class MergeResult(val mergedCount: Int, val pendingCount: Int)
+
+    /**
+     * Add a pending progress entry (delta) without touching other entries.
+     * This is used by Repository so offline changes can be queued.
+     */
+    suspend fun markPendingProgressEntry(id: String, status: CardStatus) {
+        val now = System.currentTimeMillis() / 1000
+        context.dataStore.edit { prefs ->
+            val entry = JSONObject().apply {
+                put("status", status.name.lowercase())
+                put("updated_at", now)
+            }
+            val pendingRaw = prefs[KEY_PENDING_PROGRESS_JSON] ?: "{}"
+            val pendingObj = try { JSONObject(pendingRaw) } catch (_: Exception) { JSONObject() }
+            pendingObj.put(id, entry)
+            prefs[KEY_PENDING_PROGRESS_JSON] = pendingObj.toString()
+        }
+    }
+
+    /** Remove only the specified ids from the pending queue. */
+    suspend fun clearPendingProgressEntries(ids: Set<String>) {
+        context.dataStore.edit { prefs ->
+            val pendingRaw = prefs[KEY_PENDING_PROGRESS_JSON] ?: "{}"
+            val pendingObj = try { JSONObject(pendingRaw) } catch (_: Exception) { JSONObject() }
+            ids.forEach { pendingObj.remove(it) }
+            prefs[KEY_PENDING_PROGRESS_JSON] = pendingObj.toString()
+        }
+    }
+
+    /**
+     * Merge remote entries into local progress.
+     * - For each card id, whichever entry has the newer updatedAt wins locally.
+     * - Any local pending entries that are newer than remote stay queued for a later push.
+     */
+    suspend fun mergeRemoteProgress(remoteEntries: Map<String, ProgressEntry>): MergeResult {
+        val local = getProgressEntries().toMutableMap()
+        val pending = getPendingProgressEntries().toMutableMap()
+
+        var mergedCount = 0
+
+        // Apply remote -> local where remote is newer
+        for ((id, remote) in remoteEntries) {
+            val localEntry = local[id]
+            val localUpdated = localEntry?.updatedAt ?: 0
+            if (remote.updatedAt >= localUpdated) {
+                local[id] = remote
+                mergedCount += 1
+            }
+        }
+
+        // Reconcile pending: if pending is older/equal to remote, it's no longer needed
+        val toRemove = mutableSetOf<String>()
+        for ((id, pend) in pending) {
+            val remote = remoteEntries[id]
+            val remoteUpdated = remote?.updatedAt ?: 0
+            if (pend.updatedAt <= remoteUpdated) {
+                toRemove.add(id)
+            } else {
+                // ensure local reflects the pending latest choice
+                local[id] = pend
+            }
+        }
+        toRemove.forEach { pending.remove(it) }
+
+        applyMergedProgress(local, pending)
+        return MergeResult(mergedCount = mergedCount, pendingCount = pending.size)
+    }
+    }
+
+    private fun decodeProgressEntries(raw: String): Map<String, ProgressEntry> {
+        val out = mutableMapOf<String, ProgressEntry>()
+        val obj = try { JSONObject(raw) } catch (_: Exception) { JSONObject() }
+        obj.keys().forEach { key ->
+            val v = obj.opt(key)
+            when (v) {
+                is JSONObject -> {
+                    val st = v.optString("status", "active").lowercase()
+                    val ua = v.optLong("updated_at", 0)
+                    out[key] = ProgressEntry(
+                        status = when (st) {
+                            "learned" -> CardStatus.LEARNED
+                            "unsure" -> CardStatus.UNSURE
+                            "deleted" -> CardStatus.DELETED
+                            else -> CardStatus.ACTIVE
+                        },
+                        updatedAt = ua
+                    )
+                }
+                is String -> {
+                    val st = v.lowercase()
+                    out[key] = ProgressEntry(
+                        status = when (st) {
+                            "learned" -> CardStatus.LEARNED
+                            "unsure" -> CardStatus.UNSURE
+                            "deleted" -> CardStatus.DELETED
+                            else -> CardStatus.ACTIVE
+                        },
+                        updatedAt = 0
+                    )
+                }
+            }
+        }
+        return out
+    }
+
+    private fun encodeProgressEntries(entries: Map<String, ProgressEntry>): String {
+        val obj = JSONObject()
+        entries.forEach { (id, e) ->
+            val o = JSONObject()
+            o.put("status", e.status.name.lowercase())
+            o.put("updated_at", e.updatedAt)
+            obj.put(id, o)
+        }
+        return obj.toString()
+    }
 
     fun customCardsFlow(): Flow<List<FlashCard>> = context.dataStore.data.map { prefs -> JsonUtil.parseCardsArray(prefs[KEY_CUSTOM_CARDS_JSON] ?: "[]") }
     suspend fun replaceCustomCards(cards: List<FlashCard>) { context.dataStore.edit { prefs -> prefs[KEY_CUSTOM_CARDS_JSON] = JsonUtil.cardsToJsonArray(cards) } }
