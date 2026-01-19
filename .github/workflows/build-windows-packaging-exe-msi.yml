@@ -5,12 +5,12 @@ on:
     branches: [ "main" ]
     paths:
       - "KenpoFlashcardsWebServer_Packaged/**"
-      - "KenpoFlashcardsWebServer_Packaged*.zip"
+      - "**/KenpoFlashcardsWebServer_Packaged*.zip"
       - ".github/workflows/build-windows-packaging-exe-msi.yml"
   pull_request:
     paths:
       - "KenpoFlashcardsWebServer_Packaged/**"
-      - "KenpoFlashcardsWebServer_Packaged*.zip"
+      - "**/KenpoFlashcardsWebServer_Packaged*.zip"
       - ".github/workflows/build-windows-packaging-exe-msi.yml"
   workflow_dispatch:
 
@@ -21,87 +21,83 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Debug - list repo root
-        shell: pwsh
-        run: |
-          Write-Host "Workspace: $env:GITHUB_WORKSPACE"
-          Get-ChildItem -Path $env:GITHUB_WORKSPACE | Select-Object Name
-
       - name: Locate packaged project folder (or extract from zip)
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
 
-          function Use-ProjDir([string]$path) {
+          function Set-ProjDir([string]$path) {
             "PROJ_DIR=$path" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
             Write-Host "Using PROJ_DIR=$path"
           }
 
-          # 1) Prefer a checked-in folder that contains the tray spec
-          $candidates = Get-ChildItem -Directory | Where-Object {
-            Test-Path (Join-Path $_.FullName "packaging\pyinstaller\kenpo_tray.spec")
+          # 1) First try the known folder name in the repo
+          $known = Join-Path $env:GITHUB_WORKSPACE 'KenpoFlashcardsWebServer_Packaged'
+          $traySpecRel = 'packaging\pyinstaller\kenpo_tray.spec'
+          $serverSpecRel = 'packaging\pyinstaller\kenpo_server.spec'
+
+          if (Test-Path $known) {
+            $tray = Join-Path $known $traySpecRel
+            $server = Join-Path $known $serverSpecRel
+
+            Write-Host "Checking known folder: $known"
+            Write-Host "  Tray spec:   $tray"
+            Write-Host "  Server spec: $server"
+
+            if ((Test-Path $tray) -and (Test-Path $server)) {
+              Set-ProjDir $known
+              exit 0
+            }
+
+            Write-Host "Known folder exists, but one or both spec files are missing (likely not committed)."
           }
 
-          if ($candidates -and $candidates.Count -gt 0) {
-            Use-ProjDir $candidates[0].FullName
-            exit 0
-          }
+          # 2) Fallback: find a committed zip anywhere in the repo and extract it
+          $zip = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -File -Filter 'KenpoFlashcardsWebServer_Packaged*.zip' |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
 
-          Write-Host "Did not find packaging\\pyinstaller\\kenpo_tray.spec in any top-level folder."
-          Write-Host "Top-level folders:" 
-          Get-ChildItem -Directory | Select-Object Name
-
-          # 2) Fallback: look for a committed zip and extract it
-          $zip = Get-ChildItem -File -Filter "KenpoFlashcardsWebServer_Packaged*.zip" | Select-Object -First 1
           if (-not $zip) {
-            Write-Host "ERROR: No KenpoFlashcardsWebServer_Packaged*.zip found at repo root, and no checked-in project folder was found."
-            Write-Host "Fix: Commit the project folder (KenpoFlashcardsWebServer_Packaged/...) or commit the packaged zip at repo root."
+            Write-Host "ERROR: No usable checked-in project folder found and no KenpoFlashcardsWebServer_Packaged*.zip found anywhere in the repo."
+            Write-Host "Fix: Commit KenpoFlashcardsWebServer_Packaged/packaging/pyinstaller/*.spec OR commit a packaged zip that contains those files."
+            Write-Host "Top-level folders:" 
+            Get-ChildItem -Path $env:GITHUB_WORKSPACE -Directory | Select-Object Name
             exit 1
           }
 
-          $dest = Join-Path $env:RUNNER_TEMP "packaged_extract"
+          $dest = Join-Path $env:RUNNER_TEMP 'packaged_extract'
           New-Item -ItemType Directory -Force -Path $dest | Out-Null
           Write-Host "Extracting $($zip.FullName) -> $dest"
           Expand-Archive -Path $zip.FullName -DestinationPath $dest -Force
 
-          # pick extracted folder that contains the tray spec
-          $found = Get-ChildItem -Path $dest -Directory -Recurse | Where-Object {
-            Test-Path (Join-Path $_.FullName "packaging\pyinstaller\kenpo_tray.spec")
-          } | Select-Object -First 1
+          $found = Get-ChildItem -Path $dest -Directory -Recurse |
+            Where-Object {
+              Test-Path (Join-Path $_.FullName $traySpecRel) -and Test-Path (Join-Path $_.FullName $serverSpecRel)
+            } |
+            Select-Object -First 1
 
           if (-not $found) {
-            Write-Host "ERROR: Extracted zip but still could not find packaging\\pyinstaller\\kenpo_tray.spec."
+            Write-Host "ERROR: Extracted zip but still could not find BOTH spec files: $traySpecRel and $serverSpecRel"
             Write-Host "Extracted top-level:" 
             Get-ChildItem -Path $dest | Select-Object Name
             exit 1
           }
 
-          Use-ProjDir $found.FullName
+          Set-ProjDir $found.FullName
 
-      - name: Debug - list packaging tree
+      - name: Verify spec files exist
         shell: pwsh
         run: |
-          cd "$env:PROJ_DIR"
-          Write-Host "PWD=$PWD"
-          Write-Host "--- packaging/pyinstaller contents ---"
-          Get-ChildItem -Path .\packaging\pyinstaller | Select-Object Name
+          $ErrorActionPreference = 'Stop'
+          $tray = Join-Path $env:PROJ_DIR 'packaging\pyinstaller\kenpo_tray.spec'
+          $server = Join-Path $env:PROJ_DIR 'packaging\pyinstaller\kenpo_server.spec'
 
-      - name: Locate PyInstaller spec files
-        shell: pwsh
-        run: |
-          cd "$env:PROJ_DIR"
+          Write-Host "PROJ_DIR=$env:PROJ_DIR"
+          Write-Host "Tray spec:   $tray"
+          Write-Host "Server spec: $server"
 
-          $tray = Get-ChildItem -Path . -Recurse -Filter "kenpo_tray.spec" | Select-Object -First 1
-          if (-not $tray) { throw "kenpo_tray.spec not found under PROJ_DIR=$env:PROJ_DIR" }
-
-          $server = Get-ChildItem -Path . -Recurse -Filter "kenpo_server.spec" | Select-Object -First 1
-          if (-not $server) { throw "kenpo_server.spec not found under PROJ_DIR=$env:PROJ_DIR" }
-
-          "TRAY_SPEC=$($tray.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "SERVER_SPEC=$($server.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-
-          Write-Host "TRAY_SPEC=$($tray.FullName)"
-          Write-Host "SERVER_SPEC=$($server.FullName)"
+          if (!(Test-Path $tray))   { throw "Missing tray spec: $tray" }
+          if (!(Test-Path $server)) { throw "Missing server spec: $server" }
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -110,20 +106,22 @@ jobs:
 
       - name: Install packaging deps
         shell: pwsh
+        working-directory: ${{ env.PROJ_DIR }}
         run: |
-          cd "$env:PROJ_DIR"
           python -m pip install --upgrade pip
           python -m pip install -r packaging/requirements_packaging.txt
 
       - name: Build Tray EXE
         shell: pwsh
+        working-directory: ${{ env.PROJ_DIR }}
         run: |
-          python -m PyInstaller "$env:TRAY_SPEC" --noconfirm
+          python -m PyInstaller packaging/pyinstaller/kenpo_tray.spec --noconfirm
 
       - name: Build Server EXE
         shell: pwsh
+        working-directory: ${{ env.PROJ_DIR }}
         run: |
-          python -m PyInstaller "$env:SERVER_SPEC" --noconfirm
+          python -m PyInstaller packaging/pyinstaller/kenpo_server.spec --noconfirm
 
       - name: Install Inno Setup
         shell: pwsh
@@ -132,8 +130,8 @@ jobs:
 
       - name: Build Inno installer
         shell: pwsh
+        working-directory: ${{ env.PROJ_DIR }}
         run: |
-          cd "$env:PROJ_DIR"
           & iscc packaging/installer_inno.iss
 
       - name: Upload Tray artifact
