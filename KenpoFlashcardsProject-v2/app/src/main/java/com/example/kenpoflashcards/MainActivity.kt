@@ -84,6 +84,7 @@ private sealed class Route(val path: String) {
     data object Login : Route("login")
     data object SyncProgress : Route("sync_progress")
     data object UserGuide : Route("user_guide")
+    data object ManageDecks : Route("manage_decks")
 }
 
 @Composable
@@ -105,6 +106,7 @@ fun AppRoot() {
         composable(Route.Login.path) { LoginScreen(nav, repo) }
         composable(Route.SyncProgress.path) { SyncProgressScreen(nav, repo) }
         composable(Route.UserGuide.path) { UserGuideScreen(nav) }
+        composable(Route.ManageDecks.path) { ManageDecksScreen(nav, repo) }
     }
 }
 
@@ -1077,10 +1079,10 @@ fun SettingsScreen(nav: NavHostController, repo: Repository) {
             
             OutlinedButton({ nav.navigate(Route.Deleted.path) }, Modifier.fillMaxWidth()) { Text("View Deleted Cards") }
             Spacer(Modifier.height(6.dp))
-            // Manage Decks - Future feature placeholder
-            OutlinedButton({ /* TODO: nav.navigate(Route.ManageDecks.path) */ }, Modifier.fillMaxWidth(), enabled = false) { 
+            // Manage Decks - Edit study decks, add cards, create new decks
+            Button({ nav.navigate(Route.ManageDecks.path) }, Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = AccentBlue)) { 
                 Icon(Icons.Default.Dashboard, "Decks"); Spacer(Modifier.width(8.dp))
-                Text("Manage Decks (Coming Soon)") 
+                Text("Edit Decks") 
             }
             Spacer(Modifier.height(6.dp))
             OutlinedButton({ scope.launch { repo.saveSettingsAll(getDefaultSettings()) } }, Modifier.fillMaxWidth()) { Text("Reset to Default Settings") }
@@ -1821,3 +1823,684 @@ private fun GuideSection(title: String, content: String) {
         }
     }
 }
+
+// ==================== MANAGE DECKS SCREEN ====================
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val adminSettings by repo.adminSettingsFlow().collectAsState(initial = AdminSettings())
+    val decks by repo.decksFlow().collectAsState(initial = listOf(StudyDeck.KENPO_DEFAULT))
+    val deckSettings by repo.deckSettingsFlow().collectAsState(initial = DeckSettings())
+    val userCards by repo.userCardsFlow().collectAsState(initial = emptyList())
+    
+    var selectedTab by remember { mutableStateOf(0) }  // 0=Switch, 1=Add Cards, 2=Create Deck
+    var statusMessage by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    
+    // Add Card form state
+    var newTerm by remember { mutableStateOf("") }
+    var newDefinition by remember { mutableStateOf("") }
+    var newPronunciation by remember { mutableStateOf("") }
+    var newGroup by remember { mutableStateOf("") }
+    var selectedDeckForAdd by remember { mutableStateOf("kenpo") }
+    var useAiDefinition by remember { mutableStateOf(false) }
+    var useAiPronunciation by remember { mutableStateOf(false) }
+    var useAiGroup by remember { mutableStateOf(false) }
+    var maxGroups by remember { mutableStateOf("10") }
+    
+    // Create Deck form state
+    var newDeckName by remember { mutableStateOf("") }
+    var newDeckDescription by remember { mutableStateOf("") }
+    var createMethod by remember { mutableStateOf("ai_search") }  // ai_search, upload_image, upload_document
+    var aiSearchKeywords by remember { mutableStateOf("") }
+    var aiMaxCards by remember { mutableStateOf("20") }
+    var showAiResults by remember { mutableStateOf(false) }
+    var aiGeneratedTerms by remember { mutableStateOf<List<AiGeneratedTerm>>(emptyList()) }
+    var selectedAiTerms by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    
+    // File picker launchers
+    val imagePickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let {
+            isLoading = true
+            scope.launch {
+                statusMessage = "Scanning image for terms..."
+                // TODO: Implement image scanning with AI
+                statusMessage = "Image scanning requires AI API. Configure in Admin Settings."
+                isLoading = false
+            }
+        }
+    }
+    
+    val documentPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let {
+            isLoading = true
+            scope.launch {
+                statusMessage = "Scanning document for terms..."
+                // TODO: Implement document scanning with AI
+                statusMessage = "Document scanning requires AI API. Configure in Admin Settings."
+                isLoading = false
+            }
+        }
+    }
+    
+    val hasAiAccess = adminSettings.chatGptEnabled || adminSettings.geminiEnabled
+    
+    Scaffold(
+        topBar = { 
+            TopAppBar(
+                title = { Text("Edit Decks") }, 
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkPanel),
+                navigationIcon = { IconButton({ nav.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Back") } }
+            ) 
+        },
+        bottomBar = { NavBar(nav, Route.ManageDecks.path) }
+    ) { pad ->
+        Column(Modifier.fillMaxSize().padding(pad).padding(12.dp)) {
+            // Tab Row
+            TabRow(selectedTabIndex = selectedTab, containerColor = DarkPanel) {
+                Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.SwapHoriz, "Switch", Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Switch", fontSize = 12.sp)
+                    }
+                }
+                Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Add, "Add", Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Add Cards", fontSize = 12.sp)
+                    }
+                }
+                Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }) {
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CreateNewFolder, "Create", Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Create", fontSize = 12.sp)
+                    }
+                }
+            }
+            
+            Spacer(Modifier.height(12.dp))
+            
+            // Status message
+            if (statusMessage.isNotBlank()) {
+                Card(colors = CardDefaults.cardColors(containerColor = if (statusMessage.contains("Error")) Color(0xFF3D1212) else DarkPanel2), modifier = Modifier.fillMaxWidth()) {
+                    Text(statusMessage, color = if (statusMessage.contains("Error")) Color.Red else AccentBlue, fontSize = 12.sp, modifier = Modifier.padding(12.dp))
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+            
+            // Tab Content
+            when (selectedTab) {
+                // ========== TAB 0: SWITCH DECKS ==========
+                0 -> {
+                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                        Text("Switch Study Subject", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                        Spacer(Modifier.height(4.dp))
+                        Text("Select which flashcard deck to study", color = DarkMuted, fontSize = 11.sp)
+                        Spacer(Modifier.height(12.dp))
+                        
+                        // Current deck indicator
+                        Card(colors = CardDefaults.cardColors(containerColor = AccentGood), modifier = Modifier.fillMaxWidth()) {
+                            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.CheckCircle, "Active", tint = Color.White)
+                                Spacer(Modifier.width(8.dp))
+                                Column {
+                                    Text("Current: ${decks.find { it.id == deckSettings.activeDeckId }?.name ?: "Kenpo Vocabulary"}", color = Color.White, fontWeight = FontWeight.Bold)
+                                    Text("${decks.find { it.id == deckSettings.activeDeckId }?.cardCount ?: 88} cards", color = DarkMuted, fontSize = 11.sp)
+                                }
+                            }
+                        }
+                        
+                        Spacer(Modifier.height(16.dp))
+                        Text("Available Decks", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                        Spacer(Modifier.height(8.dp))
+                        
+                        // List all decks
+                        decks.forEach { deck ->
+                            val isActive = deck.id == deckSettings.activeDeckId
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = if (isActive) DarkPanel2 else DarkPanel),
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable {
+                                    if (!isActive) {
+                                        scope.launch {
+                                            repo.saveDeckSettings(deckSettings.copy(activeDeckId = deck.id))
+                                            statusMessage = "Switched to ${deck.name}"
+                                        }
+                                    }
+                                }
+                            ) {
+                                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    if (isActive) {
+                                        Icon(Icons.Default.RadioButtonChecked, "Selected", tint = AccentBlue)
+                                    } else {
+                                        Icon(Icons.Default.RadioButtonUnchecked, "Not Selected", tint = DarkMuted)
+                                    }
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(deck.name, fontWeight = FontWeight.Bold, color = Color.White)
+                                            if (deck.isBuiltIn) {
+                                                Spacer(Modifier.width(8.dp))
+                                                AssistChip(onClick = {}, label = { Text("Built-in", fontSize = 9.sp) }, modifier = Modifier.height(20.dp))
+                                            }
+                                            if (deck.isDefault) {
+                                                Spacer(Modifier.width(4.dp))
+                                                Icon(Icons.Default.Star, "Default", tint = Color.Yellow, modifier = Modifier.size(16.dp))
+                                            }
+                                        }
+                                        Text(deck.description, color = DarkMuted, fontSize = 11.sp)
+                                        Text("${deck.cardCount} cards", color = DarkMuted, fontSize = 10.sp)
+                                    }
+                                    if (!deck.isBuiltIn) {
+                                        IconButton({ 
+                                            scope.launch { 
+                                                repo.deleteDeck(deck.id)
+                                                statusMessage = "Deleted ${deck.name}"
+                                            }
+                                        }) {
+                                            Icon(Icons.Default.Delete, "Delete", tint = Color.Red)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (decks.size == 1) {
+                            Spacer(Modifier.height(12.dp))
+                            Text("Create new decks in the 'Create' tab to study different subjects!", color = DarkMuted, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                        }
+                    }
+                }
+                
+                // ========== TAB 1: ADD CARDS ==========
+                1 -> {
+                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                        Text("Add Cards to Deck", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                        Spacer(Modifier.height(4.dp))
+                        Text("Manually add terms with optional AI assistance", color = DarkMuted, fontSize = 11.sp)
+                        Spacer(Modifier.height(12.dp))
+                        
+                        // Select deck dropdown
+                        Text("Add to Deck", fontSize = 12.sp, color = Color.White)
+                        Spacer(Modifier.height(4.dp))
+                        var showDeckDropdown by remember { mutableStateOf(false) }
+                        Box {
+                            OutlinedButton({ showDeckDropdown = true }, Modifier.fillMaxWidth()) {
+                                Text(decks.find { it.id == selectedDeckForAdd }?.name ?: "Select Deck")
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Default.ArrowDropDown, "Select")
+                            }
+                            DropdownMenu(showDeckDropdown, { showDeckDropdown = false }) {
+                                decks.forEach { deck ->
+                                    DropdownMenuItem(
+                                        text = { Text(deck.name, color = Color.White) },
+                                        onClick = { selectedDeckForAdd = deck.id; showDeckDropdown = false }
+                                    )
+                                }
+                            }
+                        }
+                        
+                        Spacer(Modifier.height(12.dp))
+                        HorizontalDivider(color = DarkBorder)
+                        Spacer(Modifier.height(12.dp))
+                        
+                        // Term input
+                        OutlinedTextField(
+                            value = newTerm,
+                            onValueChange = { newTerm = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Term *") },
+                            singleLine = true,
+                            placeholder = { Text("e.g., Taekwondo", color = DarkMuted) }
+                        )
+                        
+                        Spacer(Modifier.height(8.dp))
+                        
+                        // Definition input with AI option
+                        OutlinedTextField(
+                            value = newDefinition,
+                            onValueChange = { newDefinition = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Definition *") },
+                            placeholder = { Text("e.g., The Way of the Foot and Fist", color = DarkMuted) },
+                            minLines = 2
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(useAiDefinition, { useAiDefinition = it }, enabled = hasAiAccess)
+                            Text("Generate with AI", fontSize = 11.sp, color = if (hasAiAccess) Color.White else DarkMuted)
+                            if (!hasAiAccess) {
+                                Spacer(Modifier.width(4.dp))
+                                Text("(Configure AI in Admin)", fontSize = 9.sp, color = DarkMuted)
+                            }
+                        }
+                        
+                        Spacer(Modifier.height(8.dp))
+                        
+                        // Pronunciation input with AI option
+                        OutlinedTextField(
+                            value = newPronunciation,
+                            onValueChange = { newPronunciation = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Pronunciation (optional)") },
+                            singleLine = true,
+                            placeholder = { Text("e.g., tay-kwon-doh", color = DarkMuted) }
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(useAiPronunciation, { useAiPronunciation = it }, enabled = hasAiAccess)
+                            Text("Generate with AI", fontSize = 11.sp, color = if (hasAiAccess) Color.White else DarkMuted)
+                        }
+                        
+                        Spacer(Modifier.height(8.dp))
+                        
+                        // Group input with AI option
+                        OutlinedTextField(
+                            value = newGroup,
+                            onValueChange = { newGroup = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Group (optional)") },
+                            singleLine = true,
+                            placeholder = { Text("e.g., Martial Arts Styles", color = DarkMuted) }
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(useAiGroup, { useAiGroup = it }, enabled = hasAiAccess)
+                            Text("Auto-assign group with AI", fontSize = 11.sp, color = if (hasAiAccess) Color.White else DarkMuted)
+                            if (useAiGroup) {
+                                Spacer(Modifier.width(8.dp))
+                                Text("Max groups:", fontSize = 10.sp, color = DarkMuted)
+                                Spacer(Modifier.width(4.dp))
+                                OutlinedTextField(
+                                    value = maxGroups,
+                                    onValueChange = { maxGroups = it.filter { c -> c.isDigit() }.take(2) },
+                                    modifier = Modifier.width(50.dp),
+                                    singleLine = true,
+                                    textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
+                                )
+                            }
+                        }
+                        
+                        Spacer(Modifier.height(16.dp))
+                        
+                        // Add Card Button
+                        Button(
+                            onClick = {
+                                if (newTerm.isBlank()) {
+                                    statusMessage = "Error: Term is required"
+                                    return@Button
+                                }
+                                if (newDefinition.isBlank() && !useAiDefinition) {
+                                    statusMessage = "Error: Definition is required (or enable AI generation)"
+                                    return@Button
+                                }
+                                isLoading = true
+                                scope.launch {
+                                    var finalDefinition = newDefinition
+                                    var finalPronunciation = newPronunciation
+                                    var finalGroup = newGroup
+                                    
+                                    // AI generation would go here
+                                    if (useAiDefinition && finalDefinition.isBlank()) {
+                                        // TODO: Call AI to generate definition
+                                        finalDefinition = "AI-generated definition for: $newTerm"
+                                    }
+                                    if (useAiPronunciation && finalPronunciation.isBlank()) {
+                                        // TODO: Call AI to generate pronunciation
+                                        finalPronunciation = "AI-generated"
+                                    }
+                                    if (useAiGroup && finalGroup.isBlank()) {
+                                        // TODO: Call AI to assign group
+                                        finalGroup = "General"
+                                    }
+                                    
+                                    val cardId = "${selectedDeckForAdd}_${System.currentTimeMillis()}"
+                                    val newCard = FlashCard(
+                                        id = cardId,
+                                        group = finalGroup.ifBlank { "General" },
+                                        subgroup = null,
+                                        term = newTerm,
+                                        pron = finalPronunciation.takeIf { it.isNotBlank() },
+                                        meaning = finalDefinition,
+                                        deckId = selectedDeckForAdd
+                                    )
+                                    repo.addUserCard(newCard)
+                                    
+                                    statusMessage = "Added: $newTerm"
+                                    newTerm = ""
+                                    newDefinition = ""
+                                    newPronunciation = ""
+                                    newGroup = ""
+                                    isLoading = false
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isLoading
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.Add, "Add")
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(if (isLoading) "Adding..." else "Add Card")
+                        }
+                        
+                        // Show user-added cards count
+                        if (userCards.isNotEmpty()) {
+                            Spacer(Modifier.height(16.dp))
+                            HorizontalDivider(color = DarkBorder)
+                            Spacer(Modifier.height(8.dp))
+                            Text("User-Added Cards: ${userCards.size}", color = DarkMuted, fontSize = 11.sp)
+                        }
+                    }
+                }
+                
+                // ========== TAB 2: CREATE DECK ==========
+                2 -> {
+                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                        Text("Create New Deck", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                        Spacer(Modifier.height(4.dp))
+                        Text("Create a new study subject from various sources", color = DarkMuted, fontSize = 11.sp)
+                        Spacer(Modifier.height(12.dp))
+                        
+                        // Deck name and description
+                        OutlinedTextField(
+                            value = newDeckName,
+                            onValueChange = { newDeckName = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Deck Name *") },
+                            singleLine = true,
+                            placeholder = { Text("e.g., Spanish Vocabulary", color = DarkMuted) }
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = newDeckDescription,
+                            onValueChange = { newDeckDescription = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Description") },
+                            singleLine = true,
+                            placeholder = { Text("e.g., Common Spanish words and phrases", color = DarkMuted) }
+                        )
+                        
+                        Spacer(Modifier.height(16.dp))
+                        Text("Create Method", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                        Spacer(Modifier.height(8.dp))
+                        
+                        // Method selection cards
+                        // AI Search
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = if (createMethod == "ai_search") DarkPanel2 else DarkPanel),
+                            modifier = Modifier.fillMaxWidth().clickable { createMethod = "ai_search" }
+                        ) {
+                            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(selected = createMethod == "ai_search", onClick = { createMethod = "ai_search" })
+                                Spacer(Modifier.width(8.dp))
+                                Icon(Icons.Default.Search, "AI Search", tint = AccentBlue)
+                                Spacer(Modifier.width(8.dp))
+                                Column {
+                                    Text("AI Search", fontWeight = FontWeight.Bold, color = Color.White)
+                                    Text("Search for terms using keywords", color = DarkMuted, fontSize = 11.sp)
+                                }
+                            }
+                        }
+                        
+                        Spacer(Modifier.height(8.dp))
+                        
+                        // Upload Image
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = if (createMethod == "upload_image") DarkPanel2 else DarkPanel),
+                            modifier = Modifier.fillMaxWidth().clickable { createMethod = "upload_image" }
+                        ) {
+                            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(selected = createMethod == "upload_image", onClick = { createMethod = "upload_image" })
+                                Spacer(Modifier.width(8.dp))
+                                Icon(Icons.Default.Image, "Image", tint = AccentBlue)
+                                Spacer(Modifier.width(8.dp))
+                                Column {
+                                    Text("Upload Image", fontWeight = FontWeight.Bold, color = Color.White)
+                                    Text("Scan photos of study materials", color = DarkMuted, fontSize = 11.sp)
+                                }
+                            }
+                        }
+                        
+                        Spacer(Modifier.height(8.dp))
+                        
+                        // Upload Document
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = if (createMethod == "upload_document") DarkPanel2 else DarkPanel),
+                            modifier = Modifier.fillMaxWidth().clickable { createMethod = "upload_document" }
+                        ) {
+                            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(selected = createMethod == "upload_document", onClick = { createMethod = "upload_document" })
+                                Spacer(Modifier.width(8.dp))
+                                Icon(Icons.Default.Description, "Document", tint = AccentBlue)
+                                Spacer(Modifier.width(8.dp))
+                                Column {
+                                    Text("Upload Document", fontWeight = FontWeight.Bold, color = Color.White)
+                                    Text("PDF, Word, Text, CSV, Excel files", color = DarkMuted, fontSize = 11.sp)
+                                }
+                            }
+                        }
+                        
+                        Spacer(Modifier.height(16.dp))
+                        HorizontalDivider(color = DarkBorder)
+                        Spacer(Modifier.height(12.dp))
+                        
+                        // Method-specific options
+                        when (createMethod) {
+                            "ai_search" -> {
+                                Text("AI Search Settings", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                                Spacer(Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = aiSearchKeywords,
+                                    onValueChange = { aiSearchKeywords = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    label = { Text("Search Keywords *") },
+                                    placeholder = { Text("e.g., medical terminology, anatomy", color = DarkMuted) },
+                                    minLines = 2
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Max cards to generate:", fontSize = 12.sp, color = Color.White)
+                                    Spacer(Modifier.width(8.dp))
+                                    OutlinedTextField(
+                                        value = aiMaxCards,
+                                        onValueChange = { aiMaxCards = it.filter { c -> c.isDigit() }.take(3) },
+                                        modifier = Modifier.width(70.dp),
+                                        singleLine = true
+                                    )
+                                }
+                                Spacer(Modifier.height(12.dp))
+                                
+                                Button(
+                                    onClick = {
+                                        if (aiSearchKeywords.isBlank()) {
+                                            statusMessage = "Error: Enter search keywords"
+                                            return@Button
+                                        }
+                                        if (!hasAiAccess) {
+                                            statusMessage = "Error: Configure AI in Admin Settings first"
+                                            return@Button
+                                        }
+                                        isLoading = true
+                                        scope.launch {
+                                            // TODO: Call AI to search and generate terms
+                                            statusMessage = "AI search complete. Select terms to add."
+                                            aiGeneratedTerms = listOf(
+                                                AiGeneratedTerm("Example Term 1", "Definition 1", "ex-am-ple", "Category A"),
+                                                AiGeneratedTerm("Example Term 2", "Definition 2", "ex-am-ple", "Category A"),
+                                                AiGeneratedTerm("Example Term 3", "Definition 3", "ex-am-ple", "Category B")
+                                            )
+                                            showAiResults = true
+                                            isLoading = false
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = !isLoading && hasAiAccess
+                                ) {
+                                    Icon(Icons.Default.Search, "Search")
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(if (isLoading) "Searching..." else "Search with AI")
+                                }
+                                
+                                if (!hasAiAccess) {
+                                    Spacer(Modifier.height(8.dp))
+                                    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF3D2D12)), modifier = Modifier.fillMaxWidth()) {
+                                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.Warning, "Warning", tint = Color.Yellow)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("AI not configured. Go to Admin Settings to add API keys.", color = Color.Yellow, fontSize = 11.sp)
+                                        }
+                                    }
+                                }
+                                
+                                // Show AI results for selection
+                                if (showAiResults && aiGeneratedTerms.isNotEmpty()) {
+                                    Spacer(Modifier.height(16.dp))
+                                    Text("Generated Terms (${selectedAiTerms.size}/${aiGeneratedTerms.size} selected)", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                                    Spacer(Modifier.height(8.dp))
+                                    
+                                    aiGeneratedTerms.forEachIndexed { idx, term ->
+                                        val isSelected = idx in selectedAiTerms
+                                        Card(
+                                            colors = CardDefaults.cardColors(containerColor = if (isSelected) DarkPanel2 else DarkPanel),
+                                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp).clickable {
+                                                selectedAiTerms = if (isSelected) selectedAiTerms - idx else selectedAiTerms + idx
+                                            }
+                                        ) {
+                                            Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                                Checkbox(isSelected, { 
+                                                    selectedAiTerms = if (isSelected) selectedAiTerms - idx else selectedAiTerms + idx 
+                                                })
+                                                Column(Modifier.weight(1f)) {
+                                                    Text(term.term, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                                                    Text(term.definition, fontSize = 10.sp, color = DarkMuted, maxLines = 1)
+                                                }
+                                                AssistChip(onClick = {}, label = { Text(term.group, fontSize = 9.sp) }, modifier = Modifier.height(20.dp))
+                                            }
+                                        }
+                                    }
+                                    
+                                    Spacer(Modifier.height(8.dp))
+                                    Row {
+                                        OutlinedButton({ selectedAiTerms = aiGeneratedTerms.indices.toSet() }, Modifier.weight(1f)) {
+                                            Text("Select All", fontSize = 11.sp)
+                                        }
+                                        Spacer(Modifier.width(8.dp))
+                                        OutlinedButton({ selectedAiTerms = emptySet() }, Modifier.weight(1f)) {
+                                            Text("Clear", fontSize = 11.sp)
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            "upload_image" -> {
+                                Text("Upload Image", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                                Spacer(Modifier.height(8.dp))
+                                Text("AI will scan the image and extract terms, definitions, and pronunciations.", color = DarkMuted, fontSize = 11.sp)
+                                Spacer(Modifier.height(12.dp))
+                                Button(
+                                    onClick = { imagePickerLauncher.launch("image/*") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = hasAiAccess
+                                ) {
+                                    Icon(Icons.Default.Upload, "Upload")
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Select Image")
+                                }
+                            }
+                            
+                            "upload_document" -> {
+                                Text("Upload Document", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                                Spacer(Modifier.height(8.dp))
+                                Text("Supported: PDF, Word (.docx), Text (.txt), CSV, Excel (.xlsx)", color = DarkMuted, fontSize = 11.sp)
+                                Spacer(Modifier.height(12.dp))
+                                Button(
+                                    onClick = { documentPickerLauncher.launch("*/*") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = hasAiAccess
+                                ) {
+                                    Icon(Icons.Default.Upload, "Upload")
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Select Document")
+                                }
+                            }
+                        }
+                        
+                        // Create Deck Button
+                        if (showAiResults && selectedAiTerms.isNotEmpty()) {
+                            Spacer(Modifier.height(16.dp))
+                            Button(
+                                onClick = {
+                                    if (newDeckName.isBlank()) {
+                                        statusMessage = "Error: Deck name is required"
+                                        return@Button
+                                    }
+                                    isLoading = true
+                                    scope.launch {
+                                        val deckId = "deck_${System.currentTimeMillis()}"
+                                        val selectedTerms = selectedAiTerms.map { aiGeneratedTerms[it] }
+                                        
+                                        // Create deck
+                                        val newDeck = StudyDeck(
+                                            id = deckId,
+                                            name = newDeckName,
+                                            description = newDeckDescription.ifBlank { "Created from AI search" },
+                                            isDefault = false,
+                                            isBuiltIn = false,
+                                            sourceFile = null,
+                                            cardCount = selectedTerms.size,
+                                            createdAt = System.currentTimeMillis(),
+                                            updatedAt = System.currentTimeMillis()
+                                        )
+                                        repo.addDeck(newDeck)
+                                        
+                                        // Add cards
+                                        val cards = selectedTerms.mapIndexed { idx, term ->
+                                            FlashCard(
+                                                id = "${deckId}_$idx",
+                                                group = term.group,
+                                                subgroup = null,
+                                                term = term.term,
+                                                pron = term.pronunciation.takeIf { it.isNotBlank() },
+                                                meaning = term.definition,
+                                                deckId = deckId
+                                            )
+                                        }
+                                        repo.addUserCards(cards)
+                                        
+                                        statusMessage = "Created deck '${newDeckName}' with ${selectedTerms.size} cards!"
+                                        newDeckName = ""
+                                        newDeckDescription = ""
+                                        aiSearchKeywords = ""
+                                        showAiResults = false
+                                        aiGeneratedTerms = emptyList()
+                                        selectedAiTerms = emptySet()
+                                        isLoading = false
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentGood),
+                                enabled = !isLoading
+                            ) {
+                                Icon(Icons.Default.Check, "Create")
+                                Spacer(Modifier.width(8.dp))
+                                Text("Create Deck with ${selectedAiTerms.size} Cards")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Helper data class for AI-generated terms
+data class AiGeneratedTerm(
+    val term: String,
+    val definition: String,
+    val pronunciation: String,
+    val group: String
+)

@@ -61,6 +61,18 @@ class Repository(private val context: Context, private val store: Store) {
     suspend fun clearCustomSet() = store.clearCustomSet()
     suspend fun setCustomSetStatus(id: String, status: CustomCardStatus) = store.setCustomSetStatus(id, status)
     
+    // Deck Management
+    fun decksFlow(): Flow<List<StudyDeck>> = store.decksFlow()
+    fun deckSettingsFlow(): Flow<DeckSettings> = store.deckSettingsFlow()
+    suspend fun saveDeckSettings(settings: DeckSettings) = store.saveDeckSettings(settings)
+    suspend fun addDeck(deck: StudyDeck) = store.addDeck(deck)
+    suspend fun deleteDeck(deckId: String) = store.deleteDeck(deckId)
+    fun userCardsFlow(): Flow<List<FlashCard>> = store.userCardsFlow()
+    suspend fun addUserCard(card: FlashCard) = store.addUserCard(card)
+    suspend fun addUserCards(cards: List<FlashCard>) = store.addUserCards(cards)
+    suspend fun deleteUserCard(cardId: String) = store.deleteUserCard(cardId)
+    suspend fun updateUserCard(card: FlashCard) = store.updateUserCard(card)
+    
     // Breakdowns
     fun breakdownsFlow(): Flow<Map<String, TermBreakdown>> = store.breakdownsFlow()
     suspend fun getBreakdown(cardId: String): TermBreakdown? = store.breakdownsFlow().first()[cardId]

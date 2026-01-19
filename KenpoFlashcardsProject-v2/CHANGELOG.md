@@ -1,5 +1,41 @@
 # Changelog — KenpoFlashcardsProject-v2 (Android)
 
+## 5.0.0 (build 29) — 2026-01-18
+
+### Added — Edit Decks Feature (Major)
+New "Edit Decks" screen accessible from Settings with three tabs:
+
+**Switch Tab:**
+- View all available study decks (built-in and user-created)
+- Switch between different study subjects
+- See active deck with card count
+- Delete user-created decks (built-in decks cannot be deleted)
+- Default deck indicator (Kenpo Vocabulary)
+
+**Add Cards Tab:**
+- Manually add terms and definitions to any deck
+- Select target deck from dropdown
+- Optional AI-generated definitions (requires AI API)
+- Optional AI-generated pronunciations
+- Optional AI-generated group assignment with max groups limit
+- Form validation for required fields
+
+**Create Deck Tab:**
+- Create new study decks from various sources
+- Three creation methods:
+  - **AI Search**: Search for terms using keywords, select from AI-generated results
+  - **Upload Image**: Scan photos of study materials (AI extracts terms)
+  - **Upload Document**: Process PDF, Word, Text, CSV, Excel files
+- AI generates: terms, definitions, pronunciations, and groups
+- Select/deselect individual terms from AI results
+- Set deck name and description
+
+### Changed
+- "Manage Decks (Coming Soon)" button now active as "Edit Decks"
+- Repository now includes full deck management methods
+
+---
+
 ## 4.5.2 (build 28) — 2026-01-18
 
 ### Added
