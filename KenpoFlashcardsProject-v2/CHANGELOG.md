@@ -1,5 +1,20 @@
 # Changelog — KenpoFlashcardsProject-v2 (Android)
 
+## 4.5.2 (build 28) — 2026-01-18
+
+### Added
+- **Auto-Sync explanation card**: Sync Progress screen now includes a clear description of auto-sync features:
+  - First login always syncs automatically
+  - Auto-pull on login option
+  - Auto-push on change option
+  - Offline changes queued and synced when online
+- **Manual Sync description**: Explains Push (sends to server) and Pull (downloads from server)
+
+### Changed
+- Improved Sync Progress screen layout with better organization of auto vs manual sync info
+
+---
+
 ## 4.5.1 (build 27) — 2026-01-18
 
 ### Fixed

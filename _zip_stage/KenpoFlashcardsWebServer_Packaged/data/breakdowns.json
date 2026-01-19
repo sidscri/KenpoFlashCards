@@ -1,0 +1,166 @@
+{
+  "db327b3b177e7a70": {
+    "id": "db327b3b177e7a70",
+    "term": "Jeet Kune Do",
+    "parts": [
+      {
+        "part": "Jeet",
+        "meaning": "Intercepting"
+      },
+      {
+        "part": "Kune",
+        "meaning": "Fist"
+      },
+      {
+        "part": "Do",
+        "meaning": "Way"
+      }
+    ],
+    "literal": "Intercepting Fist Way",
+    "notes": "",
+    "updated_at": 1767777487,
+    "updated_by": null
+  },
+  "1f54b232485bd93a": {
+    "id": "1f54b232485bd93a",
+    "term": "Tae Kwan Do",
+    "parts": [
+      {
+        "part": "Tae",
+        "meaning": "to strike or kick"
+      },
+      {
+        "part": "Kwan",
+        "meaning": "fist or martial art"
+      },
+      {
+        "part": "Do",
+        "meaning": "the way or path"
+      }
+    ],
+    "literal": "The way of the kicking fist",
+    "notes": "The Way of foot and fist",
+    "updated_at": 1767776175,
+    "updated_by": null
+  },
+  "a5b849774d7f4459": {
+    "id": "a5b849774d7f4459",
+    "term": "Krav Maga",
+    "parts": [
+      {
+        "part": "Krav",
+        "meaning": ""
+      },
+      {
+        "part": "Maga",
+        "meaning": "contact"
+      }
+    ],
+    "literal": "Contact Combat",
+    "notes": "",
+    "updated_at": 1767776314,
+    "updated_by": null
+  },
+  "e8d97cbafd0c1fde": {
+    "id": "e8d97cbafd0c1fde",
+    "term": "Kenju-Ryu",
+    "parts": [
+      {
+        "part": "Ken",
+        "meaning": "Fist"
+      },
+      {
+        "part": "ju",
+        "meaning": "method"
+      },
+      {
+        "part": "Ryu",
+        "meaning": "style"
+      }
+    ],
+    "literal": "Style of Fist Training",
+    "notes": "",
+    "updated_at": 1767776632,
+    "updated_by": null
+  },
+  "c94f5f15a0de03fe": {
+    "id": "c94f5f15a0de03fe",
+    "term": "Aikido",
+    "parts": [
+      {
+        "part": "Ai",
+        "meaning": "harmony"
+      },
+      {
+        "part": "Ki",
+        "meaning": "spirit"
+      },
+      {
+        "part": "Do",
+        "meaning": "way"
+      }
+    ],
+    "literal": "Harmony Spirit Way",
+    "notes": "",
+    "updated_at": 1767777360,
+    "updated_by": null
+  },
+  "ab0def62f1807bcd": {
+    "id": "ab0def62f1807bcd",
+    "term": "Kajukenbo",
+    "parts": [
+      {
+        "part": "Kaju",
+        "meaning": "thru this"
+      },
+      {
+        "part": "Ken",
+        "meaning": "fist"
+      },
+      {
+        "part": "Bo",
+        "meaning": "style"
+      }
+    ],
+    "literal": "Thru this Fist Style",
+    "notes": "",
+    "updated_at": 1767777439,
+    "updated_by": null
+  },
+  "c38ebd59d00a1e63": {
+    "id": "c38ebd59d00a1e63",
+    "term": "Kenjitsu",
+    "parts": [
+      {
+        "part": "Ken",
+        "meaning": "Sword"
+      },
+      {
+        "part": "jitsu",
+        "meaning": "Technique/Art"
+      }
+    ],
+    "literal": "Sword Technique/Art",
+    "notes": "",
+    "updated_at": 1767777523,
+    "updated_by": null
+  },
+  "4bb13345ea9f5a15": {
+    "id": "4bb13345ea9f5a15",
+    "term": "Kumite",
+    "parts": [
+      {
+        "part": "Kumi",
+        "meaning": "to join, combine"
+      },
+      {
+        "part": "te",
+        "meaning": "hand"
+      }
+    ],
+    "literal": "joining hands",
+    "notes": "",
+    "updated_at": 1767777562,
+    "updated_by": null
+  }
+}

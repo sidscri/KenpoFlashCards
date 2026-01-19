@@ -1612,7 +1612,22 @@ fun SyncProgressScreen(nav: NavHostController, repo: Repository) {
             if (adminSettings.lastSyncTime > 0) {
                 Text("Last sync: ${java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(adminSettings.lastSyncTime))}", color = DarkMuted, fontSize = 11.sp)
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
+            
+            // Auto-sync explanation card
+            Card(colors = CardDefaults.cardColors(containerColor = DarkPanel2), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp)) {
+                    Text("⚡ Auto-Sync", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = AccentBlue)
+                    Spacer(Modifier.height(4.dp))
+                    Text("• First login always syncs automatically\n• Auto-pull on login: pulls latest progress when you log in\n• Auto-push on change: pushes updates whenever you mark a card\n• Offline changes are queued and synced when online", color = DarkMuted, fontSize = 10.sp, lineHeight = 14.sp)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            
+            Text("Manual Sync", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+            Spacer(Modifier.height(4.dp))
+            Text("Push sends your progress to server. Pull downloads server progress to device.", color = DarkMuted, fontSize = 10.sp)
+            Spacer(Modifier.height(8.dp))
             
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button({ 
