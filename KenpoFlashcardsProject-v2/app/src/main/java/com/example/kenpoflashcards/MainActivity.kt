@@ -1937,6 +1937,11 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
     var selectedAiTerms by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var uploadedFileName by remember { mutableStateOf("") }
     
+    // AI access check - must be declared before file pickers that use it
+    val hasAiAccess = adminSettings.chatGptEnabled || adminSettings.geminiEnabled
+    val apiKey = if (adminSettings.chatGptEnabled) adminSettings.chatGptApiKey else adminSettings.geminiApiKey
+    val aiModel = if (adminSettings.chatGptEnabled) adminSettings.chatGptModel else adminSettings.geminiModel
+    
     // File picker launchers
     val imagePickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
@@ -1960,10 +1965,6 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
             }
         }
     }
-    
-    val hasAiAccess = adminSettings.chatGptEnabled || adminSettings.geminiEnabled
-    val apiKey = if (adminSettings.chatGptEnabled) adminSettings.chatGptApiKey else adminSettings.geminiApiKey
-    val aiModel = if (adminSettings.chatGptEnabled) adminSettings.chatGptModel else adminSettings.geminiModel
     
     // Get existing groups from all cards for AI group suggestions
     val allCards by repo.allCardsFlow().collectAsState(initial = emptyList())
