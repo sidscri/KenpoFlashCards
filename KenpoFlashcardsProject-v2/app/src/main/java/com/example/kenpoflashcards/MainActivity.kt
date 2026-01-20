@@ -1937,21 +1937,12 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
     var selectedAiTerms by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var uploadedFileName by remember { mutableStateOf("") }
     
-    // AI access check - must be declared before file pickers that use it
-    val hasAiAccess = adminSettings.chatGptEnabled || adminSettings.geminiEnabled
-    val apiKey = if (adminSettings.chatGptEnabled) adminSettings.chatGptApiKey else adminSettings.geminiApiKey
-    val aiModel = if (adminSettings.chatGptEnabled) adminSettings.chatGptModel else adminSettings.geminiModel
-    
     // File picker launchers
     val imagePickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
             val fileName = uri.lastPathSegment ?: "image"
             uploadedFileName = fileName
-            statusMessage = "Selected: $fileName"
-            // With AI, we would process the image here
-            if (!hasAiAccess) {
-                statusMessage = "Image selected: $fileName. Configure AI in Admin Settings to scan."
-            }
+            statusMessage = "Image selected: $fileName"
         }
     }
     
@@ -1959,12 +1950,14 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
         uri?.let {
             val fileName = uri.lastPathSegment ?: "document"
             uploadedFileName = fileName
-            statusMessage = "Selected: $fileName"
-            if (!hasAiAccess) {
-                statusMessage = "Document selected: $fileName. Configure AI in Admin Settings to scan."
-            }
+            statusMessage = "Document selected: $fileName"
         }
     }
+    
+    // AI access check
+    val hasAiAccess = adminSettings.chatGptEnabled || adminSettings.geminiEnabled
+    val apiKey = if (adminSettings.chatGptEnabled) adminSettings.chatGptApiKey else adminSettings.geminiApiKey
+    val aiModel = if (adminSettings.chatGptEnabled) adminSettings.chatGptModel else adminSettings.geminiModel
     
     // Get existing groups from all cards for AI group suggestions
     val allCards by repo.allCardsFlow().collectAsState(initial = emptyList())
