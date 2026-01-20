@@ -1,5 +1,35 @@
 # Changelog — KenpoFlashcardsProject-v2 (Android)
 
+## 5.1.0 (build 32) — 2026-01-19
+
+### Added — AI Generation for Card Creation
+- **Generate Definition button**: Click to get 3 AI-generated definition options in dropdown
+- **Generate Pronunciation button**: Click to get AI-generated phonetic pronunciation  
+- **Generate Group button**: Click to get 3 AI group suggestions (considers existing groups)
+- **AiGenerationHelper**: New helper class supporting both ChatGPT and Gemini APIs
+- All AI buttons show loading spinner while generating
+
+### Added — User Cards Management
+- **View User Cards**: Expandable section showing all user-added cards
+- **Edit User Cards**: Click edit icon to modify term, definition, pronunciation, group
+- **Delete User Cards**: Click delete icon to remove user cards
+- **Edit Card Dialog**: Full editing dialog with all fields
+
+### Improved — Create Deck AI Search
+- AI search now calls real API (ChatGPT/Gemini) to generate flashcard terms
+- Loading spinner during search
+- Better error handling and status messages
+
+### Improved — File Upload Feedback
+- Image picker now shows selected filename
+- Document picker now shows selected filename
+- Clear status messages about AI configuration required
+
+### New File
+- `AiGenerationHelper.kt` - Centralized AI API calls for flashcard generation
+
+---
+
 ## 5.0.2 (build 31) — 2026-01-19
 
 ### Fixed

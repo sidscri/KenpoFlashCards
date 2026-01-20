@@ -1908,10 +1908,23 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
     var newPronunciation by remember { mutableStateOf("") }
     var newGroup by remember { mutableStateOf("") }
     var selectedDeckForAdd by remember { mutableStateOf("kenpo") }
-    var useAiDefinition by remember { mutableStateOf(false) }
-    var useAiPronunciation by remember { mutableStateOf(false) }
-    var useAiGroup by remember { mutableStateOf(false) }
     var maxGroups by remember { mutableStateOf("10") }
+    
+    // AI Generation state
+    var aiDefinitionOptions by remember { mutableStateOf<List<String>>(emptyList()) }
+    var aiPronunciationOption by remember { mutableStateOf("") }
+    var aiGroupOptions by remember { mutableStateOf<List<String>>(emptyList()) }
+    var showDefinitionDropdown by remember { mutableStateOf(false) }
+    var showGroupDropdown by remember { mutableStateOf(false) }
+    var isGeneratingAi by remember { mutableStateOf(false) }
+    
+    // User cards viewing/editing state
+    var showUserCards by remember { mutableStateOf(false) }
+    var editingCard by remember { mutableStateOf<FlashCard?>(null) }
+    var editTerm by remember { mutableStateOf("") }
+    var editDefinition by remember { mutableStateOf("") }
+    var editPronunciation by remember { mutableStateOf("") }
+    var editGroup by remember { mutableStateOf("") }
     
     // Create Deck form state
     var newDeckName by remember { mutableStateOf("") }
@@ -1922,33 +1935,39 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
     var showAiResults by remember { mutableStateOf(false) }
     var aiGeneratedTerms by remember { mutableStateOf<List<AiGeneratedTerm>>(emptyList()) }
     var selectedAiTerms by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var uploadedFileName by remember { mutableStateOf("") }
     
     // File picker launchers
     val imagePickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
-            isLoading = true
-            scope.launch {
-                statusMessage = "Scanning image for terms..."
-                // TODO: Implement image scanning with AI
-                statusMessage = "Image scanning requires AI API. Configure in Admin Settings."
-                isLoading = false
+            val fileName = uri.lastPathSegment ?: "image"
+            uploadedFileName = fileName
+            statusMessage = "Selected: $fileName"
+            // With AI, we would process the image here
+            if (!hasAiAccess) {
+                statusMessage = "Image selected: $fileName. Configure AI in Admin Settings to scan."
             }
         }
     }
     
     val documentPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
-            isLoading = true
-            scope.launch {
-                statusMessage = "Scanning document for terms..."
-                // TODO: Implement document scanning with AI
-                statusMessage = "Document scanning requires AI API. Configure in Admin Settings."
-                isLoading = false
+            val fileName = uri.lastPathSegment ?: "document"
+            uploadedFileName = fileName
+            statusMessage = "Selected: $fileName"
+            if (!hasAiAccess) {
+                statusMessage = "Document selected: $fileName. Configure AI in Admin Settings to scan."
             }
         }
     }
     
     val hasAiAccess = adminSettings.chatGptEnabled || adminSettings.geminiEnabled
+    val apiKey = if (adminSettings.chatGptEnabled) adminSettings.chatGptApiKey else adminSettings.geminiApiKey
+    val aiModel = if (adminSettings.chatGptEnabled) adminSettings.chatGptModel else adminSettings.geminiModel
+    
+    // Get existing groups from all cards for AI group suggestions
+    val allCards by repo.allCardsFlow().collectAsState(initial = emptyList())
+    val existingGroups = remember(allCards) { allCards.map { it.group }.distinct().sorted() }
     
     Scaffold(
         topBar = { 
@@ -2124,7 +2143,7 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
                         // Term input
                         OutlinedTextField(
                             value = newTerm,
-                            onValueChange = { newTerm = it },
+                            onValueChange = { newTerm = it; aiDefinitionOptions = emptyList(); aiGroupOptions = emptyList(); aiPronunciationOption = "" },
                             modifier = Modifier.fillMaxWidth(),
                             label = { Text("Term *") },
                             singleLine = true,
@@ -2133,7 +2152,7 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
                         
                         Spacer(Modifier.height(8.dp))
                         
-                        // Definition input with AI option
+                        // Definition input with AI Generate button
                         OutlinedTextField(
                             value = newDefinition,
                             onValueChange = { newDefinition = it },
@@ -2142,9 +2161,63 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
                             placeholder = { Text("e.g., The Way of the Foot and Fist", color = DarkMuted) },
                             minLines = 2
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(useAiDefinition, { useAiDefinition = it }, enabled = hasAiAccess)
-                            Text("Generate with AI", fontSize = 11.sp, color = if (hasAiAccess) Color.White else DarkMuted)
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                            Button(
+                                onClick = {
+                                    if (newTerm.isBlank()) {
+                                        statusMessage = "Error: Enter a term first"
+                                        return@Button
+                                    }
+                                    if (!hasAiAccess) {
+                                        statusMessage = "Error: Configure AI in Admin Settings"
+                                        return@Button
+                                    }
+                                    isGeneratingAi = true
+                                    scope.launch {
+                                        try {
+                                            val result = AiGenerationHelper.generateDefinitions(apiKey, newTerm, aiModel, adminSettings.chatGptEnabled)
+                                            aiDefinitionOptions = result
+                                            if (result.isNotEmpty()) {
+                                                newDefinition = result[0]
+                                                showDefinitionDropdown = result.size > 1
+                                                statusMessage = "Generated ${result.size} definition options"
+                                            } else {
+                                                statusMessage = "AI could not generate definitions"
+                                            }
+                                        } catch (e: Exception) {
+                                            statusMessage = "Error: ${e.message}"
+                                        }
+                                        isGeneratingAi = false
+                                    }
+                                },
+                                enabled = hasAiAccess && newTerm.isNotBlank() && !isGeneratingAi,
+                                modifier = Modifier.height(32.dp)
+                            ) {
+                                if (isGeneratingAi) {
+                                    CircularProgressIndicator(Modifier.size(14.dp), color = Color.White, strokeWidth = 2.dp)
+                                } else {
+                                    Icon(Icons.Default.AutoAwesome, "AI", Modifier.size(14.dp))
+                                }
+                                Spacer(Modifier.width(4.dp))
+                                Text("Generate", fontSize = 10.sp)
+                            }
+                            if (aiDefinitionOptions.size > 1) {
+                                Spacer(Modifier.width(8.dp))
+                                Box {
+                                    OutlinedButton({ showDefinitionDropdown = true }, Modifier.height(32.dp)) {
+                                        Text("${aiDefinitionOptions.size} options", fontSize = 10.sp)
+                                        Icon(Icons.Default.ArrowDropDown, "Select", Modifier.size(14.dp))
+                                    }
+                                    DropdownMenu(showDefinitionDropdown, { showDefinitionDropdown = false }) {
+                                        aiDefinitionOptions.forEachIndexed { idx, def ->
+                                            DropdownMenuItem(
+                                                text = { Text(def.take(50) + if (def.length > 50) "..." else "", color = Color.White, fontSize = 11.sp) },
+                                                onClick = { newDefinition = def; showDefinitionDropdown = false }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                             if (!hasAiAccess) {
                                 Spacer(Modifier.width(4.dp))
                                 Text("(Configure AI in Admin)", fontSize = 9.sp, color = DarkMuted)
@@ -2153,7 +2226,7 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
                         
                         Spacer(Modifier.height(8.dp))
                         
-                        // Pronunciation input with AI option
+                        // Pronunciation input with AI Generate button
                         OutlinedTextField(
                             value = newPronunciation,
                             onValueChange = { newPronunciation = it },
@@ -2162,14 +2235,40 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
                             singleLine = true,
                             placeholder = { Text("e.g., tay-kwon-doh", color = DarkMuted) }
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(useAiPronunciation, { useAiPronunciation = it }, enabled = hasAiAccess)
-                            Text("Generate with AI", fontSize = 11.sp, color = if (hasAiAccess) Color.White else DarkMuted)
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                            Button(
+                                onClick = {
+                                    if (newTerm.isBlank()) {
+                                        statusMessage = "Error: Enter a term first"
+                                        return@Button
+                                    }
+                                    isGeneratingAi = true
+                                    scope.launch {
+                                        try {
+                                            val result = AiGenerationHelper.generatePronunciation(apiKey, newTerm, aiModel, adminSettings.chatGptEnabled)
+                                            if (result.isNotBlank()) {
+                                                newPronunciation = result
+                                                aiPronunciationOption = result
+                                                statusMessage = "Generated pronunciation"
+                                            }
+                                        } catch (e: Exception) {
+                                            statusMessage = "Error: ${e.message}"
+                                        }
+                                        isGeneratingAi = false
+                                    }
+                                },
+                                enabled = hasAiAccess && newTerm.isNotBlank() && !isGeneratingAi,
+                                modifier = Modifier.height(32.dp)
+                            ) {
+                                Icon(Icons.Default.AutoAwesome, "AI", Modifier.size(14.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Generate", fontSize = 10.sp)
+                            }
                         }
                         
                         Spacer(Modifier.height(8.dp))
                         
-                        // Group input with AI option
+                        // Group input with AI Generate button
                         OutlinedTextField(
                             value = newGroup,
                             onValueChange = { newGroup = it },
@@ -2178,21 +2277,63 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
                             singleLine = true,
                             placeholder = { Text("e.g., Martial Arts Styles", color = DarkMuted) }
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(useAiGroup, { useAiGroup = it }, enabled = hasAiAccess)
-                            Text("Auto-assign group with AI", fontSize = 11.sp, color = if (hasAiAccess) Color.White else DarkMuted)
-                            if (useAiGroup) {
-                                Spacer(Modifier.width(8.dp))
-                                Text("Max groups:", fontSize = 10.sp, color = DarkMuted)
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                            Button(
+                                onClick = {
+                                    if (newTerm.isBlank()) {
+                                        statusMessage = "Error: Enter a term first"
+                                        return@Button
+                                    }
+                                    isGeneratingAi = true
+                                    scope.launch {
+                                        try {
+                                            val result = AiGenerationHelper.generateGroups(apiKey, newTerm, existingGroups, maxGroups.toIntOrNull() ?: 10, aiModel, adminSettings.chatGptEnabled)
+                                            aiGroupOptions = result
+                                            if (result.isNotEmpty()) {
+                                                newGroup = result[0]
+                                                showGroupDropdown = result.size > 1
+                                                statusMessage = "Generated ${result.size} group options"
+                                            }
+                                        } catch (e: Exception) {
+                                            statusMessage = "Error: ${e.message}"
+                                        }
+                                        isGeneratingAi = false
+                                    }
+                                },
+                                enabled = hasAiAccess && newTerm.isNotBlank() && !isGeneratingAi,
+                                modifier = Modifier.height(32.dp)
+                            ) {
+                                Icon(Icons.Default.AutoAwesome, "AI", Modifier.size(14.dp))
                                 Spacer(Modifier.width(4.dp))
-                                OutlinedTextField(
-                                    value = maxGroups,
-                                    onValueChange = { maxGroups = it.filter { c -> c.isDigit() }.take(2) },
-                                    modifier = Modifier.width(50.dp),
-                                    singleLine = true,
-                                    textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
-                                )
+                                Text("Generate", fontSize = 10.sp)
                             }
+                            if (aiGroupOptions.size > 1) {
+                                Spacer(Modifier.width(8.dp))
+                                Box {
+                                    OutlinedButton({ showGroupDropdown = true }, Modifier.height(32.dp)) {
+                                        Text("${aiGroupOptions.size} options", fontSize = 10.sp)
+                                        Icon(Icons.Default.ArrowDropDown, "Select", Modifier.size(14.dp))
+                                    }
+                                    DropdownMenu(showGroupDropdown, { showGroupDropdown = false }) {
+                                        aiGroupOptions.forEach { grp ->
+                                            DropdownMenuItem(
+                                                text = { Text(grp, color = Color.White, fontSize = 11.sp) },
+                                                onClick = { newGroup = grp; showGroupDropdown = false }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text("Max:", fontSize = 10.sp, color = DarkMuted)
+                            Spacer(Modifier.width(4.dp))
+                            OutlinedTextField(
+                                value = maxGroups,
+                                onValueChange = { maxGroups = it.filter { c -> c.isDigit() }.take(2) },
+                                modifier = Modifier.width(45.dp).height(32.dp),
+                                singleLine = true,
+                                textStyle = LocalTextStyle.current.copy(fontSize = 10.sp)
+                            )
                         }
                         
                         Spacer(Modifier.height(16.dp))
@@ -2204,38 +2345,20 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
                                     statusMessage = "Error: Term is required"
                                     return@Button
                                 }
-                                if (newDefinition.isBlank() && !useAiDefinition) {
-                                    statusMessage = "Error: Definition is required (or enable AI generation)"
+                                if (newDefinition.isBlank()) {
+                                    statusMessage = "Error: Definition is required"
                                     return@Button
                                 }
                                 isLoading = true
                                 scope.launch {
-                                    var finalDefinition = newDefinition
-                                    var finalPronunciation = newPronunciation
-                                    var finalGroup = newGroup
-                                    
-                                    // AI generation would go here
-                                    if (useAiDefinition && finalDefinition.isBlank()) {
-                                        // TODO: Call AI to generate definition
-                                        finalDefinition = "AI-generated definition for: $newTerm"
-                                    }
-                                    if (useAiPronunciation && finalPronunciation.isBlank()) {
-                                        // TODO: Call AI to generate pronunciation
-                                        finalPronunciation = "AI-generated"
-                                    }
-                                    if (useAiGroup && finalGroup.isBlank()) {
-                                        // TODO: Call AI to assign group
-                                        finalGroup = "General"
-                                    }
-                                    
                                     val cardId = "${selectedDeckForAdd}_${System.currentTimeMillis()}"
                                     val newCard = FlashCard(
                                         id = cardId,
-                                        group = finalGroup.ifBlank { "General" },
+                                        group = newGroup.ifBlank { "General" },
                                         subgroup = null,
                                         term = newTerm,
-                                        pron = finalPronunciation.takeIf { it.isNotBlank() },
-                                        meaning = finalDefinition,
+                                        pron = newPronunciation.takeIf { it.isNotBlank() },
+                                        meaning = newDefinition,
                                         deckId = selectedDeckForAdd
                                     )
                                     repo.addUserCard(newCard)
@@ -2245,6 +2368,9 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
                                     newDefinition = ""
                                     newPronunciation = ""
                                     newGroup = ""
+                                    aiDefinitionOptions = emptyList()
+                                    aiGroupOptions = emptyList()
+                                    aiPronunciationOption = ""
                                     isLoading = false
                                 }
                             },
@@ -2260,12 +2386,98 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
                             Text(if (isLoading) "Adding..." else "Add Card")
                         }
                         
-                        // Show user-added cards count
+                        // User-Added Cards Section
                         if (userCards.isNotEmpty()) {
                             Spacer(Modifier.height(16.dp))
                             HorizontalDivider(color = DarkBorder)
-                            Spacer(Modifier.height(8.dp))
-                            Text("User-Added Cards: ${userCards.size}", color = DarkMuted, fontSize = 11.sp)
+                            Spacer(Modifier.height(12.dp))
+                            
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text("User-Added Cards (${userCards.size})", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                                OutlinedButton({ showUserCards = !showUserCards }, Modifier.height(32.dp)) {
+                                    Text(if (showUserCards) "Hide" else "Show", fontSize = 10.sp)
+                                    Icon(if (showUserCards) Icons.Default.ExpandLess else Icons.Default.ExpandMore, "Toggle", Modifier.size(16.dp))
+                                }
+                            }
+                            
+                            if (showUserCards) {
+                                Spacer(Modifier.height(8.dp))
+                                userCards.forEach { card ->
+                                    Card(
+                                        colors = CardDefaults.cardColors(containerColor = DarkPanel),
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                                    ) {
+                                        Column(Modifier.padding(12.dp)) {
+                                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                                Column(Modifier.weight(1f)) {
+                                                    Text(card.term, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                                                    if (!card.pron.isNullOrBlank()) {
+                                                        Text("(${card.pron})", color = DarkMuted, fontSize = 10.sp)
+                                                    }
+                                                    Text(card.meaning, color = DarkText, fontSize = 11.sp, maxLines = 2)
+                                                    Text("Group: ${card.group}", color = DarkMuted, fontSize = 9.sp)
+                                                }
+                                                Row {
+                                                    IconButton({
+                                                        editingCard = card
+                                                        editTerm = card.term
+                                                        editDefinition = card.meaning
+                                                        editPronunciation = card.pron ?: ""
+                                                        editGroup = card.group
+                                                    }, Modifier.size(32.dp)) {
+                                                        Icon(Icons.Default.Edit, "Edit", tint = AccentBlue, modifier = Modifier.size(18.dp))
+                                                    }
+                                                    IconButton({
+                                                        scope.launch {
+                                                            repo.deleteUserCard(card.id)
+                                                            statusMessage = "Deleted: ${card.term}"
+                                                        }
+                                                    }, Modifier.size(32.dp)) {
+                                                        Icon(Icons.Default.Delete, "Delete", tint = Color.Red, modifier = Modifier.size(18.dp))
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Edit Card Dialog
+                    if (editingCard != null) {
+                        Dialog(onDismissRequest = { editingCard = null }) {
+                            Card(Modifier.fillMaxWidth().padding(16.dp), colors = CardDefaults.cardColors(containerColor = DarkPanel)) {
+                                Column(Modifier.padding(16.dp)) {
+                                    Text("Edit Card", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                                    Spacer(Modifier.height(12.dp))
+                                    OutlinedTextField(editTerm, { editTerm = it }, Modifier.fillMaxWidth(), label = { Text("Term") }, singleLine = true)
+                                    Spacer(Modifier.height(8.dp))
+                                    OutlinedTextField(editDefinition, { editDefinition = it }, Modifier.fillMaxWidth(), label = { Text("Definition") }, minLines = 2)
+                                    Spacer(Modifier.height(8.dp))
+                                    OutlinedTextField(editPronunciation, { editPronunciation = it }, Modifier.fillMaxWidth(), label = { Text("Pronunciation") }, singleLine = true)
+                                    Spacer(Modifier.height(8.dp))
+                                    OutlinedTextField(editGroup, { editGroup = it }, Modifier.fillMaxWidth(), label = { Text("Group") }, singleLine = true)
+                                    Spacer(Modifier.height(16.dp))
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                        TextButton({ editingCard = null }) { Text("Cancel") }
+                                        Spacer(Modifier.width(8.dp))
+                                        Button({
+                                            scope.launch {
+                                                val updated = editingCard!!.copy(
+                                                    term = editTerm,
+                                                    meaning = editDefinition,
+                                                    pron = editPronunciation.takeIf { it.isNotBlank() },
+                                                    group = editGroup.ifBlank { "General" }
+                                                )
+                                                repo.updateUserCard(updated)
+                                                statusMessage = "Updated: ${editTerm}"
+                                                editingCard = null
+                                            }
+                                        }) { Text("Save") }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -2399,21 +2611,33 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
                                         }
                                         isLoading = true
                                         scope.launch {
-                                            // TODO: Call AI to search and generate terms
-                                            statusMessage = "AI search complete. Select terms to add."
-                                            aiGeneratedTerms = listOf(
-                                                AiGeneratedTerm("Example Term 1", "Definition 1", "ex-am-ple", "Category A"),
-                                                AiGeneratedTerm("Example Term 2", "Definition 2", "ex-am-ple", "Category A"),
-                                                AiGeneratedTerm("Example Term 3", "Definition 3", "ex-am-ple", "Category B")
-                                            )
-                                            showAiResults = true
+                                            try {
+                                                val maxCards = aiMaxCards.toIntOrNull() ?: 20
+                                                val results = AiGenerationHelper.searchAndGenerateTerms(
+                                                    apiKey, aiSearchKeywords, maxCards, aiModel, adminSettings.chatGptEnabled
+                                                )
+                                                if (results.isNotEmpty()) {
+                                                    aiGeneratedTerms = results
+                                                    selectedAiTerms = emptySet()
+                                                    showAiResults = true
+                                                    statusMessage = "Generated ${results.size} terms. Select which to add."
+                                                } else {
+                                                    statusMessage = "AI could not generate terms. Try different keywords."
+                                                }
+                                            } catch (e: Exception) {
+                                                statusMessage = "Error: ${e.message}"
+                                            }
                                             isLoading = false
                                         }
                                     },
                                     modifier = Modifier.fillMaxWidth(),
                                     enabled = !isLoading && hasAiAccess
                                 ) {
-                                    Icon(Icons.Default.Search, "Search")
+                                    if (isLoading) {
+                                        CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+                                    } else {
+                                        Icon(Icons.Default.Search, "Search")
+                                    }
                                     Spacer(Modifier.width(8.dp))
                                     Text(if (isLoading) "Searching..." else "Search with AI")
                                 }
