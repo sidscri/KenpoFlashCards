@@ -1,5 +1,28 @@
 # Changelog — KenpoFlashcardsProject-v2 (Android)
 
+## 5.0.1 (build 30) — 2026-01-19
+
+### Added — Shuffle Button
+- **Shuffle icon** on all study screens (To Study, Unsure, Learned Study)
+- Works even when random setting is off - tap to reshuffle deck instantly
+- Blue shuffle icon in header bar (both portrait and landscape)
+
+### Added — Voice Settings
+- **Auto-speak term on card change**: Automatically speaks the term when navigating to a new card
+- **Speak definition when flipped**: Speaks the definition when card is flipped to back side
+- New toggles in Settings > Voice section
+
+### Changed
+- Moved "Edit Decks" button above "View Deleted Cards" in Settings
+
+### Known Issues / Planned for Next Release
+- AI Generate buttons in Edit Decks need full implementation
+- View/Edit/Delete user-added cards interface needed
+- Image and Document upload processing for deck creation
+- Custom Set shuffle/random toggle in Settings
+
+---
+
 ## 5.0.0 (build 29) — 2026-01-18
 
 ### Added — Edit Decks Feature (Major)

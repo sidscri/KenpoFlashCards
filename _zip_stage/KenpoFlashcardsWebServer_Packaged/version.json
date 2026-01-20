@@ -1,8 +1,0 @@
-{
-  "name": "KenpoFlashcardsWebServer_Packaged",
-  "version": "beta",
-  "versionName": "vbeta v2",
-  "build": 2,
-  "released": "2026-01-16",
-  "notes": "Fixed GitHub Actions workflow build"
-}

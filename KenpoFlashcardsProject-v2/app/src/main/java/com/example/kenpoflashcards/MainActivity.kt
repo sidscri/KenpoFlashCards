@@ -301,7 +301,8 @@ private fun LandscapeStudyLayout(
     onCustomToggle: () -> Unit,
     onBreakdown: () -> Unit,
     onReturnTop: () -> Unit,
-    showGroupFilter: Boolean = true
+    showGroupFilter: Boolean = true,
+    onShuffle: (() -> Unit)? = null
 ) {
     var searchExpanded by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxSize().padding(8.dp)) {
@@ -316,10 +317,13 @@ private fun LandscapeStudyLayout(
         Spacer(Modifier.width(8.dp))
         // Right: Controls
         Column(Modifier.weight(0.6f).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
-            // Title row with search icon and group filter
+            // Title row with shuffle, search icon and group filter
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
                 Row {
+                    if (onShuffle != null) {
+                        IconButton(onShuffle, Modifier.size(32.dp)) { Icon(Icons.Default.Shuffle, "Shuffle", tint = AccentBlue, modifier = Modifier.size(20.dp)) }
+                    }
                     IconButton({ searchExpanded = !searchExpanded }, Modifier.size(32.dp)) { Icon(Icons.Default.Search, "Search", tint = DarkMuted, modifier = Modifier.size(20.dp)) }
                     if (showGroupFilter) { GroupFilterDropdown(groups, selectedGroup, onGroupSelect) }
                 }
@@ -380,17 +384,35 @@ fun StudyScreen(nav: NavHostController, repo: Repository, statusFilter: CardStat
     val route = if (isActive) Route.Active.path else Route.Unsure.path
     val shouldRandomize = if (isActive) settings.randomizeUnlearned else settings.randomizeUnsure
     val landscape = isLandscape()
-    val filteredCards = remember(allCards, progress, search, shouldRandomize, settings.sortMode, settings.studyFilterGroup) {
+    var shuffleKey by remember { mutableStateOf(0) }  // Increment to force reshuffle
+    val filteredCards = remember(allCards, progress, search, shouldRandomize, settings.sortMode, settings.studyFilterGroup, shuffleKey) {
         val base = allCards.filter { progress.getStatus(it.id) == statusFilter }
         val grouped = if (settings.studyFilterGroup != null) base.filter { it.group == settings.studyFilterGroup } else base
         val searched = if (search.isBlank()) grouped else grouped.filter { it.term.contains(search, true) || it.meaning.contains(search, true) || (it.pron?.contains(search, true) ?: false) }
-        sortCards(searched, settings.sortMode, shouldRandomize)
+        sortCards(searched, settings.sortMode, shouldRandomize || shuffleKey > 0)
     }
     LaunchedEffect(filteredCards.size) { if (filteredCards.isEmpty()) index = 0 else index = index.coerceIn(0, filteredCards.size - 1); showFront = true }
     val current = filteredCards.getOrNull(index)
     val currentBreakdown = current?.let { breakdowns[it.id] }
     val inCustomSet = current?.let { customSet.contains(it.id) } ?: false
     val atEnd = index >= filteredCards.size - 1 && filteredCards.isNotEmpty()
+    
+    // Auto-speak on card change
+    LaunchedEffect(index, current?.id) {
+        if (settings.autoSpeakOnCardChange && current != null) {
+            tts.setRate(settings.speechRate)
+            val text = if (settings.speakPronunciationOnly && !current.pron.isNullOrBlank()) current.pron else current.term
+            tts.speak(text)
+        }
+    }
+    
+    // Speak definition when flipped to back
+    LaunchedEffect(showFront) {
+        if (!showFront && settings.speakDefinitionOnFlip && current != null) {
+            tts.setRate(settings.speechRate)
+            tts.speak(current.meaning)
+        }
+    }
     
     Scaffold(bottomBar = { NavBar(nav, route) }) { pad ->
         if (landscape) {
@@ -412,15 +434,17 @@ fun StudyScreen(nav: NavHostController, repo: Repository, statusFilter: CardStat
                     secondaryActionText = if (isActive) "?" else "↺",
                     onCustomToggle = { scope.launch { current?.let { if (inCustomSet) repo.removeFromCustomSet(it.id) else repo.addToCustomSet(it.id) } } },
                     onBreakdown = { showBreakdown = true },
-                    onReturnTop = { index = 0; showFront = true }
+                    onReturnTop = { index = 0; showFront = true },
+                    onShuffle = { shuffleKey++; index = 0; showFront = true }
                 )
             }
         } else {
             Column(Modifier.fillMaxSize().padding(pad).padding(horizontal = 12.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                // Header row (title + search + group filter)
+                // Header row (title + shuffle + search + group filter)
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton({ shuffleKey++; index = 0; showFront = true }) { Icon(Icons.Default.Shuffle, "Shuffle", tint = AccentBlue) }
                         IconButton({ searchExpanded = !searchExpanded }) { Icon(Icons.Default.Search, "Search", tint = DarkMuted) }
                         GroupFilterDropdown(groups, settings.studyFilterGroup) { scope.launch { repo.saveSettingsAll(settings.copy(studyFilterGroup = it)) } }
                     }
@@ -1071,19 +1095,21 @@ fun SettingsScreen(nav: NavHostController, repo: Repository) {
             
             Spacer(Modifier.height(12.dp)); Text("Voice", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
             SettingToggle("Speak pronunciation only", settings.speakPronunciationOnly) { scope.launch { repo.saveSettingsAll(settings.copy(speakPronunciationOnly = it)) } }
+            SettingToggle("Auto-speak term on card change", settings.autoSpeakOnCardChange) { scope.launch { repo.saveSettingsAll(settings.copy(autoSpeakOnCardChange = it)) } }
+            SettingToggle("Speak definition when flipped", settings.speakDefinitionOnFlip) { scope.launch { repo.saveSettingsAll(settings.copy(speakDefinitionOnFlip = it)) } }
             Text("Speech rate: ${String.format("%.1f", settings.speechRate)}x", fontSize = 12.sp, color = DarkMuted)
             Slider(settings.speechRate, { scope.launch { repo.saveSettingsAll(settings.copy(speechRate = it)) } }, valueRange = 0.5f..2.0f, steps = 5, modifier = Modifier.fillMaxWidth())
             Button({ tts.setRate(settings.speechRate); tts.speakTest() }, Modifier.height(36.dp)) { Text("Test Voice", fontSize = 12.sp) }
             
             Spacer(Modifier.height(16.dp)); HorizontalDivider(color = DarkBorder); Spacer(Modifier.height(12.dp))
             
-            OutlinedButton({ nav.navigate(Route.Deleted.path) }, Modifier.fillMaxWidth()) { Text("View Deleted Cards") }
-            Spacer(Modifier.height(6.dp))
             // Manage Decks - Edit study decks, add cards, create new decks
             Button({ nav.navigate(Route.ManageDecks.path) }, Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = AccentBlue)) { 
                 Icon(Icons.Default.Dashboard, "Decks"); Spacer(Modifier.width(8.dp))
                 Text("Edit Decks") 
             }
+            Spacer(Modifier.height(6.dp))
+            OutlinedButton({ nav.navigate(Route.Deleted.path) }, Modifier.fillMaxWidth()) { Text("View Deleted Cards") }
             Spacer(Modifier.height(6.dp))
             OutlinedButton({ scope.launch { repo.saveSettingsAll(getDefaultSettings()) } }, Modifier.fillMaxWidth()) { Text("Reset to Default Settings") }
             

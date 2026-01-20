@@ -77,6 +77,8 @@ data class StudySettings(
     val speechVoice: String? = null,
     val speechRate: Float = 1.0f,
     val speakPronunciationOnly: Boolean = false,  // Default OFF per screenshot
+    val autoSpeakOnCardChange: Boolean = false,   // Auto-speak term when switching cards
+    val speakDefinitionOnFlip: Boolean = false,   // Speak definition when card flips to definition side
     
     // Group filter for All screen
     val filterGroup: String? = null,

@@ -324,6 +324,7 @@ private fun decodeProgressEntries(raw: String): Map<String, ProgressEntry> {
         o.put("showBreakdownOnDefinition", s.showBreakdownOnDefinition); o.put("showDefinitionsInAllList", s.showDefinitionsInAllList); o.put("showDefinitionsInLearnedList", s.showDefinitionsInLearnedList)
         o.put("showLearnedListGroupLabel", s.showLearnedListGroupLabel); o.put("showUnlearnedUnsureButtonsInAllList", s.showUnlearnedUnsureButtonsInAllList); o.put("showRelearnUnsureButtonsInLearnedList", s.showRelearnUnsureButtonsInLearnedList)
         o.put("learnedViewMode", s.learnedViewMode.name); o.put("speechVoice", s.speechVoice); o.put("speechRate", s.speechRate.toDouble()); o.put("speakPronunciationOnly", s.speakPronunciationOnly); o.put("filterGroup", s.filterGroup)
+        o.put("autoSpeakOnCardChange", s.autoSpeakOnCardChange); o.put("speakDefinitionOnFlip", s.speakDefinitionOnFlip)
         o.put("showCustomSetButton", s.showCustomSetButton)
         // CustomSetSettings
         val cs = s.customSetSettings
@@ -364,6 +365,8 @@ private fun decodeProgressEntries(raw: String): Map<String, ProgressEntry> {
                 learnedViewMode = runCatching { LearnedViewMode.valueOf(o.optString("learnedViewMode", LearnedViewMode.LIST.name)) }.getOrDefault(LearnedViewMode.LIST),
                 speechVoice = o.optString("speechVoice", null)?.takeIf { it.isNotBlank() }, speechRate = o.optDouble("speechRate", 1.0).toFloat().coerceIn(0.5f, 2.0f),
                 speakPronunciationOnly = o.optBoolean("speakPronunciationOnly", false), filterGroup = o.optString("filterGroup", null)?.takeIf { it.isNotBlank() },
+                autoSpeakOnCardChange = o.optBoolean("autoSpeakOnCardChange", false),
+                speakDefinitionOnFlip = o.optBoolean("speakDefinitionOnFlip", false),
                 showCustomSetButton = o.optBoolean("showCustomSetButton", true),
                 customSetSettings = customSetSettings
             )

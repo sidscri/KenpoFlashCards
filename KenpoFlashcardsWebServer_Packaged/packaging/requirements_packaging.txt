@@ -1,3 +1,9 @@
 pyinstaller==6.6.0
 pystray==0.19.5
 pillow==10.4.0
+
+setuptools
+jaraco.text
+jaraco.functools
+jaraco.context
+jaraco.classes
