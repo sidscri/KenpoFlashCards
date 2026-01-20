@@ -1,5 +1,19 @@
 # Changelog — KenpoFlashcardsProject-v2 (Android)
 
+## 5.0.2 (build 31) — 2026-01-19
+
+### Fixed
+- **Breakdown icon**: Changed from "!" (Info) back to puzzle piece (Extension) on To Study and Unsure screens
+- **Definition speak**: Custom Set and Learned > Study now properly speak definitions when flipped (matching To Study/Unsure behavior)
+
+### Added
+- **Randomize Custom Set**: Toggle in Settings > Randomization section, syncs with Custom Set's internal random setting
+
+### Changed
+- **View Deleted Cards**: Moved from Settings root to Edit Decks > Switch tab (at bottom)
+
+---
+
 ## 5.0.1 (build 30) — 2026-01-19
 
 ### Added — Shuffle Button

@@ -484,7 +484,7 @@ fun StudyScreen(nav: NavHostController, repo: Repository, statusFilter: CardStat
                                 if (settings.showCustomSetButton) {
                                     IconButton({ scope.launch { if (inCustomSet) repo.removeFromCustomSet(current.id) else repo.addToCustomSet(current.id) } }) { Icon(if (inCustomSet) Icons.Default.Star else Icons.Default.StarBorder, "Custom", tint = if (inCustomSet) Color.Yellow else DarkMuted) }
                                 }
-                                IconButton({ showBreakdown = true }) { Icon(Icons.Default.Info, "Breakdown", tint = if (currentBreakdown?.hasContent() == true) AccentBlue else DarkMuted) }
+                                IconButton({ showBreakdown = true }) { Icon(Icons.Default.Extension, "Breakdown", tint = if (currentBreakdown?.hasContent() == true) AccentBlue else DarkMuted) }
                                 OutlinedButton({ scope.launch { val nextStatus = if (isActive) CardStatus.UNSURE else CardStatus.ACTIVE; repo.setStatus(current.id, nextStatus); if (index >= filteredCards.size - 1) index = (filteredCards.size - 2).coerceAtLeast(0); showFront = true } }, modifier = Modifier.weight(1f)) { Text(if (isActive) "Unsure" else "Relearn") }
                             }
                             if (atEnd) { Spacer(Modifier.height(6.dp)); OutlinedButton({ index = 0; showFront = true }, Modifier.fillMaxWidth()) { Icon(Icons.Default.KeyboardArrowUp, "Top"); Spacer(Modifier.width(4.dp)); Text("Return to Top") } }
@@ -535,6 +535,23 @@ fun LearnedScreen(nav: NavHostController, repo: Repository) {
     val currentBreakdown = current?.let { breakdowns[it.id] }
     val inCustomSet = current?.let { customSet.contains(it.id) } ?: false
     val atEnd = index >= learnedCards.size - 1 && learnedCards.isNotEmpty()
+    
+    // Auto-speak on card change (Learned Study mode)
+    LaunchedEffect(index, current?.id, viewMode) {
+        if (viewMode == LearnedViewMode.STUDY && settings.autoSpeakOnCardChange && current != null) {
+            tts.setRate(settings.speechRate)
+            val text = if (settings.speakPronunciationOnly && !current.pron.isNullOrBlank()) current.pron else current.term
+            tts.speak(text)
+        }
+    }
+    
+    // Speak definition when flipped to back (Learned Study mode)
+    LaunchedEffect(showFront, viewMode) {
+        if (viewMode == LearnedViewMode.STUDY && !showFront && settings.speakDefinitionOnFlip && current != null) {
+            tts.setRate(settings.speechRate)
+            tts.speak(current.meaning)
+        }
+    }
     
     Scaffold(bottomBar = { NavBar(nav, Route.Learned.path) }) { pad ->
         var searchExpanded by remember { mutableStateOf(false) }
@@ -785,6 +802,23 @@ fun CustomSetScreen(nav: NavHostController, repo: Repository) {
     val currentBreakdown = current?.let { breakdowns[it.id] }
     val atEnd = index >= customCards.size - 1 && customCards.isNotEmpty()
     val cs = settings.customSetSettings
+    
+    // Auto-speak on card change (Custom Set)
+    LaunchedEffect(index, current?.id) {
+        if (settings.autoSpeakOnCardChange && current != null) {
+            tts.setRate(settings.speechRate)
+            val text = if (settings.speakPronunciationOnly && !current.pron.isNullOrBlank()) current.pron else current.term
+            tts.speak(text)
+        }
+    }
+    
+    // Speak definition when flipped to back (Custom Set)
+    LaunchedEffect(showFront) {
+        if (!showFront && settings.speakDefinitionOnFlip && current != null) {
+            tts.setRate(settings.speechRate)
+            tts.speak(current.meaning)
+        }
+    }
     
     // Function to handle status change with optional reflection to main decks
     fun handleStatusChange(cardId: String, newStatus: CustomCardStatus) {
@@ -1086,6 +1120,11 @@ fun SettingsScreen(nav: NavHostController, repo: Repository) {
             SettingToggle("Randomize To Study", settings.randomizeUnlearned) { scope.launch { repo.saveSettingsAll(settings.copy(randomizeUnlearned = it)) } }
             SettingToggle("Randomize Unsure", settings.randomizeUnsure) { scope.launch { repo.saveSettingsAll(settings.copy(randomizeUnsure = it)) } }
             SettingToggle("Randomize Learned Study", settings.randomizeLearnedStudy) { scope.launch { repo.saveSettingsAll(settings.copy(randomizeLearnedStudy = it)) } }
+            SettingToggle("Randomize Custom Set", settings.customSetSettings.randomOrder) { 
+                scope.launch { 
+                    repo.saveSettingsAll(settings.copy(customSetSettings = settings.customSetSettings.copy(randomOrder = it))) 
+                } 
+            }
 
             Spacer(Modifier.height(12.dp)); Text("List Views", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
             SettingToggle("Show definitions in All list", settings.showDefinitionsInAllList) { scope.launch { repo.saveSettingsAll(settings.copy(showDefinitionsInAllList = it)) } }
@@ -1108,8 +1147,6 @@ fun SettingsScreen(nav: NavHostController, repo: Repository) {
                 Icon(Icons.Default.Dashboard, "Decks"); Spacer(Modifier.width(8.dp))
                 Text("Edit Decks") 
             }
-            Spacer(Modifier.height(6.dp))
-            OutlinedButton({ nav.navigate(Route.Deleted.path) }, Modifier.fillMaxWidth()) { Text("View Deleted Cards") }
             Spacer(Modifier.height(6.dp))
             OutlinedButton({ scope.launch { repo.saveSettingsAll(getDefaultSettings()) } }, Modifier.fillMaxWidth()) { Text("Reset to Default Settings") }
             
@@ -2038,6 +2075,16 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
                         if (decks.size == 1) {
                             Spacer(Modifier.height(12.dp))
                             Text("Create new decks in the 'Create' tab to study different subjects!", color = DarkMuted, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                        }
+                        
+                        Spacer(Modifier.height(16.dp))
+                        HorizontalDivider(color = DarkBorder)
+                        Spacer(Modifier.height(12.dp))
+                        
+                        // View Deleted Cards button
+                        OutlinedButton({ nav.navigate(Route.Deleted.path) }, Modifier.fillMaxWidth()) { 
+                            Icon(Icons.Default.Delete, "Deleted"); Spacer(Modifier.width(8.dp))
+                            Text("View Deleted Cards") 
                         }
                     }
                 }
