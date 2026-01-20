@@ -367,7 +367,7 @@ fun StudyScreen(nav: NavHostController, repo: Repository, statusFilter: CardStat
     val scope = rememberCoroutineScope()
     val tts = remember { TtsHelper(context) }
     DisposableEffect(Unit) { onDispose { tts.shutdown() } }
-    val allCards by repo.allCardsFlow().collectAsState(initial = emptyList())
+    val allCards by repo.activeCardsFlow().collectAsState(initial = emptyList())
     val progress by repo.progressFlow().collectAsState(initial = ProgressState.EMPTY)
     val breakdowns by repo.breakdownsFlow().collectAsState(initial = emptyMap())
     val customSet by repo.customSetFlow().collectAsState(initial = emptySet())
@@ -510,7 +510,7 @@ fun LearnedScreen(nav: NavHostController, repo: Repository) {
     val scope = rememberCoroutineScope()
     val tts = remember { TtsHelper(context) }
     DisposableEffect(Unit) { onDispose { tts.shutdown() } }
-    val allCards by repo.allCardsFlow().collectAsState(initial = emptyList())
+    val allCards by repo.activeCardsFlow().collectAsState(initial = emptyList())
     val progress by repo.progressFlow().collectAsState(initial = ProgressState.EMPTY)
     val breakdowns by repo.breakdownsFlow().collectAsState(initial = emptyMap())
     val customSet by repo.customSetFlow().collectAsState(initial = emptySet())
@@ -663,7 +663,7 @@ fun LearnedScreen(nav: NavHostController, repo: Repository) {
 @Composable
 fun AllCardsScreen(nav: NavHostController, repo: Repository) {
     val scope = rememberCoroutineScope()
-    val allCards by repo.allCardsFlow().collectAsState(initial = emptyList())
+    val allCards by repo.activeCardsFlow().collectAsState(initial = emptyList())
     val progress by repo.progressFlow().collectAsState(initial = ProgressState.EMPTY)
     val breakdowns by repo.breakdownsFlow().collectAsState(initial = emptyMap())
     val customSet by repo.customSetFlow().collectAsState(initial = emptySet())
@@ -752,7 +752,7 @@ fun CustomSetScreen(nav: NavHostController, repo: Repository) {
     val scope = rememberCoroutineScope()
     val tts = remember { TtsHelper(context) }
     DisposableEffect(Unit) { onDispose { tts.shutdown() } }
-    val allCards by repo.allCardsFlow().collectAsState(initial = emptyList())
+    val allCards by repo.activeCardsFlow().collectAsState(initial = emptyList())
     val progress by repo.progressFlow().collectAsState(initial = ProgressState.EMPTY)
     val breakdowns by repo.breakdownsFlow().collectAsState(initial = emptyMap())
     val customSet by repo.customSetFlow().collectAsState(initial = emptySet())
@@ -1031,7 +1031,7 @@ fun CustomSetScreen(nav: NavHostController, repo: Repository) {
 @Composable
 fun DeletedScreen(nav: NavHostController, repo: Repository) {
     val scope = rememberCoroutineScope()
-    val allCards by repo.allCardsFlow().collectAsState(initial = emptyList())
+    val allCards by repo.activeCardsFlow().collectAsState(initial = emptyList())
     val progress by repo.progressFlow().collectAsState(initial = ProgressState.EMPTY)
     var search by remember { mutableStateOf("") }
     val deletedCards = remember(allCards, progress, search) {
@@ -1139,6 +1139,22 @@ fun SettingsScreen(nav: NavHostController, repo: Repository) {
             Text("Speech rate: ${String.format("%.1f", settings.speechRate)}x", fontSize = 12.sp, color = DarkMuted)
             Slider(settings.speechRate, { scope.launch { repo.saveSettingsAll(settings.copy(speechRate = it)) } }, valueRange = 0.5f..2.0f, steps = 5, modifier = Modifier.fillMaxWidth())
             Button({ tts.setRate(settings.speechRate); tts.speakTest() }, Modifier.height(36.dp)) { Text("Test Voice", fontSize = 12.sp) }
+            
+            // AI Features section - shows when API keys are available
+            if (adminSettings.chatGptApiKey.isNotBlank() || adminSettings.geminiApiKey.isNotBlank()) {
+                Spacer(Modifier.height(12.dp)); Text("AI Features", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                Text("AI assists with breakdowns & card creation", color = DarkMuted, fontSize = 10.sp)
+                if (adminSettings.chatGptApiKey.isNotBlank()) {
+                    SettingToggle("Use ChatGPT", adminSettings.chatGptEnabled) { 
+                        scope.launch { repo.saveAdminSettings(adminSettings.copy(chatGptEnabled = it)) } 
+                    }
+                }
+                if (adminSettings.geminiApiKey.isNotBlank()) {
+                    SettingToggle("Use Gemini", adminSettings.geminiEnabled) { 
+                        scope.launch { repo.saveAdminSettings(adminSettings.copy(geminiEnabled = it)) } 
+                    }
+                }
+            }
             
             Spacer(Modifier.height(16.dp)); HorizontalDivider(color = DarkBorder); Spacer(Modifier.height(12.dp))
             

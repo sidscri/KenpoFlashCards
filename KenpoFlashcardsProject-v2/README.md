@@ -7,7 +7,7 @@ An Android flash-card app designed to help students of **American Kenpo Karate**
 
 This app focuses on **active recall**, **progress tracking**, and **organized learning**, making it ideal for beginners through advanced practitioners.
 
-**Current Version:** v5.1.0 (build 32)
+**Current Version:** v5.1.1 (build 33)
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -201,6 +201,13 @@ app/src/main/
 
 | Version | Code | Key Changes |
 |---------|------|-------------|
+| **5.1.1** | 33 | Deck switching fix, user cards in deck, AI toggles in Settings, file upload feedback |
+| **5.1.0** | 32 | AI Generate buttons for definitions/pronunciations/groups, user cards management, Create Deck AI search |
+| **5.0.2** | 31 | Breakdown icon fix, definition speak on Custom/Learned, Randomize Custom toggle |
+| **5.0.1** | 30 | Shuffle button on study screens, auto-speak voice settings |
+| **5.0.0** | 29 | Edit Decks feature with Switch/Add Cards/Create Deck tabs |
+| **4.5.2** | 28 | Auto-sync explanation card on Sync Progress screen |
+| **4.5.1** | 27 | Per-card timestamps for conflict-free sync |
 | **4.5.0** | 26 | Deck Management groundwork, removed Import CSV, Custom Set fixes, API auto-sync |
 | **4.4.4** | 24 | Removed redundant top bar headers, consistent UI pattern across all screens matching Unsure page layout |
 | **4.4.3** | 23 | Custom Set isolated status, search X clear button, landscape card height fix, status filter within Custom Set |

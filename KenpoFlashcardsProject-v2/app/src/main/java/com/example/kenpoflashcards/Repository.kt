@@ -24,6 +24,21 @@ class Repository(private val context: Context, private val store: Store) {
         }
     }
     
+    // Cards filtered by active deck
+    fun activeCardsFlow(): Flow<List<FlashCard>> {
+        val defaults = loadDefaultCards()
+        return combine(store.customCardsFlow(), store.userCardsFlow(), store.deckSettingsFlow()) { custom, user, deckSettings ->
+            val allCards = (defaults + custom + user).distinctBy { it.id }
+            val activeDeckId = deckSettings.activeDeckId
+            // "kenpo" is the default built-in deck
+            if (activeDeckId == "kenpo") {
+                allCards.filter { it.deckId == null || it.deckId == "kenpo" }
+            } else {
+                allCards.filter { it.deckId == activeDeckId }
+            }
+        }
+    }
+    
     fun getGroups(): List<String> = loadDefaultCards().map { it.group }.distinct().sorted()
 
     fun progressFlow(): Flow<ProgressState> = store.progressFlow()

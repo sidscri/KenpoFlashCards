@@ -1,5 +1,22 @@
 # Changelog — KenpoFlashcardsProject-v2 (Android)
 
+## 5.1.1 (build 33) — 2026-01-20
+
+### Fixed
+- **Deck switching now works**: Added `activeCardsFlow()` in Repository that filters cards by active deck ID. Study screens now show only cards from the selected deck.
+- **User-added cards appear in deck**: Fixed `allCardsFlow()` to include userCards alongside default and custom cards
+- **File upload feedback**: Image and document upload now shows selected filename, checkmark confirmation, and action buttons
+
+### Added
+- **AI Features section in Settings**: When API keys are available, users can toggle "Use ChatGPT" and "Use Gemini" on/off without needing Admin access
+- **AI auto-enabled on login**: When API keys are pulled from server during login, ChatGPT/Gemini are automatically enabled if keys are present
+
+### Changed
+- Study screens (To Study, Unsure, Learned, All, Custom, Deleted) now use `activeCardsFlow()` for deck filtering
+- ManageDecksScreen uses `allCardsFlow()` for group suggestions across all decks
+
+---
+
 ## 5.1.0 (build 32) — 2026-01-19
 
 ### Added — AI Generation for Card Creation
