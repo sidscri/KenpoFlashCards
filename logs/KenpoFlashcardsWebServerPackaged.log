@@ -1,4 +1,4 @@
-START Mon 01/19/2026 22:44:36.48
+START Tue 01/20/2026  7:22:52.73
 BASE=C:\Users\Sidscri\Documents\GitHub\sidscri-apps
 SRC=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged
 VERJSON=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\version.json
@@ -15,15 +15,15 @@ Running 7z (from stage)...
 7-Zip 25.01 (x64) : Copyright (c) 1999-2025 Igor Pavlov : 2025-08-03
 
 Scanning the drive:
-12 folders, 42 files, 33184201 bytes (32 MiB)
+12 folders, 43 files, 33186110 bytes (32 MiB)
 
 Creating archive: C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged-vbeta v2.zip
 
-Add new data to archive: 12 folders, 42 files, 33184201 bytes (32 MiB)
+Add new data to archive: 12 folders, 43 files, 33186110 bytes (32 MiB)
 
 
-Files read from disk: 42
-Archive size: 31363945 bytes (30 MiB)
+Files read from disk: 43
+Archive size: 31365173 bytes (30 MiB)
 Everything is Ok
 7Z_EXIT_CODE=0
 Verified: no .venv paths detected

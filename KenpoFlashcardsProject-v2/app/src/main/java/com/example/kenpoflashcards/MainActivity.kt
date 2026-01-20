@@ -1936,12 +1936,14 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
     var aiGeneratedTerms by remember { mutableStateOf<List<AiGeneratedTerm>>(emptyList()) }
     var selectedAiTerms by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var uploadedFileName by remember { mutableStateOf("") }
+    var uploadedCreateMethod by remember { mutableStateOf("") }  // Track which method the file was selected for
     
     // File picker launchers
     val imagePickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
             val fileName = uri.lastPathSegment ?: "image"
             uploadedFileName = fileName
+            uploadedCreateMethod = "upload_image"
             statusMessage = "Image selected: $fileName"
         }
     }
@@ -1950,6 +1952,7 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
         uri?.let {
             val fileName = uri.lastPathSegment ?: "document"
             uploadedFileName = fileName
+            uploadedCreateMethod = "upload_document"
             statusMessage = "Document selected: $fileName"
         }
     }
@@ -2529,11 +2532,11 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
                         
                         // Upload Image
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = if (createMethod == "upload_image") DarkPanel2 else DarkPanel),
+                            colors = CardDefaults.cardColors(containerColor = if (uploadedCreateMethod == "upload_image") DarkPanel2 else DarkPanel),
                             modifier = Modifier.fillMaxWidth().clickable { createMethod = "upload_image" }
                         ) {
                             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(selected = createMethod == "upload_image", onClick = { createMethod = "upload_image" })
+                                RadioButton(selected = uploadedCreateMethod == "upload_image", onClick = { createMethod = "upload_image" })
                                 Spacer(Modifier.width(8.dp))
                                 Icon(Icons.Default.Image, "Image", tint = AccentBlue)
                                 Spacer(Modifier.width(8.dp))
@@ -2548,11 +2551,11 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
                         
                         // Upload Document
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = if (createMethod == "upload_document") DarkPanel2 else DarkPanel),
+                            colors = CardDefaults.cardColors(containerColor = if (uploadedCreateMethod == "upload_document") DarkPanel2 else DarkPanel),
                             modifier = Modifier.fillMaxWidth().clickable { createMethod = "upload_document" }
                         ) {
                             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(selected = createMethod == "upload_document", onClick = { createMethod = "upload_document" })
+                                RadioButton(selected = uploadedCreateMethod == "upload_document", onClick = { createMethod = "upload_document" })
                                 Spacer(Modifier.width(8.dp))
                                 Icon(Icons.Default.Description, "Document", tint = AccentBlue)
                                 Spacer(Modifier.width(8.dp))
@@ -2692,14 +2695,72 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
                                 Spacer(Modifier.height(8.dp))
                                 Text("AI will scan the image and extract terms, definitions, and pronunciations.", color = DarkMuted, fontSize = 11.sp)
                                 Spacer(Modifier.height(12.dp))
-                                Button(
+                                
+                                // File selection button
+                                OutlinedButton(
                                     onClick = { imagePickerLauncher.launch("image/*") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    enabled = hasAiAccess
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Icon(Icons.Default.Upload, "Upload")
+                                    Icon(Icons.Default.Image, "Image")
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Select Image")
+                                    Text(if (uploadedFileName.isNotBlank() && uploadedCreateMethod == "upload_image") "Change Image" else "Select Image")
+                                }
+                                
+                                // Show selected file
+                                if (uploadedFileName.isNotBlank() && uploadedCreateMethod == "upload_image") {
+                                    Spacer(Modifier.height(8.dp))
+                                    Card(colors = CardDefaults.cardColors(containerColor = DarkPanel2), modifier = Modifier.fillMaxWidth()) {
+                                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.CheckCircle, "Selected", tint = AccentGood)
+                                            Spacer(Modifier.width(8.dp))
+                                            Column(Modifier.weight(1f)) {
+                                                Text("Selected:", color = DarkMuted, fontSize = 10.sp)
+                                                Text(uploadedFileName, color = Color.White, fontSize = 12.sp, maxLines = 1)
+                                            }
+                                            IconButton({ uploadedFileName = "" }, Modifier.size(28.dp)) {
+                                                Icon(Icons.Default.Close, "Remove", tint = DarkMuted, modifier = Modifier.size(18.dp))
+                                            }
+                                        }
+                                    }
+                                    
+                                    Spacer(Modifier.height(12.dp))
+                                    Button(
+                                        onClick = {
+                                            if (!hasAiAccess) {
+                                                statusMessage = "Error: Configure AI in Admin Settings first"
+                                                return@Button
+                                            }
+                                            isLoading = true
+                                            statusMessage = "Scanning image with AI..."
+                                            scope.launch {
+                                                // TODO: Implement actual image OCR + AI extraction
+                                                // For now, show placeholder message
+                                                statusMessage = "Image scanning coming soon. Use AI Search for now."
+                                                isLoading = false
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        enabled = hasAiAccess && !isLoading
+                                    ) {
+                                        if (isLoading) {
+                                            CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+                                        } else {
+                                            Icon(Icons.Default.DocumentScanner, "Scan")
+                                        }
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(if (isLoading) "Scanning..." else "Scan Image with AI")
+                                    }
+                                }
+                                
+                                if (!hasAiAccess) {
+                                    Spacer(Modifier.height(8.dp))
+                                    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF3D2D12)), modifier = Modifier.fillMaxWidth()) {
+                                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.Warning, "Warning", tint = Color.Yellow)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("AI not configured. Go to Admin Settings to add API keys.", color = Color.Yellow, fontSize = 11.sp)
+                                        }
+                                    }
                                 }
                             }
                             
@@ -2708,14 +2769,72 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
                                 Spacer(Modifier.height(8.dp))
                                 Text("Supported: PDF, Word (.docx), Text (.txt), CSV, Excel (.xlsx)", color = DarkMuted, fontSize = 11.sp)
                                 Spacer(Modifier.height(12.dp))
-                                Button(
+                                
+                                // File selection button
+                                OutlinedButton(
                                     onClick = { documentPickerLauncher.launch("*/*") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    enabled = hasAiAccess
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Icon(Icons.Default.Upload, "Upload")
+                                    Icon(Icons.Default.Description, "Document")
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Select Document")
+                                    Text(if (uploadedFileName.isNotBlank() && uploadedCreateMethod == "upload_document") "Change Document" else "Select Document")
+                                }
+                                
+                                // Show selected file
+                                if (uploadedFileName.isNotBlank() && uploadedCreateMethod == "upload_document") {
+                                    Spacer(Modifier.height(8.dp))
+                                    Card(colors = CardDefaults.cardColors(containerColor = DarkPanel2), modifier = Modifier.fillMaxWidth()) {
+                                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.CheckCircle, "Selected", tint = AccentGood)
+                                            Spacer(Modifier.width(8.dp))
+                                            Column(Modifier.weight(1f)) {
+                                                Text("Selected:", color = DarkMuted, fontSize = 10.sp)
+                                                Text(uploadedFileName, color = Color.White, fontSize = 12.sp, maxLines = 1)
+                                            }
+                                            IconButton({ uploadedFileName = "" }, Modifier.size(28.dp)) {
+                                                Icon(Icons.Default.Close, "Remove", tint = DarkMuted, modifier = Modifier.size(18.dp))
+                                            }
+                                        }
+                                    }
+                                    
+                                    Spacer(Modifier.height(12.dp))
+                                    Button(
+                                        onClick = {
+                                            if (!hasAiAccess) {
+                                                statusMessage = "Error: Configure AI in Admin Settings first"
+                                                return@Button
+                                            }
+                                            isLoading = true
+                                            statusMessage = "Processing document with AI..."
+                                            scope.launch {
+                                                // TODO: Implement actual document parsing + AI extraction
+                                                // For now, show placeholder message
+                                                statusMessage = "Document processing coming soon. Use AI Search for now."
+                                                isLoading = false
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        enabled = hasAiAccess && !isLoading
+                                    ) {
+                                        if (isLoading) {
+                                            CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+                                        } else {
+                                            Icon(Icons.Default.DocumentScanner, "Process")
+                                        }
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(if (isLoading) "Processing..." else "Process Document with AI")
+                                    }
+                                }
+                                
+                                if (!hasAiAccess) {
+                                    Spacer(Modifier.height(8.dp))
+                                    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF3D2D12)), modifier = Modifier.fillMaxWidth()) {
+                                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.Warning, "Warning", tint = Color.Yellow)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("AI not configured. Go to Admin Settings to add API keys.", color = Color.Yellow, fontSize = 11.sp)
+                                        }
+                                    }
                                 }
                             }
                         }

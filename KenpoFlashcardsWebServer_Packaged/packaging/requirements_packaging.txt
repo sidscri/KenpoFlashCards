@@ -2,6 +2,10 @@ pyinstaller==6.6.0
 pystray==0.19.5
 pillow==10.4.0
 
+# Required at runtime by setuptools/pkg_resources on some machines
+platformdirs==4.3.6
+
+# Explicitly include these to avoid missing-module errors in frozen builds
 setuptools
 jaraco.text
 jaraco.functools

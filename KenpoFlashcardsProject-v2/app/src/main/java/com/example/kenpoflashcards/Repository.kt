@@ -19,8 +19,8 @@ class Repository(private val context: Context, private val store: Store) {
 
     fun allCardsFlow(): Flow<List<FlashCard>> {
         val defaults = loadDefaultCards()
-        return store.customCardsFlow().combine(progressFlow()) { custom, _ ->
-            (defaults + custom).distinctBy { it.id }
+        return combine(store.customCardsFlow(), store.userCardsFlow(), progressFlow()) { custom, user, _ ->
+            (defaults + custom + user).distinctBy { it.id }
         }
     }
     
