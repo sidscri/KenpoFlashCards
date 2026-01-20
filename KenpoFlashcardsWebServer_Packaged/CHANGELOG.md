@@ -1,74 +1,36 @@
-# Changelog — KenpoFlashcardsWebServer_Packaged
+# Changelog — Kenpo Flashcards Web Server (Packaged)
 
-Windows installer/packaged distribution of KenpoFlashcardsWebServer.
+All notable changes to the Windows packaged/installer distribution are documented here.
 
-The format is simple and practical:
-- **Added**: new user-facing features
-- **Changed**: behavior changes, refactors
-- **Fixed**: bug fixes
-- **Security**: auth/permissions/security changes
+## v1.0.0 (build 3) — 2026-01-20
 
----
+First stable installer release (graduating from the vbeta line).
 
-## Unreleased
-- (Add changes here as you work. Move them into a release when you publish.)
-
----
-
-## vbeta v2 (build 2) — 2026-01-16
-### Fixed
-- GitHub Actions workflow now builds successfully
-- Fixed `kenpo_tray.spec` to use actual project structure (`ic_launcher.png` in root)
-- Fixed workflow paths to match folder name `KenpoFlashcardsWebServer_Packaged`
-- Added Flask and requests to hidden imports for PyInstaller
-- Removed reference to non-existent `kenpo_server.spec`
+### Added
+- Updated bundled web server to **v5.5.2 (build 29)**, bringing in:
+  - AI Access UI for API key management and model selection.
+  - Encrypted API key storage (`data/api_keys.enc`).
+  - Shared Key Mode (optional one-key-for-all-authenticated-users).
+  - Improved Sync merge logic using `updated_at`, better handling of queued/offline updates.
+  - Admin pages (About/Admin/User Guide) and PDF generation.
+- Inno Setup installer installs the complete PyInstaller folder build (includes `_internal\` and dependencies) into **Program Files** and adds Start Menu shortcuts.
 
 ### Changed
-- Simplified workflow to build only tray EXE + Inno installer
-- Workflow uses `working-directory` for cleaner step commands
-- Spec file now bundles `app.py` for tray launcher import
+- The installer now copies the full PyInstaller output folder (`dist\KenpoFlashcardsTray\*`) so the app runs without requiring “extra files” to be manually copied.
 
----
+### Fixed
+- Packaging reliability improvements from the beta line (build scripts, Inno Setup defaults).
 
-## vbeta v1 (build 1) — 2026-01-12
+### Known issues / notes
+- **Windows Defender/AV false positives:** Unsigned PyInstaller EXEs can be quarantined. For distribution, consider code signing.
+- **Data folder permissions:** If installed under Program Files, the app may need elevation once to create/write its `data/` directory.
+
+## vbeta (build 2) — 2026-01-19
+
+### Fixed
+- Packaging script fixes and documentation updates.
+
+## vbeta (build 1) — 2026-01-19
+
 ### Added
-- Initial packaged release
-- EXE installer for standalone deployment (Inno Setup)
-- MSI installer for enterprise/managed deployment (WiX)
-- Packaging scripts and build instructions
-- GitHub Actions workflow for automated builds
-- KenpoFlashcardsTrayLauncher for Sonarr-style tray app
-
-### Notes
-- **Beta release**: Testing installer functionality and deployment scenarios
-- Based on KenpoFlashcardsWebServer v5.3.x
-- Includes all web server features (sync API, breakdowns, user management)
-
-### Known Limitations
-- Requires manual configuration of `data/` directory on first run
-- OpenAI API key must be set via environment variable or config file
-
----
-
-# How to Update This Changelog
-
-## Manual Updates
-1. When you make changes, add them under `## Unreleased`
-2. When releasing, rename `## Unreleased` to `## vX.Y.Z (build N) — YYYY-MM-DD`
-3. Create a new empty `## Unreleased` section at the top
-
-## Build Process
-```bash
-# Build Tray EXE (PyInstaller):
-python -m PyInstaller packaging/pyinstaller/kenpo_tray.spec --noconfirm
-
-# Build Installer (Inno Setup):
-iscc packaging/installer_inno.iss
-```
-
-## Relationship to Core Server
-This package wraps KenpoFlashcardsWebServer. When updating:
-1. Pull latest changes from core server
-2. Update version numbers in both projects
-3. Rebuild installers
-4. Test installation on clean Windows system
+- Initial packaged beta release (PyInstaller + Inno Setup build scripts).

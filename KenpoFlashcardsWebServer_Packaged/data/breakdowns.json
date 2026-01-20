@@ -162,5 +162,150 @@
     "notes": "",
     "updated_at": 1767777562,
     "updated_by": null
+  },
+  "5ec648c26d3ab19f": {
+    "id": "5ec648c26d3ab19f",
+    "term": "Sandan",
+    "parts": [
+      {
+        "part": "San",
+        "meaning": "Three"
+      },
+      {
+        "part": "Dan",
+        "meaning": "Rank/Level"
+      }
+    ],
+    "literal": "Sandan",
+    "notes": "",
+    "updated_at": 1767915008,
+    "updated_by": null
+  },
+  "db4fca1ad62f88e1": {
+    "id": "db4fca1ad62f88e1",
+    "term": "Sifu",
+    "parts": [
+      {
+        "part": "Si",
+        "meaning": "Master"
+      },
+      {
+        "part": "Fu",
+        "meaning": "Father/Teacher"
+      }
+    ],
+    "literal": "Sifu",
+    "notes": "",
+    "updated_at": 1767989162,
+    "updated_by": null
+  },
+  "7560dd1bd1799718": {
+    "id": "7560dd1bd1799718",
+    "term": "Soke",
+    "parts": [
+      {
+        "part": "Soke",
+        "meaning": ""
+      }
+    ],
+    "literal": "",
+    "notes": "",
+    "updated_at": 1768629327,
+    "updated_by": "1cc70e61cd9e"
+  },
+  "842d4de5fa1168f8": {
+    "id": "842d4de5fa1168f8",
+    "term": "Roshi",
+    "parts": [
+      {
+        "part": "Ro",
+        "meaning": "Old"
+      },
+      {
+        "part": "shi",
+        "meaning": "Master/Teacher"
+      }
+    ],
+    "literal": "Roshi",
+    "notes": "",
+    "updated_at": 1768111594,
+    "updated_by": null
+  },
+  "6ca7648b8fbe21b0": {
+    "id": "6ca7648b8fbe21b0",
+    "term": "Koshi",
+    "parts": [
+      {
+        "part": "Ko",
+        "meaning": ""
+      },
+      {
+        "part": "Shi",
+        "meaning": ""
+      }
+    ],
+    "literal": "Koshi",
+    "notes": "",
+    "updated_at": 1768178546,
+    "updated_by": null
+  },
+  "10022d13ea8d72bb": {
+    "id": "10022d13ea8d72bb",
+    "term": "Renshi",
+    "parts": [
+      {
+        "part": "Ren",
+        "meaning": "Polished"
+      },
+      {
+        "part": "Shi",
+        "meaning": "Instructor"
+      }
+    ],
+    "literal": "Renshi",
+    "notes": "",
+    "updated_at": 1768181958,
+    "updated_by": null
+  },
+  "51c709993587ad78": {
+    "id": "51c709993587ad78",
+    "term": "Senpai",
+    "parts": [
+      {
+        "part": "Sen",
+        "meaning": "before"
+      },
+      {
+        "part": "pai",
+        "meaning": "companion"
+      }
+    ],
+    "literal": "Senior Companion",
+    "notes": "",
+    "updated_at": 1768352516,
+    "updated_by": null
+  },
+  "fd0e7a7f91ff997a": {
+    "id": "fd0e7a7f91ff997a",
+    "term": "Kyoshi",
+    "parts": [
+      {
+        "part": "Kyoshi",
+        "meaning": ""
+      }
+    ],
+    "literal": "",
+    "notes": "",
+    "updated_at": 1768629407,
+    "updated_by": "1cc70e61cd9e"
+  },
+  "kenpo_1768920014502": {
+    "id": "kenpo_1768920014502",
+    "term": "Dan",
+    "parts": [],
+    "literal": "",
+    "notes": "",
+    "updated_at": 1768920081,
+    "updated_by": "1cc70e61cd9e"
   }
 }

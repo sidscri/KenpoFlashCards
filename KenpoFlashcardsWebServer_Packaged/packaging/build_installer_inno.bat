@@ -6,6 +6,16 @@ REM This script builds the installer EXE using the .iss script.
 
 cd /d "%~dp0"
 
+REM Ensure packaging\output exists and is a folder (avoid I/O error 183)
+if exist "output" (
+  if not exist "output\" (
+    del /f /q "output"
+  ) else (
+    rmdir /s /q "output"
+  )
+)
+mkdir "output" 2>nul
+
 if not exist "..\dist\KenpoFlashcardsTray\KenpoFlashcardsTray.exe" (
   echo [ERROR] Build the EXE first: packaging\build_exe.bat
   pause

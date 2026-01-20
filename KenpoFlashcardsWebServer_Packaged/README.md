@@ -1,182 +1,83 @@
-# 🥋 Kenpo Flashcards Web Server — Packaged
+# Kenpo Flashcards Web Server (Packaged)
 
-> This is a **sub-project** inside the `sidscri-apps` monorepo.  
-> Folder: `KenpoFlashcardsWebServer_Packaged/`
+A Windows **installer** build of the Kenpo Flashcards Web Server + Tray Launcher.
 
-Windows distributable packages for KenpoFlashcardsWebServer.
+- **Packaged Version:** **v1.0.0 (build 3)**
+- **Bundled Web Server:** **v5.5.2 (build 29)**
 
-**Current Version:** vbeta v2 (build 2)  
-**Changelog:** [CHANGELOG.md](CHANGELOG.md)
+## What you get
 
----
+- **Windows installer (Inno Setup)** that installs to **Program Files** and adds Start Menu shortcuts.
+- **Tray Launcher** (`KenpoFlashcardsTray.exe`) so you can start/stop the server from the system tray.
+- **Local web UI** (Flashcards + Admin tools) accessible from your browser.
 
-## 📦 Package Types
+## What’s new in v1.0.0 (build 3)
 
-| Type | Tool | Output | Use Case |
-|------|------|--------|----------|
-| **Tray EXE** | PyInstaller | Folder with `.exe` | Sonarr-style tray app |
-| **Installer EXE** | Inno Setup | Setup wizard `.exe` | Standard Windows install |
-| **MSI** | WiX Toolset | `.msi` package | Enterprise/GPO deployment |
+This is the first “real” release (moving from beta packaging to a stable installer) and includes the largest feature jump so far:
 
----
+- **AI Access page** for managing API keys and selecting models (no longer requires editing a batch file).
+- **Encrypted API key storage** (keys stored in `data/api_keys.enc`).
+- **Shared Key Mode** option (one key can be shared by all authenticated users).
+- **Improved Sync logic** (merge by `updated_at`, queued updates/offline friendliness).
+- **Admin pages & reporting** (About/Admin/User Guide pages and PDF generation).
 
-## 🚀 Quick Start (From Source)
+## Install (recommended)
 
-```bat
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-python app.py
-```
+1. On the target PC, run the installer:
+   - `KenpoFlashcardsWebSetup.exe`
+2. If Windows SmartScreen prompts:
+   - Click **More info** → **Run anyway** (expected for unsigned installers).
+3. After install, use:
+   - **Start Menu → Kenpo Flashcards** → **Kenpo Flashcards** (Tray Launcher)
 
-Open: `http://localhost:8009`
+## Run / Use
 
----
+1. Start the Tray Launcher.
+2. In the tray icon menu, click **Open Web App** (or open your browser and go to the local address shown by the tray app).
 
-## 🔨 Build Packages
+## Where your data is stored
 
-### Tray EXE (PyInstaller)
-```bat
-pip install -r packaging/requirements_packaging.txt
-python -m PyInstaller packaging/pyinstaller/kenpo_tray.spec --noconfirm
-```
-Output: `dist\KenpoFlashcardsTray\KenpoFlashcardsTray.exe`
+The web server uses a `data/` folder for user accounts, progress, breakdowns, and admin “source of truth” files.
 
-### Installer EXE (Inno Setup)
-1. Install [Inno Setup](https://jrsoftware.org/isinfo.php)
-2. Run:
-   ```bat
-   iscc packaging/installer_inno.iss
-   ```
-Output: `packaging\output\KenpoFlashcardsWebSetup.exe`
+**Important:** If you install under **Program Files**, Windows can block apps from writing inside that folder unless elevated.
 
-### MSI (WiX Toolset) - Optional
-1. Install [WiX Toolset](https://wixtoolset.org/)
-2. Run:
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File packaging\build_msi_wix.ps1
-   ```
-Output: `dist\KenpoFlashcardsWebServer.msi`
+Recommended options:
 
----
+- **Option A (recommended):** Install to a user-writable folder (like `C:\KenpoFlashcards\`) when prompted.
+- **Option B:** Run the tray app **once as Administrator** so it can create the initial `data/` folder.
 
-## 📁 Project Structure
+After the folder exists, you typically won’t need elevation.
 
-```
-KenpoFlashcardsWebServer_Packaged/
-├── app.py                        # Main Flask application
-├── KenpoFlashcardsTrayLauncher.py # Tray launcher (starts server + tray icon)
-├── requirements.txt              # Python dependencies
-├── ic_launcher.png               # App icon
-├── CHANGELOG.md
-├── README.md
-├── version.json
-├── packaging/
-│   ├── pyinstaller/
-│   │   └── kenpo_tray.spec       # PyInstaller spec for tray build
-│   ├── installer_inno.iss        # Inno Setup script
-│   ├── requirements_packaging.txt
-│   ├── build_exe.bat
-│   ├── build_installer_inno.bat
-│   ├── build_msi_wix.ps1
-│   └── output/                   # Installer output directory
-├── static/
-│   ├── index.html
-│   ├── app.js
-│   └── styles.css
-├── data/
-│   ├── profiles.json
-│   ├── breakdowns.json
-│   └── users/
-├── windows_service/              # NSSM service scripts
-└── windows_tray/                 # Standalone tray scripts
-```
+## Antivirus / Defender notes (PyInstaller false positives)
 
----
+PyInstaller-built executables are sometimes flagged as “PUA” or suspicious, especially when unsigned.
 
-## 🔨 Automated Builds
+If Defender quarantines files:
 
-GitHub Actions automatically builds on push to `main`.
+- Prefer building/installing from a non-system drive (e.g., `M:`) if your environment behaves better there.
+- For production distribution, code-signing the installer/EXE reduces false positives.
 
-**Workflow:** `.github/workflows/build-windows-packaging-exe-msi.yml`
+## Build the installer yourself (from source)
 
-**Artifacts produced:**
-- `KenpoFlashcardsTray` - Tray application folder
-- `KenpoFlashcardsWebSetup` - Windows installer EXE
+From the project root:
 
----
+1. Build the PyInstaller EXE:
+   - `packaging\build_exe.bat`
+2. Build the installer:
+   - `packaging\build_installer_inno.bat`
 
-## 🔐 Secrets & API Keys
+The Inno Setup script is:
 
-**Do NOT commit API keys or secrets.**
+- `packaging\installer_inno.iss`
 
-Use one of these approaches:
-1. **Environment variables** - Set `OPENAI_API_KEY` before running
-2. **Local `.env` file** - Create `.env` in app directory (gitignored)
-3. **Config file** - Place API key in `data/config.json` (gitignored)
+Output installer is typically placed in:
 
----
+- `packaging\output\KenpoFlashcardsWebSetup.exe`
 
-## ⚙️ Configuration
+## Uninstall
 
-### First Run
-On first run, the packaged app will:
-1. Create `data/` directory for user data
-2. Generate `data/profiles.json` for user accounts
-3. Generate `data/secret_key.txt` for session security
+Use:
 
-### Environment Variables
-| Variable | Description |
-|----------|-------------|
-| `KENPO_PORT` | Server port (default: 8009) |
-| `KENPO_HOST` | Bind address (default: 127.0.0.1) |
-| `KENPO_WEBAPP_BASE_DIR` | Base directory for static/data |
-| `OPENAI_API_KEY` | OpenAI API key for AI features |
+- **Windows Settings → Apps → Installed apps → Kenpo Flashcards → Uninstall**
 
-### Data Location
-By default, data is stored relative to the executable:
-```
-KenpoFlashcardsTray/
-├── KenpoFlashcardsTray.exe
-├── static/
-├── data/
-│   ├── profiles.json
-│   ├── breakdowns.json
-│   └── users/...
-└── assets/
-    └── ic_launcher.png
-```
-
-## 📋 Version History
-
-| Version | Build | Key Changes |
-|---------|-------|-------------|
-| **beta** | 1 | Initial packaged release, EXE installer for standalone deployment & enterprise/managed deployment, scripts and build instructions, GitHub Actions workflow, KenpoFlashcardsTrayLauncher for Sonarr-style tray app |
-| **beta** | 2 | GitHub Actions workflow now builds successfully, Fixed `kenpo_tray.spec` to use actual project structure (`ic_launcher.png` in root), Fixed workflow paths to match folder name `KenpoFlashcardsWebServer_Packaged`,  |
-
-## ⚠️ Known Limitations (Beta)
-
-- Requires manual `data/` configuration on first run
-- OpenAI API key must be set via environment or config
-- Anti-virus may flag PyInstaller executables (false positive)
-- Windows Defender SmartScreen may warn on unsigned executables
-
-### Signing (Optional)
-For production distribution, consider code signing:
-```bat
-signtool sign /f certificate.pfx /p password /t http://timestamp.digicert.com dist\*.exe
-```
-
----
-
-## 🔗 Related Projects
-
-- **Core Server:** `../KenpoFlashcardsWebServer/`
-- **Service + Tray:** `../KenpoFlashcardsWebServer_Service_Tray/`
-- **Android App:** `../KenpoFlashcardsProject-v2/`
-
----
-
-## 📄 License
-
-MIT — see `LICENSE`
+(If you want to preserve your progress, back up the `data/` folder before uninstalling.)

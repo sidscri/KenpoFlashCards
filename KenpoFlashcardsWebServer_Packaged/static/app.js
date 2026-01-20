@@ -73,6 +73,61 @@ function setAuthView(view){
   $("registerBox").classList.toggle("hidden", view !== "register");
 }
 
+async function loadVersionIntoMenu(){
+  try{
+    const v = await jget("/api/version");
+    const el = $("userMenuVersion");
+    if(el) el.textContent = `Version: ${v.version} (build ${v.build})`;
+    const adminLink = $("userMenuAdmin");
+    if(adminLink){
+      adminLink.style.display = isAdminUser() ? "block" : "none";
+    }
+  }catch(e){
+    const el = $("userMenuVersion");
+    if(el) el.textContent = "Version: unavailable";
+  }
+}
+
+function toggleUserMenu(force){
+  const menu = $("userMenu");
+  const line = $("userLine");
+  if(!menu || !line) return;
+  const isHidden = menu.classList.contains("hidden");
+  const wantOpen = (force === true) ? true : (force === false) ? false : isHidden;
+  menu.classList.toggle("hidden", !wantOpen);
+  line.setAttribute("aria-expanded", wantOpen ? "true" : "false");
+  if(wantOpen){
+    loadVersionIntoMenu();
+  }
+}
+
+function wireUserMenu(){
+  const line = $("userLine");
+  const menu = $("userMenu");
+  if(!line || !menu) return;
+
+  line.addEventListener("click", (e) => {
+    if(!currentUser) return;
+    e.stopPropagation();
+    toggleUserMenu();
+  });
+
+  line.addEventListener("keydown", (e) => {
+    if(!currentUser) return;
+    if(e.key === "Enter" || e.key === " "){
+      e.preventDefault();
+      toggleUserMenu();
+    }
+  });
+
+  document.addEventListener("click", (e) => {
+    if(menu.classList.contains("hidden")) return;
+    if(e.target !== line && !menu.contains(e.target)){
+      toggleUserMenu(false);
+    }
+  });
+}
+
 function setUserLine(){
   if(currentUser){
     $("userLine").textContent = `User: ${currentUser.display_name || currentUser.username}`;
@@ -1851,3 +1906,5 @@ main().catch(err=>{
   console.error(err);
   setStatus("Error: " + err.message);
 });
+
+try{ wireUserMenu(); }catch(e){}
