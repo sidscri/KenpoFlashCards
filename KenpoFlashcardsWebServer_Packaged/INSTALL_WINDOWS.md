@@ -27,7 +27,7 @@ If Windows SmartScreen appears:
 
 ---
 
-## B) Build the Setup EXE installer (recommended “true installer”)
+## B) Build the Setup EXE installer (recommended "true installer")
 
 You will build a tray EXE first (PyInstaller), then package it into a Setup EXE (Inno Setup).
 
@@ -35,14 +35,14 @@ You will build a tray EXE first (PyInstaller), then package it into a Setup EXE 
 
 1. **Windows 10/11**
 2. **Python 3.10+ (64‑bit)**
-   - During install, check: **“Add python.exe to PATH”**
+   - During install, check: **"Add python.exe to PATH"**
 3. **Inno Setup 6** (free)
 
 ### 1) Unzip the project
 
 Unzip the project folder, for example:
 
-`C:\Kenpo\KenpoFlashcardsWebServer_Packaged\`
+`M:\KenpoFlashcardsWebServer_Packaged\`
 
 You should see:
 - `app.py`
@@ -57,13 +57,20 @@ Open the folder that contains `app.py`, then:
 
 (You can also use PowerShell if you prefer.)
 
-### 3) Install packaging dependencies
+### 3) Run pre-build data sync (NEW)
 
-From the project root:
+This step copies data from your dev location (if available) so the build includes your latest data:
 
 ```bat
-py -m pip install -r packaging\requirements_packaging.txt
+packaging\pre_build.bat
 ```
+
+**What it does:**
+- Checks for data at `C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer\data`
+- Copies `kenpo_words.json` from your Android project assets
+- Creates a `build_data\` folder with all the data
+
+**If dev location not found:** The build will use the existing `data\` folder (fresh build mode).
 
 ### 4) Build the tray EXE (PyInstaller)
 
@@ -75,6 +82,13 @@ packaging\build_exe.bat
 
 Expected output:
 - `dist\KenpoFlashcardsTray\KenpoFlashcardsTray.exe`
+
+**Console should show:**
+```
+[INFO] Using build_data folder: M:\...\build_data
+[INFO] Bundling version.json from: M:\...\version.json
+[INFO] Bundling kenpo_words.json from: M:\...\build_data\kenpo_words.json
+```
 
 ### 5) Build the Setup EXE (Inno Setup)
 
@@ -121,6 +135,18 @@ Expected output:
 - Default URL:
   - http://127.0.0.1:8009
 
+### Data storage
+
+User data (accounts, progress, breakdowns) is stored in:
+
+```
+%LOCALAPPDATA%\Kenpo Flashcards\data\
+```
+
+This is typically `C:\Users\<YourName>\AppData\Local\Kenpo Flashcards\data\`.
+
+The bundled data in Program Files serves as initial/default data.
+
 ### Firewall prompt
 The first time it runs, Windows may prompt about firewall access.  
 Allow it on **Private networks** (recommended). This is a local app; it does not need Public network access.
@@ -129,7 +155,7 @@ Allow it on **Private networks** (recommended). This is a local app; it does not
 
 ## E) Troubleshooting
 
-### “py is not recognized” / “python is not recognized”
+### "py is not recognized" / "python is not recognized"
 - Reinstall Python and be sure to check **Add to PATH**.
 - Close and re-open your terminal after installing Python.
 
@@ -156,6 +182,18 @@ py -m pip install -r packaging\requirements_packaging.txt
 - SmartScreen: **More info → Run anyway**.
 - If your AV quarantines files, add an exception for the install folder (only if you trust the source).
 
+### Version shows "unknown (build unknown)"
+- Make sure `version.json` exists in the project root
+- Run `pre_build.bat` before `build_exe.bat`
+
+### kenpo_words.json not found error
+- Run `pre_build.bat` to copy from dev location, OR
+- Manually copy `kenpo_words.json` to `data\` folder before building
+
+### ModuleNotFoundError: No module named 'jaraco'
+- Delete `.venv`, `build`, and `dist` folders
+- Re-run `build_exe.bat` (it will recreate the venv with correct dependencies)
+
 ---
 
 ## F) Developer run (no installer)
@@ -170,3 +208,20 @@ py app.py
 ```
 Then open:
 - http://127.0.0.1:8009
+
+---
+
+## G) Build process summary
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  1. packaging\pre_build.bat                                 │
+│     └─ Copies data from dev location → build_data\         │
+├─────────────────────────────────────────────────────────────┤
+│  2. packaging\build_exe.bat                                 │
+│     └─ PyInstaller builds EXE → dist\KenpoFlashcardsTray\   │
+├─────────────────────────────────────────────────────────────┤
+│  3. packaging\build_installer_inno.bat                      │
+│     └─ Inno Setup creates installer → packaging\output\     │
+└─────────────────────────────────────────────────────────────┘
+```

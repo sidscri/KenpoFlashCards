@@ -11,6 +11,7 @@ import requests
 
 from flask import Flask, jsonify, request, send_from_directory, session
 from werkzeug.security import generate_password_hash, check_password_hash
+import sys
 
 # =========================================================
 # Kenpo Flashcards Web (Multi-user with Username/Password Auth)
@@ -19,9 +20,32 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # - Login from any device with the same credentials
 # =========================================================
 
-DEFAULT_KENPO_ROOT = r"C:\Users\Sidscri\Documents\GitHub\sidscri-apps"
+
+# --- Runtime base directory (works in source + PyInstaller) ---
+# Determine if running frozen (PyInstaller bundle)
+_is_frozen = getattr(sys, 'frozen', False)
+
+if _is_frozen:
+    # Running as a packaged EXE - use executable's parent directory
+    # Also check for _MEIPASS which is PyInstaller's temp extraction folder
+    if hasattr(sys, '_MEIPASS'):
+        # For --onefile mode, _MEIPASS points to temp extraction
+        # But we want the executable's directory for data files
+        APP_DIR = Path(sys.executable).resolve().parent
+    else:
+        APP_DIR = Path(sys.executable).resolve().parent
+else:
+    # Running from source
+    APP_DIR = Path(__file__).resolve().parent
+
+# Also support override via environment variable (set by TrayLauncher)
+_env_base = os.environ.get('KENPO_WEBAPP_BASE_DIR')
+if _env_base and Path(_env_base).exists():
+    APP_DIR = Path(_env_base)
+
+DEFAULT_KENPO_ROOT = os.environ.get('KENPO_ROOT') or str(APP_DIR)
 # Fallback (only used if auto-discovery fails)
-DEFAULT_KENPO_JSON_FALLBACK = r"C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v2\app\src\main\assets\kenpo_words.json"
+DEFAULT_KENPO_JSON_FALLBACK = os.path.join(APP_DIR, "data", "kenpo_words.json")
 
 def _resolve_kenpo_json_path() -> str:
     """Resolve the kenpo_words.json path.
@@ -54,14 +78,62 @@ def _resolve_kenpo_json_path() -> str:
 
 KENPO_JSON_PATH = _resolve_kenpo_json_path()
 
-APP_DIR = os.path.dirname(os.path.abspath(__file__))
+# Convert APP_DIR to string for compatibility with os.path functions
+APP_DIR = str(APP_DIR)
 
-DATA_DIR = os.path.join(APP_DIR, "data")
+DATA_DIR = os.environ.get("KENPO_DATA_DIR") or os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "Kenpo Flashcards", "data")
+
+# --- Seed initial data from bundled _internal/data on first run ---
+def _seed_initial_data():
+    """Copy bundled data files to DATA_DIR if they don't exist yet.
+    
+    This ensures that user accounts, progress, and settings from the dev
+    build are available when the packaged app runs for the first time.
+    """
+    if not _is_frozen:
+        return  # Only seed when running as packaged EXE
+    
+    # Bundled data location (inside _internal for PyInstaller)
+    bundled_data = os.path.join(APP_DIR, "data")
+    if not os.path.isdir(bundled_data):
+        return
+    
+    # Check if DATA_DIR is empty or missing key files
+    marker_file = os.path.join(DATA_DIR, "profiles.json")
+    if os.path.exists(marker_file):
+        return  # Already seeded, don't overwrite
+    
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        import shutil
+        
+        # Copy all files and folders from bundled data
+        for item in os.listdir(bundled_data):
+            src = os.path.join(bundled_data, item)
+            dst = os.path.join(DATA_DIR, item)
+            if os.path.isdir(src):
+                if not os.path.exists(dst):
+                    shutil.copytree(src, dst)
+            else:
+                if not os.path.exists(dst):
+                    shutil.copy2(src, dst)
+        
+        print(f"[INFO] Seeded initial data from {bundled_data} to {DATA_DIR}")
+    except Exception as e:
+        print(f"[WARN] Could not seed initial data: {e}")
+
+_seed_initial_data()
 
 BREAKDOWNS_PATH = os.path.join(DATA_DIR, "breakdowns.json")
 
 # Canonical term->id helper (source of truth for IDs across devices)
 HELPER_PATH = os.path.join(DATA_DIR, "helper.json")
+
+# Ensure data dir exists (Program Files is not writable; use LOCALAPPDATA by default)
+try:
+    os.makedirs(DATA_DIR, exist_ok=True)
+except Exception:
+    pass
 
 # helper.json cache (term<->id mapping)
 _helper_cache = {}
@@ -432,7 +504,10 @@ def _load_admin_usernames() -> set:
 ADMIN_USERNAMES = _load_admin_usernames()
 
 PORT = int(os.environ.get("KENPO_WEB_PORT", "8009"))
-app = Flask(__name__, static_folder="static")
+
+# For PyInstaller: explicitly set static and template folders to APP_DIR
+_static_folder = os.path.join(APP_DIR, "static")
+app = Flask(__name__, static_folder=_static_folder)
 
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(USERS_DIR, exist_ok=True)
@@ -530,7 +605,7 @@ app.secret_key = os.environ.get("KENPO_SECRET_KEY", "") or _load_or_create_secre
 # ----------------------------
 # Version + request audit log
 # ----------------------------
-VERSION_FILE = os.path.join(app.root_path, "version.json")
+VERSION_FILE = os.path.join(APP_DIR, "version.json")
 _VERSION_CACHE = None
 _VERSION_MTIME = 0.0
 

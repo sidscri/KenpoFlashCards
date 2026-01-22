@@ -12,7 +12,7 @@ import java.net.URL
  * 
  * Connects to: http://sidscri.tplinkdns.com:8009
  * 
- * Server Data Structure (c:/personal-servers/kenpoflashcardswebserver/data/):
+ * Server Data Structure (C:/Program Files/Kenpo Flashcards/_internal/data/):
  * - users/           -> User directories (one per user)
  * - breakdown.json   -> Shared breakdown data
  * - profiles.json    -> User profiles and auth
@@ -464,7 +464,7 @@ object WebAppSync {
  * 
  * Your Express.js server at http://sidscri.tplinkdns.com:8009 needs these endpoints:
  * 
- * Data directory: c:/personal-servers/kenpoflashcardswebserver/data/
+ * Data directory: C:/Program Files/Kenpo Flashcards/_internal/data/
  * 
  * 1. POST /api/login
  *    - Read profiles.json to find user

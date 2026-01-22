@@ -2,12 +2,19 @@ pyinstaller==6.6.0
 pystray==0.19.5
 pillow==10.4.0
 
-# Required at runtime by setuptools/pkg_resources on some machines
-platformdirs==4.3.6
+# App/runtime deps (must be present in build venv so PyInstaller can bundle them)
+requests>=2.31.0
+flask>=2.2.2,<3.0
+Werkzeug>=2.2.2,<3.0
+reportlab>=4.0.0
+platformdirs>=4.0.0
 
-# Explicitly include these to avoid missing-module errors in frozen builds
-setuptools
-jaraco.text
-jaraco.functools
-jaraco.context
-jaraco.classes
+# pystray dependencies (must be explicit for PyInstaller to bundle them)
+jaraco.functools>=4.0.0
+jaraco.context>=5.0.0
+jaraco.classes>=3.0.0
+jaraco.text>=3.0.0
+
+# Build tooling
+setuptools>=75.0
+wheel>=0.41

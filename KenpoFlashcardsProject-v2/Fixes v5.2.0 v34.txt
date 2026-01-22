@@ -1,0 +1,9 @@
+Fixes for v5.2.0 (versionCode 34)
+Created: Thu 01/22/2026
+
+### Changed
+- Updated server data path references in WebAppSync.kt from:
+  `c:/personal-servers/kenpoflashcardswebserver/data/`
+  to:
+  `C:/Program Files/Kenpo Flashcards/_internal/data/`
+  (Reflects Windows installer deployment location)

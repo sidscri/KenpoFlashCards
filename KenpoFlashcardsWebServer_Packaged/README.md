@@ -2,7 +2,7 @@
 
 A Windows **installer** build of the Kenpo Flashcards Web Server + Tray Launcher.
 
-- **Packaged Version:** **v1.0.0 (build 3)**
+- **Packaged Version:** **v1.1.0 (build 5)**
 - **Bundled Web Server:** **v5.5.2 (build 29)**
 
 ## What you get
@@ -11,15 +11,16 @@ A Windows **installer** build of the Kenpo Flashcards Web Server + Tray Launcher
 - **Tray Launcher** (`KenpoFlashcardsTray.exe`) so you can start/stop the server from the system tray.
 - **Local web UI** (Flashcards + Admin tools) accessible from your browser.
 
-## What’s new in v1.0.0 (build 3)
+## What's new in v1.1.0 (build 5)
 
-This is the first “real” release (moving from beta packaging to a stable installer) and includes the largest feature jump so far:
+- **Fixed bundled data not loading** — On first run, the app now copies profiles, progress, API keys, breakdowns, and helper data from the bundled `_internal\data` folder to `%LOCALAPPDATA%\Kenpo Flashcards\data\`. This ensures user accounts and progress from the dev build are available in the installed app.
 
-- **AI Access page** for managing API keys and selecting models (no longer requires editing a batch file).
-- **Encrypted API key storage** (keys stored in `data/api_keys.enc`).
-- **Shared Key Mode** option (one key can be shared by all authenticated users).
-- **Improved Sync logic** (merge by `updated_at`, queued updates/offline friendliness).
-- **Admin pages & reporting** (About/Admin/User Guide pages and PDF generation).
+## What's new in v1.0.1 (build 4)
+
+- **Pre-build data sync** — New `pre_build.bat` automatically copies data from your dev location before building.
+- **Fixed PyInstaller path issues** — Version info, static files, and kenpo_words.json now load correctly in the packaged EXE.
+- **Fixed jaraco dependency** — Resolved `ModuleNotFoundError: No module named 'jaraco'` that prevented tray from starting.
+- **Improved APP_DIR resolution** — Properly detects PyInstaller frozen state for correct file paths.
 
 ## Install (recommended)
 
@@ -37,20 +38,19 @@ This is the first “real” release (moving from beta packaging to a stable ins
 
 ## Where your data is stored
 
-The web server uses a `data/` folder for user accounts, progress, breakdowns, and admin “source of truth” files.
+The web server stores user data (accounts, progress, breakdowns) in:
 
-**Important:** If you install under **Program Files**, Windows can block apps from writing inside that folder unless elevated.
+```
+%LOCALAPPDATA%\Kenpo Flashcards\data\
+```
 
-Recommended options:
+This is typically `C:\Users\<YourName>\AppData\Local\Kenpo Flashcards\data\`.
 
-- **Option A (recommended):** Install to a user-writable folder (like `C:\KenpoFlashcards\`) when prompted.
-- **Option B:** Run the tray app **once as Administrator** so it can create the initial `data/` folder.
-
-After the folder exists, you typically won’t need elevation.
+The bundled data in `Program Files` serves as the initial/default data on first run.
 
 ## Antivirus / Defender notes (PyInstaller false positives)
 
-PyInstaller-built executables are sometimes flagged as “PUA” or suspicious, especially when unsigned.
+PyInstaller-built executables are sometimes flagged as "PUA" or suspicious, especially when unsigned.
 
 If Defender quarantines files:
 
@@ -61,18 +61,35 @@ If Defender quarantines files:
 
 From the project root:
 
-1. Build the PyInstaller EXE:
-   - `packaging\build_exe.bat`
-2. Build the installer:
-   - `packaging\build_installer_inno.bat`
+1. **Run pre-build data sync** (copies data from dev location if available):
+   ```
+   packaging\pre_build.bat
+   ```
 
-The Inno Setup script is:
+2. **Build the PyInstaller EXE:**
+   ```
+   packaging\build_exe.bat
+   ```
 
-- `packaging\installer_inno.iss`
+3. **Build the installer:**
+   ```
+   packaging\build_installer_inno.bat
+   ```
 
-Output installer is typically placed in:
+### Data sources (pre_build.bat)
 
-- `packaging\output\KenpoFlashcardsWebSetup.exe`
+The pre-build script looks for data in this order:
+
+1. **Dev location:** `C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer\data`
+2. **Android project:** `C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v2\app\src\main\assets\kenpo_words.json`
+3. **Fallback:** Uses existing `data\` folder in project root
+
+Copied data goes to `build_data\` folder, which the build process uses if present.
+
+### Build output
+
+- Installer: `packaging\output\KenpoFlashcardsWebSetup.exe`
+- EXE folder: `dist\KenpoFlashcardsTray\`
 
 ## Uninstall
 
@@ -80,4 +97,4 @@ Use:
 
 - **Windows Settings → Apps → Installed apps → Kenpo Flashcards → Uninstall**
 
-(If you want to preserve your progress, back up the `data/` folder before uninstalling.)
+(If you want to preserve your progress, back up the `%LOCALAPPDATA%\Kenpo Flashcards\data\` folder before uninstalling.)

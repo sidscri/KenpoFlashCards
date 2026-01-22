@@ -1,7 +1,7 @@
 {
   "app_name": "KenpoFlashcardsWebServer_Packaged",
-  "version": "1.0.0",
-  "build": 3,
-  "release_date": "2026-01-20",
-  "notes": "First stable packaged release (installer/tray). Based on KenpoFlashcardsWebServer v5.5.2 (build 29) with packaging and dependency fixes."
+  "version": "1.1.0",
+  "build": 5,
+  "release_date": "2026-01-22",
+  "notes": "Fixed initial data seeding - bundled data now copies to LocalAppData on first run."
 }

@@ -1,5 +1,13 @@
 # Changelog — KenpoFlashcardsProject-v2 (Android)
 
+## 5.2.0 (build 34) — 2026-01-22
+
+### Changed
+- Updated server data path references in WebAppSync.kt to reflect Windows installer location:
+  `C:/Program Files/Kenpo Flashcards/_internal/data/`
+
+---
+
 ## 5.1.1 (build 33) — 2026-01-20
 
 ### Fixed
