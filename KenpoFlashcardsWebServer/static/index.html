@@ -12,12 +12,14 @@
       <div class="titleRow">
         <h1>Kenpo Flashcards</h1>
         <div class="mini" id="healthLine"></div>
-        <div class="mini" id="userLine" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false"></div>
+        <div class="mini userBtn" id="userLine" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false"></div>
 <div class="userMenu hidden" id="userMenu" role="menu" aria-label="User menu">
   <div class="userMenuRow"><span class="mutedSmall" id="userMenuVersion">Version: …</span></div>
-  <div class="userMenuRow"><a class="userMenuLink" href="/admin" id="userMenuAdmin">Admin</a></div>
-  <div class="userMenuRow"><a class="userMenuLink" href="/about">About</a></div>
-  <div class="userMenuRow"><a class="userMenuLink" href="/user-guide">User Guide</a></div>
+  <div class="userMenuRow userMenuAction" id="userMenuLogout">🚪 Logout</div>
+  <div class="userMenuDivider"></div>
+  <div class="userMenuRow"><a class="userMenuLink" href="/admin" id="userMenuAdmin">⚙️ Admin</a></div>
+  <div class="userMenuRow"><a class="userMenuLink" href="/about">ℹ️ About</a></div>
+  <div class="userMenuRow"><a class="userMenuLink" href="/user-guide">📖 User Guide</a></div>
 </div>
 
       </div>
@@ -49,15 +51,11 @@
         <div class="leftControls">
           <label class="field">
             <span>Study / Group</span>
-	            <!--
-	              Native <select> option lists render with a bright white background on Windows/Edge.
-	              Keep the real <select> for state/logic, but hide it and drive it via a custom dark dropdown.
-	            -->
-	            <select id="groupSelect" class="hiddenSelect" aria-hidden="true" tabindex="-1"></select>
-	            <div class="groupDropdown" id="groupDropdown">
-	              <button type="button" id="groupDropdownBtn" class="select" aria-haspopup="listbox" aria-expanded="false">Select group...</button>
-	              <div id="groupDropdownMenu" class="dropdownMenu hidden" role="listbox" aria-label="Select group"></div>
-	            </div>
+            <select id="groupSelect" class="hiddenSelect" aria-hidden="true" tabindex="-1"></select>
+            <div class="groupDropdown" id="groupDropdown">
+              <button type="button" id="groupDropdownBtn" class="select" aria-haspopup="listbox" aria-expanded="false">Select group...</button>
+              <div id="groupDropdownMenu" class="dropdownMenu hidden" role="listbox" aria-label="Select group"></div>
+            </div>
           </label>
 
           <button id="allCardsBtn" class="secondary">All Cards</button>
@@ -66,29 +64,27 @@
         <div class="rightControls">
           <input id="searchBox" placeholder="Search (term / meaning / pron)" />
           <button id="breakdownsBtn" class="secondary iconOnly" title="Breakdowns" aria-label="Breakdowns">🧩</button>
-          <button id="settingsBtn" class="secondary">Show settings</button>
-          <button id="logoutBtn" class="secondary">Logout</button>
+          <button id="settingsBtn" class="secondary">⚙️ More</button>
         </div>
       </div>
 
       <div class="status" id="status"></div>
-	      <!-- Random order toggle is rendered next to the card counter (inside .cardMeta). -->
     </header>
 
     <main class="main">
       <!-- STUDY VIEW -->
       <section id="viewStudy" class="view">
-	        <div class="cardMeta">
-	          <div id="cardPos">Card – / –</div>
-	          <div class="randomRow hidden" id="randomStudyWrap">
-	            <span class="randomText">Random order</span>
-	            <label class="switch small" title="Toggle random order">
-	              <input type="checkbox" id="randomStudyChk" />
-	              <span class="slider"></span>
-	            </label>
-	            <button id="randomRefreshBtn" class="iconBtn" title="Reshuffle" aria-label="Reshuffle" style="display:none;">⟳</button>
-	          </div>
-	        </div>
+        <div class="cardMeta">
+          <div id="cardPos">Card – / –</div>
+          <div class="randomRow hidden" id="randomStudyWrap">
+            <span class="randomText">Random order</span>
+            <label class="switch small" title="Toggle random order">
+              <input type="checkbox" id="randomStudyChk" />
+              <span class="slider"></span>
+            </label>
+            <button id="randomRefreshBtn" class="iconBtn" title="Reshuffle" aria-label="Reshuffle" style="display:none;">⟳</button>
+          </div>
+        </div>
 
         <div class="card" id="card" tabindex="0" aria-label="Flashcard (click or Space to flip)">
           <div class="card-inner" id="cardInner">
@@ -110,22 +106,35 @@
         </div>
 
         <div class="actionsRow">
-          <button id="prevBtn" class="secondary">Prev</button>
+          <button id="prevBtn" class="secondary">◀ Prev</button>
           <button id="speakBtn" class="good">🔊 Speak</button>
-          <button id="nextBtn" class="secondary">Next</button>
+          <button id="starStudyBtn" class="secondary starBtn" title="Add to Custom Set">☆</button>
+          <button id="nextBtn" class="secondary">Next ▶</button>
           <button id="breakdownBtn" class="secondary iconOnly" title="Breakdown" aria-label="Breakdown">🧩</button>
         </div>
 
         <div class="actionsRow">
           <button id="gotItBtn" class="good">Got it ✓ (mark learned)</button>
           <button id="unsureBtn" class="secondary">Unsure</button>
-</div>
+        </div>
       </section>
 
       <!-- LIST VIEWS -->
       <section id="viewList" class="view hidden">
         <div class="listHeader">
           <h2 id="listTitle">List</h2>
+          <div class="listControls">
+            <label class="field small" id="sortByStatusField" style="display:none;">
+              <span>Sort by</span>
+              <select id="sortByStatus">
+                <option value="">Default order</option>
+                <option value="unlearned">Unlearned first</option>
+                <option value="unsure">Unsure first</option>
+                <option value="learned">Learned first</option>
+                <option value="alpha">Alphabetical</option>
+              </select>
+            </label>
+          </div>
           <div class="bulkBtns" id="bulkBtns"></div>
         </div>
         <div id="list" class="list"></div>
@@ -133,283 +142,339 @@
 
       <!-- SETTINGS VIEW -->
       <section id="viewSettings" class="view hidden">
-        <div class="listHeader">
+        <div class="settingsPage">
           <h2>Settings</h2>
-          <button id="closeSettingsBtn" class="secondary">Close</button>
-        </div>
-
-        
-        <div class="settingsBox compact">
-          <div class="settingsTop">
-            <label class="field">
-              <span>Settings scope</span>
-              <select id="settingsScope"></select>
-            </label>
-            <div class="mini muted">
-              These settings apply to the selected scope. Group settings override "All Groups".
-            </div>
+          
+          <!-- Quick Nav Tabs -->
+          <div class="settingsNav">
+            <button class="settingsNavBtn active" data-section="study">📚 Study</button>
+            <button class="settingsNavBtn" data-section="display">🎨 Display</button>
+            <button class="settingsNavBtn" data-section="voice">🔊 Voice</button>
+            <button class="settingsNavBtn" data-section="sync">🔄 Sync</button>
+            <button class="settingsNavBtn" data-section="ai">🤖 AI</button>
           </div>
+          
+          <!-- STUDY SECTION -->
+          <div class="settingsSection active" id="settingsStudy" data-section="study">
+            <div class="settingsCard">
+              <div class="settingsCardHeader">📚 Study Behavior</div>
+              
+              <label class="field" style="margin-bottom: 12px;">
+                <span>Settings scope</span>
+                <select id="settingsScope"></select>
+                <div class="helpText">Group settings override "All Groups".</div>
+              </label>
 
-          <div class="settingsSectionTitle">Study behavior</div>
+              <label class="settingRow">
+                <span class="switch small"><input type="checkbox" id="setRandomize" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Randomize cards</div>
+                  <div class="settingDesc">Shuffle the deck each time you start studying.</div>
+                </div>
+              </label>
 
-          <label class="settingRow">
-            <span class="switch small"><input type="checkbox" id="setRandomize" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Randomize cards</div>
-              <div class="settingDesc">Shuffle the deck each time you start studying this scope.</div>
-            </div>
-          </label>
+              <label class="settingRow">
+                <span class="switch small"><input type="checkbox" id="setLinkRandomize" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Link random order across study tabs</div>
+                  <div class="settingDesc">Changing Random order in one tab updates all study tabs.</div>
+                </div>
+              </label>
+              
+              <div class="settingsSectionTitle">Random order by tab</div>
 
+              <label class="settingRow">
+                <span class="switch small"><input type="checkbox" id="setRandomizeUnlearned" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Unlearned: Random order</div>
+                </div>
+              </label>
 
-          <label class="settingRow">
-            <span class="switch small"><input type="checkbox" id="setLinkRandomize" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Link random order across study tabs</div>
-              <div class="settingDesc">When on, changing Random order in Unlearned / Unsure / Learned Study updates all three.</div>
-            </div>
-          </label>
+              <label class="settingRow">
+                <span class="switch small"><input type="checkbox" id="setRandomizeUnsure" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Unsure: Random order</div>
+                </div>
+              </label>
 
-          <div class="settingsSectionTitle">Random order by tab (All Groups)</div>
+              <label class="settingRow">
+                <span class="switch small"><input type="checkbox" id="setRandomizeLearnedStudy" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Learned Study: Random order</div>
+                </div>
+              </label>
 
-          <label class="settingRow">
-            <span class="switch small"><input type="checkbox" id="setRandomizeUnlearned" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Unlearned: Random order</div>
-              <div class="settingDesc">Shuffle the Unlearned study deck.</div>
-            </div>
-          </label>
-
-          <label class="settingRow">
-            <span class="switch small"><input type="checkbox" id="setRandomizeUnsure" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Unsure: Random order</div>
-              <div class="settingDesc">Shuffle the Unsure study deck.</div>
-            </div>
-          </label>
-
-          <label class="settingRow">
-            <span class="switch small"><input type="checkbox" id="setRandomizeLearnedStudy" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Learned Study: Random order</div>
-              <div class="settingDesc">Shuffle the Learned deck when in Study view.</div>
-            </div>
-          </label>
-
-
-          <label class="settingRow">
-            <span class="switch small"><input type="checkbox" id="setReverseFaces" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Reverse the cards (Definition first)</div>
-              <div class="settingDesc">Show the meaning on the front. Flip to see the term.</div>
-            </div>
-          </label>
-
-          <div class="settingsSectionTitle">What to show on the card</div>
-
-          <label class="settingRow">
-            <span class="switch small"><input type="checkbox" id="setShowGroup" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Show group label</div>
-              <div class="settingDesc">Display the group name in the small pill at the top (e.g., "Directions &amp; Safety").</div>
-            </div>
-          </label>
-
-          <label class="settingRow">
-            <span class="switch small"><input type="checkbox" id="setShowSubgroup" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Show subgroup label</div>
-              <div class="settingDesc">If a card has a subgroup, show it next to the group label in the pill.</div>
-            </div>
-          </label>
-
-                    <div class="settingsSectionTitle">Term breakdown on Study cards</div>
-
-          <label class="settingRow">
-            <span class="switch small"><input type="checkbox" id="setShowBreakdownOnDef" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Show breakdown on definition side</div>
-              <div class="settingDesc">Display the term breakdown (parts + literal meaning) on the back of the card when flipped.</div>
-            </div>
-          </label>
-
-          <label class="settingRow">
-            <span class="switch small"><input type="checkbox" id="setBreakdownApplyAll" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Use one breakdown setting for all Study tabs</div>
-              <div class="settingDesc">When enabled, the "All Study tabs" toggle below is used and the per-tab toggles are locked.</div>
-            </div>
-          </label>
-
-          <label class="settingRow disabled" id="rowBreakdownRemoveAll">
-            <span class="switch small"><input type="checkbox" id="setBreakdownRemoveAll" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">All Study tabs: Remove term breakdown &amp; literal meaning</div>
-              <div class="settingDesc">Hide breakdown info on the definition side for all Study tabs. (If no breakdown is saved, nothing is shown anyway.)</div>
-            </div>
-          </label>
-
-          <label class="settingRow" id="rowBreakdownRemoveUnlearned">
-            <span class="switch small"><input type="checkbox" id="setBreakdownRemoveUnlearned" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Unlearned Study: Remove term breakdown &amp; literal meaning</div>
-              <div class="settingDesc">Hide breakdown info on the definition side while studying Unlearned.</div>
-            </div>
-          </label>
-
-          <label class="settingRow" id="rowBreakdownRemoveUnsure">
-            <span class="switch small"><input type="checkbox" id="setBreakdownRemoveUnsure" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Unsure Study: Remove term breakdown &amp; literal meaning</div>
-              <div class="settingDesc">Hide breakdown info on the definition side while studying Unsure.</div>
-            </div>
-          </label>
-
-          <label class="settingRow" id="rowBreakdownRemoveLearned">
-            <span class="switch small"><input type="checkbox" id="setBreakdownRemoveLearned" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Learned Study: Remove term breakdown &amp; literal meaning</div>
-              <div class="settingDesc">Hide breakdown info on the definition side while studying Learned (Study view).</div>
-            </div>
-          </label>
-
-          <div class="settingsSectionTitle">All-groups ordering</div>
-
-          <div class="settingSelect">
-            <label class="field">
-              <span>All-groups mode</span>
-              <select id="setAllMode">
-                <option value="grouped">Grouped (by group)</option>
-                <option value="flat">Flat (mix all cards)</option>
-              </select>
-              <div class="helpText">Grouped keeps cards organized by group. Flat mixes everything together.</div>
-            </label>
-
-            <label class="field">
-              <span>Group order (when grouped)</span>
-              <select id="setGroupOrder">
-                <option value="alpha">Alphabetical</option>
-                <option value="json">As in JSON file</option>
-              </select>
-              <div class="helpText">Controls the order groups appear when using Grouped mode.</div>
-            </label>
-
-            <label class="field">
-              <span>Card order (when not randomized)</span>
-              <select id="setCardOrder">
-                <option value="json">As in JSON file</option>
-                <option value="alpha">Alphabetical by term</option>
-              </select>
-              <div class="helpText">Only used when Randomize is OFF.</div>
-            </label>
-          </div>
-
-          <div id="listSettingsSection">
-            <div class="settingsSectionTitle">List pages</div>
-
-            <label class="settingRow">
-              <span class="switch small"><input type="checkbox" id="setShowDefAllList" /><span class="slider"></span></span>
-              <div class="settingText">
-                <div class="settingTitle">All list: Show definitions</div>
-                <div class="settingDesc">When off, the All page hides the definition (meaning).</div>
-              </div>
-            </label>
-
-            <label class="settingRow">
-              <span class="switch small"><input type="checkbox" id="setShowDefLearnedList" /><span class="slider"></span></span>
-              <div class="settingText">
-                <div class="settingTitle">Learned List View: Show definitions</div>
-                <div class="settingDesc">When off, the Learned page hides the definition (meaning).</div>
-              </div>
-            </label>
-
-            <label class="settingRow">
-              <span class="switch small"><input type="checkbox" id="setLearnedListShowMoveBtns" /><span class="slider"></span></span>
-              <div class="settingText">
-                <div class="settingTitle">Learned List View: show Relearn &amp; Still Unsure buttons</div>
-                <div class="settingDesc">When off, the Learned list view hides the Relearn and Still Unsure buttons (Study view still shows them).</div>
-              </div>
-            </label>
-
-            <label class="settingRow">
-              <span class="switch small"><input type="checkbox" id="setLearnedListShowGroupLabel" /><span class="slider"></span></span>
-              <div class="settingText">
-                <div class="settingTitle">Learned List View: show group label</div>
-                <div class="settingDesc">When off, the Learned list view hides the group name line.</div>
-              </div>
-            </label>
-
-            <label class="settingRow">
-              <span class="switch small"><input type="checkbox" id="setAllListShowUnlearnedUnsureBtns" /><span class="slider"></span></span>
-              <div class="settingText">
-                <div class="settingTitle">All list: show Unlearned &amp; Unsure buttons</div>
-                <div class="settingDesc">When off, the All page hides the Unlearned and Unsure action buttons on each card.</div>
-              </div>
-            </label>
-          </div>
-
-
-          <div id="aiSettingsSection">
-            <div class="settingsSectionTitle">AI breakdown auto-fill</div>
-
-            <div class="settingSelect">
-              <label class="field">
-                <span>Provider</span>
-                <select id="setBreakdownProvider">
-                  <option value="auto">Auto (try OpenAI, then Gemini)</option>
-                  <option value="openai">OpenAI only</option>
-                  <option value="gemini">Gemini only</option>
-                  <option value="off">Off (built-in only)</option>
-                </select>
-                <div class="helpText" id="aiStatusLine">Status: checking…</div>
+              <label class="settingRow">
+                <span class="switch small"><input type="checkbox" id="setReverseFaces" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Reverse the cards (Definition first)</div>
+                  <div class="settingDesc">Show the meaning on the front. Flip to see the term.</div>
+                </div>
               </label>
             </div>
           </div>
 
-          <div class="settingsSectionTitle">Speech settings</div>
+          <!-- DISPLAY SECTION -->
+          <div class="settingsSection" id="settingsDisplay" data-section="display">
+            <div class="settingsCard">
+              <div class="settingsCardHeader">🎨 Display Options</div>
 
-          <div class="settingSelect">
-            <label class="field">
-              <span>Voice</span>
-              <select id="setSpeechVoice">
-                <option value="">Default voice</option>
-              </select>
-              <div class="helpText">Choose from available system voices (male/female, different accents).</div>
-            </label>
+              <label class="settingRow">
+                <span class="switch small"><input type="checkbox" id="setShowGroup" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Show group label</div>
+                  <div class="settingDesc">Display the group name pill on cards.</div>
+                </div>
+              </label>
 
-            <label class="field">
-              <span>Speed: <span id="rateLabel">1x</span></span>
-              <input type="range" id="setSpeechRate" min="0.5" max="2" step="0.1" value="1" class="rangeInput" />
-              <div class="helpText">Adjust speech speed from 0.5x (slow) to 2x (fast).</div>
-            </label>
+              <label class="settingRow">
+                <span class="switch small"><input type="checkbox" id="setShowSubgroup" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Show subgroup label</div>
+                  <div class="settingDesc">Show subgroup next to group in the pill.</div>
+                </div>
+              </label>
+
+              <div class="settingsSectionTitle">Term Breakdown on Study Cards</div>
+
+              <label class="settingRow">
+                <span class="switch small"><input type="checkbox" id="setShowBreakdownOnDef" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Show breakdown on definition side</div>
+                  <div class="settingDesc">Display term breakdown on the back of the card.</div>
+                </div>
+              </label>
+
+              <label class="settingRow">
+                <span class="switch small"><input type="checkbox" id="setBreakdownApplyAll" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Use one breakdown setting for all Study tabs</div>
+                </div>
+              </label>
+
+              <label class="settingRow disabled" id="rowBreakdownRemoveAll">
+                <span class="switch small"><input type="checkbox" id="setBreakdownRemoveAll" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">All tabs: Remove breakdown</div>
+                </div>
+              </label>
+
+              <label class="settingRow" id="rowBreakdownRemoveUnlearned">
+                <span class="switch small"><input type="checkbox" id="setBreakdownRemoveUnlearned" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Unlearned: Remove breakdown</div>
+                </div>
+              </label>
+
+              <label class="settingRow" id="rowBreakdownRemoveUnsure">
+                <span class="switch small"><input type="checkbox" id="setBreakdownRemoveUnsure" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Unsure: Remove breakdown</div>
+                </div>
+              </label>
+
+              <label class="settingRow" id="rowBreakdownRemoveLearned">
+                <span class="switch small"><input type="checkbox" id="setBreakdownRemoveLearned" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Learned Study: Remove breakdown</div>
+                </div>
+              </label>
+
+              <div class="settingsSectionTitle">All-groups Ordering</div>
+
+              <div class="settingSelect">
+                <label class="field">
+                  <span>All-groups mode</span>
+                  <select id="setAllMode">
+                    <option value="grouped">Grouped (by group)</option>
+                    <option value="flat">Flat (mix all cards)</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>Group order</span>
+                  <select id="setGroupOrder">
+                    <option value="alpha">Alphabetical</option>
+                    <option value="json">As in JSON file</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>Card order</span>
+                  <select id="setCardOrder">
+                    <option value="json">As in JSON file</option>
+                    <option value="alpha">Alphabetical</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="settingsSectionTitle" id="listSettingsSection">List Page Settings</div>
+
+              <label class="settingRow">
+                <span class="switch small"><input type="checkbox" id="setShowDefAllList" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Show definitions in All list</div>
+                </div>
+              </label>
+
+              <label class="settingRow">
+                <span class="switch small"><input type="checkbox" id="setShowDefLearnedList" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Show definitions in Learned list</div>
+                </div>
+              </label>
+
+              <label class="settingRow">
+                <span class="switch small"><input type="checkbox" id="setAllListShowUnlearnedUnsureBtns" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">All list: Show Unlearned/Unsure buttons</div>
+                </div>
+              </label>
+
+              <label class="settingRow">
+                <span class="switch small"><input type="checkbox" id="setLearnedListShowMoveBtns" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Learned list: Show Relearn/Unsure buttons</div>
+                </div>
+              </label>
+
+              <label class="settingRow">
+                <span class="switch small"><input type="checkbox" id="setLearnedListShowGroupLabel" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Learned list: Show group label</div>
+                </div>
+              </label>
+            </div>
           </div>
 
-          <label class="settingRow">
-            <span class="switch small"><input type="checkbox" id="setAutoSpeakOnCardChange" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Auto-speak term on card change</div>
-              <div class="settingDesc">Automatically speak the term when navigating to the next or previous card.</div>
-            </div>
-          </label>
+          <!-- VOICE SECTION -->
+          <div class="settingsSection" id="settingsVoice" data-section="voice">
+            <div class="settingsCard">
+              <div class="settingsCardHeader">🔊 Speech Settings</div>
 
-          <label class="settingRow">
-            <span class="switch small"><input type="checkbox" id="setSpeakDefinitionOnFlip" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Speak definition when flipped</div>
-              <div class="settingDesc">Automatically speak the definition when the card is flipped to the back side.</div>
-            </div>
-          </label>
+              <div class="settingSelect">
+                <label class="field">
+                  <span>Voice</span>
+                  <select id="setSpeechVoice">
+                    <option value="">Default voice</option>
+                  </select>
+                  <div class="helpText">Choose from available system voices.</div>
+                </label>
 
-          <div class="actionsRow" style="margin-top:10px;">
-            <button id="resetVoiceBtn" class="secondary">Reset Voice to Default</button>
-            <button id="testVoiceBtn" class="secondary">Test Voice</button>
+                <label class="field">
+                  <span>Speed: <span id="rateLabel">1x</span></span>
+                  <input type="range" id="setSpeechRate" min="0.5" max="2" step="0.1" value="1" class="rangeInput" />
+                  <div class="helpText">0.5x (slow) to 2x (fast).</div>
+                </label>
+              </div>
+
+              <label class="settingRow">
+                <span class="switch small"><input type="checkbox" id="setAutoSpeakOnCardChange" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Auto-speak term on card change</div>
+                  <div class="settingDesc">Speak the term when navigating cards.</div>
+                </div>
+              </label>
+
+              <label class="settingRow">
+                <span class="switch small"><input type="checkbox" id="setSpeakDefinitionOnFlip" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Speak definition when flipped</div>
+                  <div class="settingDesc">Speak the definition when card flips to back.</div>
+                </div>
+              </label>
+
+              <div class="settingsBtnRow">
+                <button id="resetVoiceBtn" class="appBtn secondary">Reset Voice</button>
+                <button id="testVoiceBtn" class="appBtn primary">🔊 Test Voice</button>
+              </div>
+            </div>
           </div>
 
-          <div class="actionsRow">
-            <button id="resetSettingsBtn" class="secondary">Reset settings to defaults</button>
-            <button id="saveSettingsBtn" class="good">Save settings</button>
+          <!-- SYNC SECTION -->
+          <div class="settingsSection" id="settingsSync" data-section="sync">
+            <div class="settingsCard syncCard">
+              <div class="loginStatusBanner" id="syncLoginStatus">
+                <span class="statusIcon">✓</span>
+                <div class="statusText">
+                  <div class="statusTitle">Login Status: <span id="syncLoginLabel">Checking...</span></div>
+                  <div class="statusSub" id="syncUserLabel">User: --</div>
+                </div>
+              </div>
+
+              <div class="settingsCardHeader">🔄 Web App Sync</div>
+              <p class="settingDesc">Sync your study progress with the web server</p>
+              <p class="syncLastTime">Last sync: <span id="syncLastTime">Never</span></p>
+
+              <div class="syncInfoBox">
+                <div class="syncInfoTitle">⚡ Auto-Sync</div>
+                <ul class="syncInfoList">
+                  <li>First login always syncs automatically</li>
+                  <li>Auto-pull on login: pulls latest progress when you log in</li>
+                  <li>Auto-push on change: pushes updates whenever you mark a card</li>
+                </ul>
+              </div>
+
+              <div class="syncSection">
+                <div class="syncSectionTitle">Manual Sync</div>
+                <p class="settingDesc">Push sends your progress to server. Pull downloads server progress to device.</p>
+                <div class="settingsBtnRow">
+                  <button id="syncPushBtn" class="appBtn primary">⬆️ Push</button>
+                  <button id="syncPullBtn" class="appBtn primary">⬇️ Pull</button>
+                </div>
+              </div>
+
+              <div class="syncDivider"></div>
+
+              <div class="syncSection">
+                <div class="syncSectionTitle">Sync Breakdowns</div>
+                <p class="settingDesc">Download shared breakdowns from server</p>
+                <button id="syncBreakdownsBtn" class="appBtn primary fullWidth">🧩 Sync Breakdowns</button>
+              </div>
+
+              <div class="syncStatus" id="syncStatus"></div>
+            </div>
+          </div>
+
+          <!-- AI SECTION -->
+          <div class="settingsSection" id="settingsAI" data-section="ai">
+            <div class="settingsCard">
+              <div class="settingsCardHeader">🤖 AI Features</div>
+              <p class="settingDesc">AI assists with breakdowns & card creation</p>
+
+              <div class="settingSelect">
+                <label class="field">
+                  <span>Breakdown AI Provider</span>
+                  <select id="setBreakdownProvider">
+                    <option value="auto">Auto Select (Best Result)</option>
+                    <option value="openai">OpenAI only</option>
+                    <option value="gemini">Gemini only</option>
+                    <option value="off">Off (built-in only)</option>
+                  </select>
+                  <div class="helpText" id="aiStatusLine">Status: checking…</div>
+                </label>
+              </div>
+
+              <div class="aiStatusGrid" id="aiStatusGrid">
+                <div class="aiStatusItem">
+                  <span class="aiStatusLabel">ChatGPT:</span>
+                  <span class="aiStatusValue" id="aiChatgptStatus">--</span>
+                </div>
+                <div class="aiStatusItem">
+                  <span class="aiStatusLabel">Gemini:</span>
+                  <span class="aiStatusValue" id="aiGeminiStatus">--</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Actions -->
+          <div class="settingsBottomActions">
+            <button id="resetSettingsBtn" class="appBtn danger">🔄 Reset to Default</button>
+            <button id="saveSettingsBtn" class="appBtn success">💾 Save Settings</button>
+            <button id="closeSettingsBtn" class="appBtn secondary">Close</button>
           </div>
         </div>
-
       </section>
     </main>
   </div>
@@ -490,13 +555,13 @@
           </label>
         </div>
         <div class="modalBtns">
-          <button class="good" id="btnLogin">Sign In</button>
+          <button class="appBtn success fullWidth" id="btnLogin">🔐 Sign In</button>
         </div>
         <div class="modalDivider">
           <span>or</span>
         </div>
         <div class="modalBtns">
-          <button class="secondary" id="btnShowRegister">Create New Account</button>
+          <button class="appBtn secondary fullWidth" id="btnShowRegister">Create New Account</button>
         </div>
       </div>
 
@@ -517,13 +582,13 @@
           </label>
         </div>
         <div class="modalBtns">
-          <button class="good" id="btnRegister">Create Account</button>
+          <button class="appBtn success fullWidth" id="btnRegister">✨ Create Account</button>
         </div>
         <div class="modalDivider">
           <span>or</span>
         </div>
         <div class="modalBtns">
-          <button class="secondary" id="btnShowLogin">Back to Sign In</button>
+          <button class="appBtn secondary fullWidth" id="btnShowLogin">Back to Sign In</button>
         </div>
         <div class="modalFinePrint">
           Your progress syncs across all devices when you sign in with the same account.
@@ -533,8 +598,6 @@
   </div>
 
   <script src="/app.js" defer></script>
-
-  
 
 </body>
 </html>

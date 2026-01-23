@@ -517,3 +517,303 @@ button.danger{background:#321313;border-color:#6e2222}
 .mutedSmall{ opacity: 0.85; font-size: 12px; }
 #userLine{ cursor: pointer; user-select: none; }
 #userLine:focus{ outline: 2px solid rgba(255,255,255,0.18); outline-offset: 2px; border-radius: 10px; }
+.userMenuAction{
+  display: block;
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.10);
+  cursor: pointer;
+  color: inherit;
+  background: rgba(255,255,255,0.03);
+}
+.userMenuAction:hover{ background: rgba(255,255,255,0.08); }
+.userMenuDivider{
+  height: 1px;
+  background: rgba(255,255,255,0.1);
+  margin: 8px 0;
+}
+.userBtn{
+  padding: 6px 12px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* App-like buttons */
+.appBtn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 24px;
+  border-radius: 12px;
+  border: none;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.appBtn.primary{
+  background: linear-gradient(135deg, #1f6feb 0%, #1a5cc7 100%);
+  color: #fff;
+}
+.appBtn.primary:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(31, 111, 235, 0.4);
+}
+.appBtn.success{
+  background: linear-gradient(135deg, #166534 0%, #14532d 100%);
+  color: #fff;
+}
+.appBtn.success:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(22, 101, 52, 0.4);
+}
+.appBtn.danger{
+  background: linear-gradient(135deg, #991b1b 0%, #7f1d1d 100%);
+  color: #fff;
+}
+.appBtn.danger:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(153, 27, 27, 0.4);
+}
+.appBtn.secondary{
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.appBtn.secondary:hover{
+  background: rgba(255,255,255,0.12);
+}
+.appBtn.fullWidth{
+  width: 100%;
+}
+
+/* Settings page redesign */
+.settingsPage h2{
+  margin: 0 0 16px 0;
+  font-size: 24px;
+}
+.settingsNav{
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.settingsNavBtn{
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+.settingsNavBtn:hover{
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
+}
+.settingsNavBtn.active{
+  background: linear-gradient(135deg, #1f6feb 0%, #1a5cc7 100%);
+  color: #fff;
+  border-color: #1f6feb;
+}
+.settingsSection{
+  display: none;
+}
+.settingsSection.active{
+  display: block;
+}
+.settingsCard{
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.settingsCardHeader{
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.settingsBtnRow{
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.settingsBottomActions{
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Sync page styles */
+.syncCard{
+  background: rgba(255,255,255,0.02);
+}
+.loginStatusBanner{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(22, 101, 52, 0.3) 0%, rgba(20, 83, 45, 0.2) 100%);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+.loginStatusBanner .statusIcon{
+  font-size: 24px;
+  color: #4ade80;
+}
+.loginStatusBanner .statusTitle{
+  font-weight: 600;
+  color: #fff;
+}
+.loginStatusBanner .statusSub{
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
+}
+.loginStatusBanner.loggedOut{
+  background: linear-gradient(135deg, rgba(153, 27, 27, 0.3) 0%, rgba(127, 29, 29, 0.2) 100%);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+.loginStatusBanner.loggedOut .statusIcon{
+  color: #f87171;
+}
+.syncLastTime{
+  font-size: 13px;
+  color: var(--muted);
+  margin: 8px 0 16px 0;
+}
+.syncInfoBox{
+  background: rgba(31, 111, 235, 0.1);
+  border: 1px solid rgba(31, 111, 235, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+.syncInfoTitle{
+  font-weight: 600;
+  color: #5ca5ff;
+  margin-bottom: 8px;
+}
+.syncInfoList{
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.8);
+  line-height: 1.6;
+}
+.syncSection{
+  margin-bottom: 16px;
+}
+.syncSectionTitle{
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.syncDivider{
+  height: 1px;
+  background: rgba(255,255,255,0.1);
+  margin: 20px 0;
+}
+.syncStatus{
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: none;
+}
+.syncStatus.success{
+  display: block;
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+.syncStatus.error{
+  display: block;
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+/* AI status grid */
+.aiStatusGrid{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+.aiStatusItem{
+  background: rgba(0,0,0,0.2);
+  padding: 12px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.aiStatusLabel{
+  color: var(--muted);
+  font-size: 13px;
+}
+.aiStatusValue{
+  font-weight: 500;
+}
+.aiStatusValue.active{
+  color: #4ade80;
+}
+.aiStatusValue.inactive{
+  color: #f87171;
+}
+
+/* Star button */
+.starBtn{
+  font-size: 18px;
+  min-width: 44px;
+}
+.starBtn.starred{
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.15);
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+/* List controls */
+.listHeader{
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.listControls{
+  display: flex;
+  gap: 12px;
+  align-items: end;
+}
+.field.small span{
+  font-size: 11px;
+}
+.field.small select{
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+/* Item star button in list */
+.itemStar{
+  font-size: 16px;
+  padding: 6px 10px;
+  min-width: 36px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.itemStar.starred{
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.15);
+  border-color: rgba(251, 191, 36, 0.3);
+}

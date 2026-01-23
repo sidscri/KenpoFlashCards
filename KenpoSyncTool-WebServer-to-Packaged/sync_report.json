@@ -1,0 +1,81 @@
+{
+  "timestamp": "20260123_093940",
+  "dry_run": false,
+  "source": "C:\\Users\\Sidscri\\Documents\\GitHub\\sidscri-apps\\KenpoFlashcardsWebServer",
+  "target": "C:\\Users\\Sidscri\\Documents\\GitHub\\sidscri-apps\\KenpoFlashcardsWebServer_Packaged",
+  "patterns": [
+    "app.py",
+    "requirements.txt",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "BRANDING_NOTE.md",
+    ".gitattributes",
+    "static/**"
+  ],
+  "changed_count": 4,
+  "actions": [
+    {
+      "src": "C:\\Users\\Sidscri\\Documents\\GitHub\\sidscri-apps\\KenpoFlashcardsWebServer\\app.py",
+      "dst": "C:\\Users\\Sidscri\\Documents\\GitHub\\sidscri-apps\\KenpoFlashcardsWebServer_Packaged\\app.py",
+      "status": "copied",
+      "detail": "backup -> C:\\Users\\Sidscri\\Documents\\GitHub\\sidscri-apps\\KenpoFlashcardsWebServer_Packaged\\.sync_backups\\20260123_093940\\app.py"
+    },
+    {
+      "src": "C:\\Users\\Sidscri\\Documents\\GitHub\\sidscri-apps\\KenpoFlashcardsWebServer\\CHANGELOG.md",
+      "dst": "C:\\Users\\Sidscri\\Documents\\GitHub\\sidscri-apps\\KenpoFlashcardsWebServer_Packaged\\CHANGELOG.md",
+      "status": "copied",
+      "detail": "backup -> C:\\Users\\Sidscri\\Documents\\GitHub\\sidscri-apps\\KenpoFlashcardsWebServer_Packaged\\.sync_backups\\20260123_093940\\CHANGELOG.md"
+    },
+    {
+      "src": "C:\\Users\\Sidscri\\Documents\\GitHub\\sidscri-apps\\KenpoFlashcardsWebServer\\README.md",
+      "dst": "C:\\Users\\Sidscri\\Documents\\GitHub\\sidscri-apps\\KenpoFlashcardsWebServer_Packaged\\README.md",
+      "status": "copied",
+      "detail": "backup -> C:\\Users\\Sidscri\\Documents\\GitHub\\sidscri-apps\\KenpoFlashcardsWebServer_Packaged\\.sync_backups\\20260123_093940\\README.md"
+    },
+    {
+      "src": "C:\\Users\\Sidscri\\Documents\\GitHub\\sidscri-apps\\KenpoFlashcardsWebServer\\requirements.txt",
+      "dst": "C:\\Users\\Sidscri\\Documents\\GitHub\\sidscri-apps\\KenpoFlashcardsWebServer_Packaged\\requirements.txt",
+      "status": "copied",
+      "detail": "backup -> C:\\Users\\Sidscri\\Documents\\GitHub\\sidscri-apps\\KenpoFlashcardsWebServer_Packaged\\.sync_backups\\20260123_093940\\requirements.txt"
+    }
+  ],
+  "skipped_count": 3,
+  "skipped": [
+    {
+      "src": "C:\\Users\\Sidscri\\Documents\\GitHub\\sidscri-apps\\KenpoFlashcardsWebServer\\.gitattributes",
+      "rel": ".gitattributes",
+      "reason": "identical"
+    },
+    {
+      "src": "C:\\Users\\Sidscri\\Documents\\GitHub\\sidscri-apps\\KenpoFlashcardsWebServer\\BRANDING_NOTE.md",
+      "rel": "BRANDING_NOTE.md",
+      "reason": "identical"
+    },
+    {
+      "src": "C:\\Users\\Sidscri\\Documents\\GitHub\\sidscri-apps\\KenpoFlashcardsWebServer\\LICENSE",
+      "rel": "LICENSE",
+      "reason": "identical"
+    }
+  ],
+  "protected_dirs": [
+    ".git",
+    ".github",
+    ".idea",
+    ".sync_backups",
+    ".venv",
+    ".vscode",
+    "__pycache__",
+    "build",
+    "dist",
+    "logs",
+    "output",
+    "packaging",
+    "venv"
+  ],
+  "protected_file_patterns": [
+    "version.json",
+    "Version-*.txt",
+    "KenpoFlashcardsTrayLauncher.py"
+  ]
+}

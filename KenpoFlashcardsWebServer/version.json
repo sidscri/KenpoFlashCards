@@ -1,7 +1,7 @@
 {
   "name": "KenpoFlashcardsWebServer",
-  "version": "6.0.0",
-  "build": 31,
-  "released": "2026-01-22",
-  "notes": "Added: Custom Set (starred cards) tab, show_breakdown_on_definition toggle, auto-speak on card change, speak definition on flip. Improved: Admin dashboard with stats, graphs, and better UI."
+  "version": "6.1.0",
+  "build": 32,
+  "released": "2026-01-23",
+  "notes": "UI overhaul: App-like settings with tabbed navigation, Sync Progress page, star buttons on study cards, sort by status in All list, logout moved to user menu."
 }

@@ -870,6 +870,9 @@ function renderStudyCard(){
 
   $("cardPos").textContent = `Card ${deckIndex+1} / ${deck.length}`;
 
+  // Update star button
+  updateStudyStarButton(c);
+
   // Optional: show saved breakdown + literal meaning on the definition side
   updateStudyDefinitionExtras(c, settings);
 }
@@ -1192,10 +1195,39 @@ async function loadList(status){
   const q = ($("searchBox").value || "").trim();
   const groupParam = scopeGroup ? `&group=${encodeURIComponent(scopeGroup)}` : "";
   const qParam = q ? `&q=${encodeURIComponent(q)}` : "";
-  const cards = await jget(`/api/cards?status=${encodeURIComponent(status)}${groupParam}${qParam}`);
+  let cards = await jget(`/api/cards?status=${encodeURIComponent(status)}${groupParam}${qParam}`);
 
   const titleMap = {learned:"Learned", deleted:"Deleted", all:"All"};
   $("listTitle").textContent = titleMap[status] || "List";
+
+  // Show/hide sort dropdown for All list
+  const sortField = $("sortByStatusField");
+  if(sortField){
+    sortField.style.display = (status === "all") ? "flex" : "none";
+  }
+
+  // Apply sorting for All list
+  if(status === "all"){
+    const sortBy = $("sortByStatus") ? $("sortByStatus").value : "";
+    if(sortBy === "unlearned"){
+      cards.sort((a,b) => {
+        const order = {active: 0, unsure: 1, learned: 2};
+        return (order[a.status] || 3) - (order[b.status] || 3);
+      });
+    } else if(sortBy === "unsure"){
+      cards.sort((a,b) => {
+        const order = {unsure: 0, active: 1, learned: 2};
+        return (order[a.status] || 3) - (order[b.status] || 3);
+      });
+    } else if(sortBy === "learned"){
+      cards.sort((a,b) => {
+        const order = {learned: 0, unsure: 1, active: 2};
+        return (order[a.status] || 3) - (order[b.status] || 3);
+      });
+    } else if(sortBy === "alpha"){
+      cards.sort((a,b) => (a.term || "").localeCompare(b.term || ""));
+    }
+  }
 
   const bulk = $("bulkBtns");
   bulk.innerHTML = "";
@@ -1297,18 +1329,17 @@ if(chk) left.appendChild(chk);
 
       // Star button for Custom Set
       const starBtn = document.createElement("button");
-      starBtn.className = "secondary iconOnly"; 
+      starBtn.className = c.in_custom_set ? "itemStar starred" : "itemStar"; 
       starBtn.textContent = c.in_custom_set ? "★" : "☆"; 
       starBtn.title = c.in_custom_set ? "Remove from Custom Set" : "Add to Custom Set"; 
       starBtn.setAttribute("aria-label", starBtn.title);
-      starBtn.style.color = c.in_custom_set ? "#fbbf24" : "";
       starBtn.addEventListener("click", async ()=>{ 
         const inSet = await toggleCustomSet(c.id);
         if(inSet !== null){
           c.in_custom_set = inSet;
           starBtn.textContent = inSet ? "★" : "☆";
+          starBtn.className = inSet ? "itemStar starred" : "itemStar";
           starBtn.title = inSet ? "Remove from Custom Set" : "Add to Custom Set";
-          starBtn.style.color = inSet ? "#fbbf24" : "";
           setStatus(inSet ? "Added to Custom Set" : "Removed from Custom Set");
         }
       });
@@ -1821,16 +1852,10 @@ async function main(){
     }
   });
 
-  bind("logoutBtn","click", async ()=>{
-    try{ await jpost("/api/logout", {}); } catch(e){}
-    currentUser = null;
-    setUserLine();
-    appInitialized = false;
-    allGroups = [];
-    try{ $("groupSelect").innerHTML = ""; } catch(e){}
-    try{ $("settingsScope").innerHTML = ""; } catch(e){}
-    await ensureLoggedIn();
-  });
+  bind("logoutBtn","click", doLogout);
+  // Also bind to user menu logout
+  bind("userMenuLogout","click", doLogout);
+  
   bind("tabActive","click", ()=>setTab("active"));
   bind("tabUnsure","click", ()=>setTab("unsure"));
   bind("tabLearned","click", ()=>setTab("learned"));
@@ -2013,6 +2038,9 @@ async function main(){
       // Learned study: move back to Unlearned
       return setCurrentStatus("active");
     }
+    if(activeTab === "custom"){
+      return setCurrentStatus("learned");
+    }
     return setCurrentStatus("learned");
   });
   bind("unsureBtn","click", ()=>{
@@ -2021,8 +2049,40 @@ async function main(){
       return setCurrentStatus("unsure");
     }
     if(activeTab === "unsure") return setCurrentStatus("active");
+    if(activeTab === "custom") return setCurrentStatus("unsure");
     return setCurrentStatus("unsure");
   });
+  
+  // Star button on study card
+  bind("starStudyBtn","click", async ()=>{
+    if(!deck.length) return;
+    const c = deck[deckIndex];
+    const inSet = await toggleCustomSet(c.id);
+    if(inSet !== null){
+      c.in_custom_set = inSet;
+      updateStudyStarButton(c);
+      setStatus(inSet ? "Added to Custom Set" : "Removed from Custom Set");
+    }
+  });
+  
+  // Sort by status dropdown for All list
+  bind("sortByStatus","change", async ()=>{
+    await refresh();
+  });
+  
+  // Settings nav tabs
+  document.querySelectorAll(".settingsNavBtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const section = btn.getAttribute("data-section");
+      switchSettingsSection(section);
+    });
+  });
+  
+  // Sync buttons
+  bind("syncPushBtn","click", doSyncPush);
+  bind("syncPullBtn","click", doSyncPull);
+  bind("syncBreakdownsBtn","click", doSyncBreakdowns);
+  
 bind("card","click", flip);
   bind("card","keydown", (e)=>{
     if(e.code === "Space" || e.code === "Enter"){
@@ -2102,3 +2162,178 @@ main().catch(err=>{
 });
 
 try{ wireUserMenu(); }catch(e){}
+
+// Logout function
+async function doLogout(){
+  try{ await jpost("/api/logout", {}); } catch(e){}
+  currentUser = null;
+  setUserLine();
+  appInitialized = false;
+  allGroups = [];
+  try{ $("groupSelect").innerHTML = ""; } catch(e){}
+  try{ $("settingsScope").innerHTML = ""; } catch(e){}
+  // Close user menu
+  const menu = $("userMenu");
+  if(menu) menu.classList.add("hidden");
+  await ensureLoggedIn();
+}
+
+// Settings nav section switching
+function switchSettingsSection(section){
+  // Update nav buttons
+  document.querySelectorAll(".settingsNavBtn").forEach(btn => {
+    btn.classList.toggle("active", btn.getAttribute("data-section") === section);
+  });
+  // Update sections
+  document.querySelectorAll(".settingsSection").forEach(sec => {
+    sec.classList.toggle("active", sec.getAttribute("data-section") === section);
+  });
+  // Update sync section info if switching to sync
+  if(section === "sync"){
+    updateSyncSectionInfo();
+  }
+  // Update AI section info
+  if(section === "ai"){
+    updateAISectionInfo();
+  }
+}
+
+// Update sync section with current user info
+function updateSyncSectionInfo(){
+  const loginLabel = $("syncLoginLabel");
+  const userLabel = $("syncUserLabel");
+  const banner = $("syncLoginStatus");
+  
+  if(currentUser){
+    if(loginLabel) loginLabel.textContent = "Logged In" + (isAdminUser() ? " (Admin)" : "");
+    if(userLabel) userLabel.textContent = `User: ${currentUser.display_name || currentUser.username}` + (isAdminUser() ? " (Admin)" : "");
+    if(banner) banner.classList.remove("loggedOut");
+  } else {
+    if(loginLabel) loginLabel.textContent = "Not Logged In";
+    if(userLabel) userLabel.textContent = "User: --";
+    if(banner) banner.classList.add("loggedOut");
+  }
+  
+  // Update last sync time from localStorage
+  const lastSync = localStorage.getItem("kenpo_last_sync");
+  const syncTime = $("syncLastTime");
+  if(syncTime){
+    if(lastSync){
+      const d = new Date(parseInt(lastSync));
+      syncTime.textContent = d.toLocaleString();
+    } else {
+      syncTime.textContent = "Never";
+    }
+  }
+}
+
+// Update AI section info
+function updateAISectionInfo(){
+  const chatgptStatus = $("aiChatgptStatus");
+  const geminiStatus = $("aiGeminiStatus");
+  
+  if(chatgptStatus){
+    if(aiStatus && aiStatus.openai_available){
+      chatgptStatus.textContent = aiStatus.openai_model || "Available";
+      chatgptStatus.className = "aiStatusValue active";
+    } else {
+      chatgptStatus.textContent = "Not configured";
+      chatgptStatus.className = "aiStatusValue inactive";
+    }
+  }
+  
+  if(geminiStatus){
+    if(aiStatus && aiStatus.gemini_available){
+      geminiStatus.textContent = aiStatus.gemini_model || "Available";
+      geminiStatus.className = "aiStatusValue active";
+    } else {
+      geminiStatus.textContent = "Not configured";
+      geminiStatus.className = "aiStatusValue inactive";
+    }
+  }
+}
+
+// Sync push
+async function doSyncPush(){
+  const statusEl = $("syncStatus");
+  try{
+    statusEl.className = "syncStatus";
+    statusEl.textContent = "Pushing...";
+    statusEl.style.display = "block";
+    
+    // Get current progress and push
+    const res = await jpost("/api/sync/push", {});
+    
+    localStorage.setItem("kenpo_last_sync", Date.now().toString());
+    updateSyncSectionInfo();
+    
+    statusEl.className = "syncStatus success";
+    statusEl.textContent = "✓ Push complete!";
+    setTimeout(()=>{ statusEl.style.display = "none"; }, 3000);
+  } catch(e){
+    statusEl.className = "syncStatus error";
+    statusEl.textContent = "✗ Push failed: " + (e.message || "Unknown error");
+  }
+}
+
+// Sync pull
+async function doSyncPull(){
+  const statusEl = $("syncStatus");
+  try{
+    statusEl.className = "syncStatus";
+    statusEl.textContent = "Pulling...";
+    statusEl.style.display = "block";
+    
+    const res = await jget("/api/sync/pull");
+    
+    localStorage.setItem("kenpo_last_sync", Date.now().toString());
+    updateSyncSectionInfo();
+    
+    // Refresh counts and view
+    await refreshCounts();
+    
+    statusEl.className = "syncStatus success";
+    statusEl.textContent = "✓ Pull complete!";
+    setTimeout(()=>{ statusEl.style.display = "none"; }, 3000);
+  } catch(e){
+    statusEl.className = "syncStatus error";
+    statusEl.textContent = "✗ Pull failed: " + (e.message || "Unknown error");
+  }
+}
+
+// Sync breakdowns
+async function doSyncBreakdowns(){
+  const statusEl = $("syncStatus");
+  try{
+    statusEl.className = "syncStatus";
+    statusEl.textContent = "Syncing breakdowns...";
+    statusEl.style.display = "block";
+    
+    const res = await jget("/api/sync/breakdowns");
+    
+    // Update local breakdown cache
+    if(res && res.breakdowns){
+      for(const [id, bd] of Object.entries(res.breakdowns)){
+        breakdownInlineCache[id] = bd;
+      }
+    }
+    
+    statusEl.className = "syncStatus success";
+    statusEl.textContent = `✓ Synced ${Object.keys(res.breakdowns || {}).length} breakdowns!`;
+    setTimeout(()=>{ statusEl.style.display = "none"; }, 3000);
+  } catch(e){
+    statusEl.className = "syncStatus error";
+    statusEl.textContent = "✗ Sync failed: " + (e.message || "Unknown error");
+  }
+}
+
+// Update star button on study card
+function updateStudyStarButton(card){
+  const btn = $("starStudyBtn");
+  if(!btn) return;
+  
+  const inSet = card && card.in_custom_set;
+  btn.textContent = inSet ? "★" : "☆";
+  btn.classList.toggle("starred", inSet);
+  btn.title = inSet ? "Remove from Custom Set" : "Add to Custom Set";
+}

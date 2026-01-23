@@ -3,115 +3,377 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Admin • Kenpo Flashcards (Web)</title>
+  <title>Admin Dashboard • Kenpo Flashcards</title>
   <link rel="stylesheet" href="/styles.css" />
   <style>
-    .page { max-width: 980px; margin: 0 auto; padding: 18px; }
-    .card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10); border-radius: 14px; padding: 16px; margin: 12px 0; }
-    .row { display:flex; flex-wrap:wrap; gap:10px; }
-    .row > * { flex: 1 1 280px; }
-    .muted { opacity: 0.85; }
-    code, pre { background: rgba(0,0,0,0.25); padding: 2px 6px; border-radius: 8px; }
-    button { padding:10px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.06); color: inherit; cursor: pointer; }
-    button:hover { background: rgba(255,255,255,0.10); }
-    pre { white-space: pre-wrap; }
-    .btn-primary { background: #1f6feb; border-color: #1f6feb; }
-    .btn-primary:hover { background: #1a5cc7; }
+    .admin-page { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+    .admin-header h1 { margin: 0; font-size: 28px; display: flex; align-items: center; gap: 12px; }
+    .admin-header h1 span { font-size: 32px; }
+    .admin-nav { display: flex; gap: 12px; flex-wrap: wrap; }
+    .admin-nav a { color: #5ca5ff; text-decoration: none; padding: 8px 16px; border-radius: 8px; background: rgba(31, 111, 235, 0.1); border: 1px solid rgba(31, 111, 235, 0.3); transition: all 0.2s; }
+    .admin-nav a:hover { background: rgba(31, 111, 235, 0.2); }
+    
+    /* Stats Grid */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 20px; position: relative; overflow: hidden; }
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--accent, #1f6feb) 0%, transparent 100%); }
+    .stat-card.green { --accent: #22c55e; }
+    .stat-card.yellow { --accent: #eab308; }
+    .stat-card.red { --accent: #ef4444; }
+    .stat-card.purple { --accent: #a855f7; }
+    .stat-card.blue { --accent: #3b82f6; }
+    
+    .stat-icon { font-size: 36px; margin-bottom: 12px; }
+    .stat-value { font-size: 32px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .stat-label { font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-sub { font-size: 12px; color: #666; margin-top: 8px; }
+    
+    /* Section Cards */
+    .section-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 24px; margin-bottom: 20px; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+    .section-title { font-size: 18px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 10px; }
+    .section-title span { font-size: 24px; }
+    
+    /* AI Status Cards */
+    .ai-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+    .ai-card { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 16px; border: 1px solid rgba(255,255,255,0.06); }
+    .ai-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .ai-card-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .ai-status { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+    .ai-status.active { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+    .ai-status.inactive { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+    .ai-model { font-size: 13px; color: #888; background: rgba(255,255,255,0.05); padding: 6px 12px; border-radius: 6px; display: inline-block; }
+    
+    /* Progress Bars */
+    .progress-bar-container { margin-top: 12px; }
+    .progress-bar-label { display: flex; justify-content: space-between; font-size: 12px; color: #888; margin-bottom: 4px; }
+    .progress-bar { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+    .progress-bar-fill.green { background: linear-gradient(90deg, #22c55e, #16a34a); }
+    .progress-bar-fill.yellow { background: linear-gradient(90deg, #eab308, #ca8a04); }
+    .progress-bar-fill.blue { background: linear-gradient(90deg, #3b82f6, #2563eb); }
+    
+    /* Buttons */
+    .btn { padding: 12px 20px; border-radius: 10px; border: none; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-primary { background: linear-gradient(135deg, #1f6feb 0%, #1d4ed8 100%); color: #fff; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(31, 111, 235, 0.4); }
+    .btn-danger { background: linear-gradient(135deg, #8B0000 0%, #991b1b 100%); color: #fff; }
+    .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(139, 0, 0, 0.4); }
+    .btn-secondary { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+    .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+    
+    /* Quick Actions */
+    .quick-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    
+    /* Data Display */
+    .data-box { background: rgba(0,0,0,0.3); border-radius: 8px; padding: 12px; font-family: 'SF Mono', Monaco, monospace; font-size: 12px; color: #888; max-height: 200px; overflow: auto; white-space: pre-wrap; }
+    
+    /* Groups List */
+    .groups-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .group-tag { background: rgba(255,255,255,0.08); padding: 6px 12px; border-radius: 6px; font-size: 12px; color: #ccc; }
+    
+    /* User List */
+    .user-list { margin-top: 12px; }
+    .user-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 8px; }
+    .user-name { font-weight: 500; color: #fff; }
+    .user-badge { font-size: 10px; padding: 3px 8px; border-radius: 4px; background: rgba(234, 179, 8, 0.2); color: #fbbf24; text-transform: uppercase; }
+    
+    /* Loading */
+    .loading { text-align: center; padding: 40px; color: #888; }
+    .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #1f6feb; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .admin-header { flex-direction: column; align-items: flex-start; }
+      .stats-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
-  <div class="page">
-    <h1>Admin</h1>
-    <p class="muted">Diagnostics and admin utilities.</p>
-    <p><a href="/">← Back to App</a> • <a href="/about">About</a> • <a href="/user-guide">User Guide</a></p>
+  <div class="admin-page">
+    <header class="admin-header">
+      <h1><span>⚙️</span> Admin Dashboard</h1>
+      <nav class="admin-nav">
+        <a href="/">← Back to App</a>
+        <a href="/about">About</a>
+        <a href="/user-guide">User Guide</a>
+      </nav>
+    </header>
 
-    <!-- AI Access Settings Button -->
-    <div class="card" style="background: rgba(139, 0, 0, 0.2); border-color: rgba(255, 200, 0, 0.3);">
-      <h2>🤖 AI Access Settings</h2>
-      <p class="muted">Manage ChatGPT and Gemini API keys for breakdown autofill. Keys are encrypted and shared between Android app and web server.</p>
-      <a href="/ai-access.html"><button class="btn-primary">Open AI Access Settings</button></a>
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Loading dashboard...</p>
     </div>
 
-    <div class="row">
-      <div class="card">
-        <h2>Server Health</h2>
-        <pre id="healthBox" class="muted">Loading…</pre>
-        <button id="btnRefreshHealth">Refresh</button>
+    <div id="dashboard" style="display:none;">
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-card blue">
+          <div class="stat-icon">👥</div>
+          <div class="stat-value" id="statUsers">-</div>
+          <div class="stat-label">Total Users</div>
+          <div class="stat-sub" id="statAdmins">-</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon">📚</div>
+          <div class="stat-value" id="statCards">-</div>
+          <div class="stat-label">Total Cards</div>
+          <div class="stat-sub" id="statGroups">-</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-icon">🧩</div>
+          <div class="stat-value" id="statBreakdowns">-</div>
+          <div class="stat-label">Breakdowns</div>
+          <div class="stat-sub" id="statBreakdownsContent">-</div>
+        </div>
+        <div class="stat-card yellow">
+          <div class="stat-icon">📊</div>
+          <div class="stat-value" id="statLearned">-</div>
+          <div class="stat-label">Cards Learned</div>
+          <div class="stat-sub" id="statProgress">-</div>
+        </div>
       </div>
 
-      <div class="card">
-        <h2>Version</h2>
-        <pre id="verBox" class="muted">Loading…</pre>
-        <button id="btnRefreshVer">Refresh</button>
+      <!-- AI Configuration -->
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-title"><span>🤖</span> AI Configuration</div>
+          <a href="/ai-access.html" class="btn btn-danger">Configure API Keys</a>
+        </div>
+        <div class="ai-grid">
+          <div class="ai-card">
+            <div class="ai-card-header">
+              <div class="ai-card-title">🔵 ChatGPT (OpenAI)</div>
+              <span class="ai-status" id="chatgptStatus">Checking...</span>
+            </div>
+            <div class="ai-model" id="chatgptModel">-</div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-label">
+                <span>API Status</span>
+                <span id="chatgptStatusText">-</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-bar-fill blue" id="chatgptBar" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+          <div class="ai-card">
+            <div class="ai-card-header">
+              <div class="ai-card-title">✨ Gemini (Google)</div>
+              <span class="ai-status" id="geminiStatus">Checking...</span>
+            </div>
+            <div class="ai-model" id="geminiModel">-</div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-label">
+                <span>API Status</span>
+                <span id="geminiStatusText">-</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-bar-fill green" id="geminiBar" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Learning Progress -->
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-title"><span>📈</span> Global Learning Progress</div>
+          <button class="btn btn-secondary" onclick="loadStats()">Refresh</button>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar-label">
+            <span>Learned</span>
+            <span id="progressLearnedPct">0%</span>
+          </div>
+          <div class="progress-bar" style="height: 12px;">
+            <div class="progress-bar-fill green" id="progressLearnedBar" style="width: 0%"></div>
+          </div>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar-label">
+            <span>Unsure</span>
+            <span id="progressUnsurePct">0%</span>
+          </div>
+          <div class="progress-bar" style="height: 12px;">
+            <div class="progress-bar-fill yellow" id="progressUnsureBar" style="width: 0%"></div>
+          </div>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar-label">
+            <span>Active (To Learn)</span>
+            <span id="progressActivePct">0%</span>
+          </div>
+          <div class="progress-bar" style="height: 12px;">
+            <div class="progress-bar-fill blue" id="progressActiveBar" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Server Info & Quick Actions -->
+      <div class="stats-grid">
+        <div class="section-card">
+          <div class="section-title"><span>🖥️</span> Server Info</div>
+          <div class="data-box" id="serverInfo">Loading...</div>
+        </div>
+        <div class="section-card">
+          <div class="section-title"><span>⚡</span> Quick Actions</div>
+          <div class="quick-actions">
+            <button class="btn btn-primary" onclick="loadHealth()">Check Health</button>
+            <button class="btn btn-secondary" onclick="loadHelper()">Sync Helper</button>
+            <button class="btn btn-secondary" onclick="loadAI()">AI Status</button>
+          </div>
+          <div class="data-box" id="actionResult" style="margin-top: 12px; min-height: 80px;">Click a button to see results...</div>
+        </div>
+      </div>
+
+      <!-- Card Groups -->
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-title"><span>📁</span> Card Groups</div>
+        </div>
+        <div class="groups-list" id="groupsList">Loading...</div>
+      </div>
+
+      <!-- Admin Users -->
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-title"><span>🛡️</span> Admin Users</div>
+        </div>
+        <div class="user-list" id="adminList">Loading...</div>
       </div>
     </div>
-
-    <div class="card">
-      <h2>Sync Helper</h2>
-      <p class="muted">Source of truth mapping for card IDs: <code>/api/sync/helper</code></p>
-      <button id="btnLoadHelper">Load helper summary</button>
-      <pre id="helperBox"></pre>
-    </div>
-
-    <div class="card">
-      <h2>AI Status</h2>
-      <p class="muted">Shows whether AI endpoints are available/configured.</p>
-      <pre id="aiBox" class="muted">Loading…</pre>
-      <button id="btnRefreshAI">Refresh</button>
-    </div>
-
-    <script>
-      async function jget(url){
-        const r = await fetch(url);
-        if(!r.ok) throw new Error(await r.text());
-        return await r.json();
-      }
-
-      async function loadHealth(){
-        try{
-          const h = await jget("/api/health");
-          document.getElementById("healthBox").textContent = JSON.stringify(h, null, 2);
-        }catch(e){
-          document.getElementById("healthBox").textContent = "Failed: " + e;
-        }
-      }
-      async function loadVer(){
-        try{
-          const v = await jget("/api/version");
-          document.getElementById("verBox").textContent = JSON.stringify(v, null, 2);
-        }catch(e){
-          document.getElementById("verBox").textContent = "Failed: " + e;
-        }
-      }
-      async function loadHelper(){
-        try{
-          const h = await jget("/api/sync/helper");
-          const summary = {
-            version: h.version,
-            terms: h.term_to_id ? Object.keys(h.term_to_id).length : 0,
-            cards: h.cards ? Object.keys(h.cards).length : 0
-          };
-          document.getElementById("helperBox").textContent = JSON.stringify(summary, null, 2);
-        }catch(e){
-          document.getElementById("helperBox").textContent = "Failed: " + e;
-        }
-      }
-      async function loadAI(){
-        try{
-          const ai = await jget("/api/ai");
-          document.getElementById("aiBox").textContent = JSON.stringify(ai, null, 2);
-        }catch(e){
-          document.getElementById("aiBox").textContent = "Failed: " + e;
-        }
-      }
-
-      document.getElementById("btnRefreshHealth").onclick = loadHealth;
-      document.getElementById("btnRefreshVer").onclick = loadVer;
-      document.getElementById("btnLoadHelper").onclick = loadHelper;
-      document.getElementById("btnRefreshAI").onclick = loadAI;
-
-      loadHealth(); loadVer(); loadAI();
-    </script>
   </div>
+
+  <script>
+    async function jget(url) {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(await r.text());
+      return r.json();
+    }
+
+    async function loadStats() {
+      try {
+        const stats = await jget('/api/admin/stats');
+        
+        // Users
+        document.getElementById('statUsers').textContent = stats.users.total;
+        document.getElementById('statAdmins').textContent = `${stats.users.admins.length} admin(s)`;
+        
+        // Cards
+        document.getElementById('statCards').textContent = stats.cards.total;
+        document.getElementById('statGroups').textContent = `${stats.cards.groups} groups`;
+        
+        // Breakdowns
+        document.getElementById('statBreakdowns').textContent = stats.breakdowns.total;
+        document.getElementById('statBreakdownsContent').textContent = `${stats.breakdowns.with_content} with content`;
+        
+        // Progress
+        const total = stats.progress.total_learned + stats.progress.total_unsure + stats.progress.total_active;
+        document.getElementById('statLearned').textContent = stats.progress.total_learned;
+        document.getElementById('statProgress').textContent = `${stats.progress.total_unsure} unsure, ${stats.progress.total_active} active`;
+        
+        // Progress bars
+        if (total > 0) {
+          const learnedPct = (stats.progress.total_learned / total * 100).toFixed(1);
+          const unsurePct = (stats.progress.total_unsure / total * 100).toFixed(1);
+          const activePct = (stats.progress.total_active / total * 100).toFixed(1);
+          
+          document.getElementById('progressLearnedPct').textContent = `${learnedPct}%`;
+          document.getElementById('progressLearnedBar').style.width = `${learnedPct}%`;
+          document.getElementById('progressUnsurePct').textContent = `${unsurePct}%`;
+          document.getElementById('progressUnsureBar').style.width = `${unsurePct}%`;
+          document.getElementById('progressActivePct').textContent = `${activePct}%`;
+          document.getElementById('progressActiveBar').style.width = `${activePct}%`;
+        }
+        
+        // AI Status
+        const chatgptActive = stats.ai.chatgpt_configured;
+        const geminiActive = stats.ai.gemini_configured;
+        
+        document.getElementById('chatgptStatus').textContent = chatgptActive ? 'Active' : 'Not Configured';
+        document.getElementById('chatgptStatus').className = 'ai-status ' + (chatgptActive ? 'active' : 'inactive');
+        document.getElementById('chatgptModel').textContent = stats.ai.chatgpt_model || 'Not set';
+        document.getElementById('chatgptStatusText').textContent = chatgptActive ? 'Ready' : 'No API Key';
+        document.getElementById('chatgptBar').style.width = chatgptActive ? '100%' : '0%';
+        
+        document.getElementById('geminiStatus').textContent = geminiActive ? 'Active' : 'Not Configured';
+        document.getElementById('geminiStatus').className = 'ai-status ' + (geminiActive ? 'active' : 'inactive');
+        document.getElementById('geminiModel').textContent = stats.ai.gemini_model || 'Not set';
+        document.getElementById('geminiStatusText').textContent = geminiActive ? 'Ready' : 'No API Key';
+        document.getElementById('geminiBar').style.width = geminiActive ? '100%' : '0%';
+        
+        // Server Info
+        document.getElementById('serverInfo').textContent = JSON.stringify({
+          version: stats.server.version,
+          build: stats.server.build,
+          timestamp: new Date().toISOString()
+        }, null, 2);
+        
+        // Groups
+        const groupsHtml = stats.cards.group_list.map(g => `<span class="group-tag">${g || '(No Group)'}</span>`).join('');
+        document.getElementById('groupsList').innerHTML = groupsHtml || '<span class="group-tag">No groups found</span>';
+        
+        // Admin Users
+        const adminsHtml = stats.users.admins.map(a => `
+          <div class="user-item">
+            <span class="user-name">${a}</span>
+            <span class="user-badge">Admin</span>
+          </div>
+        `).join('');
+        document.getElementById('adminList').innerHTML = adminsHtml || '<div class="user-item"><span class="user-name">No admins configured</span></div>';
+        
+        // Show dashboard
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+        
+      } catch (e) {
+        console.error(e);
+        document.getElementById('loading').innerHTML = `
+          <p style="color: #f87171;">Failed to load dashboard</p>
+          <p style="color: #888; font-size: 13px;">${e.message}</p>
+          <p style="margin-top: 20px;"><a href="/" style="color: #5ca5ff;">← Back to App</a></p>
+        `;
+      }
+    }
+
+    async function loadHealth() {
+      try {
+        const h = await jget('/api/health');
+        document.getElementById('actionResult').textContent = JSON.stringify(h, null, 2);
+      } catch (e) {
+        document.getElementById('actionResult').textContent = 'Error: ' + e.message;
+      }
+    }
+
+    async function loadHelper() {
+      try {
+        const h = await jget('/api/sync/helper');
+        const summary = {
+          version: h.version,
+          terms: h.term_to_id ? Object.keys(h.term_to_id).length : 0,
+          cards: h.cards ? Object.keys(h.cards).length : 0
+        };
+        document.getElementById('actionResult').textContent = JSON.stringify(summary, null, 2);
+      } catch (e) {
+        document.getElementById('actionResult').textContent = 'Error: ' + e.message;
+      }
+    }
+
+    async function loadAI() {
+      try {
+        const ai = await jget('/api/ai');
+        document.getElementById('actionResult').textContent = JSON.stringify(ai, null, 2);
+      } catch (e) {
+        document.getElementById('actionResult').textContent = 'Error: ' + e.message;
+      }
+    }
+
+    // Load on page ready
+    document.addEventListener('DOMContentLoaded', loadStats);
+  </script>
 </body>
 </html>

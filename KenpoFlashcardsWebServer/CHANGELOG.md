@@ -15,6 +15,23 @@ The format is simple and practical:
 
 ---
 
+## 6.1.0 (build 32) — 2026-01-23
+
+### Added
+- **Sync Progress page**: New settings section matching Android app with Push/Pull buttons, login status banner, auto-sync info, and breakdown sync
+- **Settings tabbed navigation**: Quick nav tabs for Study, Display, Voice, Sync, and AI sections with highlighted active tab
+- **Star button on study cards**: Toggle Custom Set membership directly from study view
+- **Sort by status dropdown**: All list can now be sorted by Unlearned, Unsure, Learned, or Alphabetical
+- **Logout in user menu**: Moved logout option to user dropdown menu with icon
+
+### Changed
+- Settings page completely redesigned with app-like card layout and modern buttons
+- Buttons now use gradient backgrounds matching Android app style (primary blue, success green, danger red)
+- Removed standalone logout button from header controls
+- More button renamed from "Show settings" to "⚙️ More"
+
+---
+
 ## 6.0.0 (build 31) — 2026-01-22
 
 ### Added

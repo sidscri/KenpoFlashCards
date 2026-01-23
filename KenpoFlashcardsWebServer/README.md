@@ -5,7 +5,7 @@
 
 Flask-based web application providing sync API and web UI for Kenpo Flashcards.
 
-**Current Version:** v6.0.0 (build 31)  
+**Current Version:** v6.1.0 (build 32)  
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -221,7 +221,7 @@ Should return JSON with `version`, `term_to_id`, `cards`
 ```
 http://localhost:8009/api/version
 ```
-Should return `{"version": "6.0.0", "build": 31, ...}`
+Should return `{"version": "6.1.0", "build": 32, ...}`
 
 ### 3. Test Admin Users Endpoint
 ```
@@ -238,6 +238,7 @@ Confirm `data/helper.json` and `data/admin_users.json` exist on disk.
 
 | Version | Build | Key Changes |
 |---------|-------|-------------|
+| **6.1.0** | 32 | Settings tabbed navigation, Sync Progress page, star on study cards, sort All list |
 | **6.0.0** | 31 | Custom Set, auto-speak settings, admin dashboard redesign |
 | **5.5.3** | 30 | Progress timestamps, offline pending queue sync |
 | **5.5.2** | 29 | `GET /api/sync/apikeys` for all users, API keys shared on login |
