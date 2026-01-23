@@ -11,7 +11,7 @@ REM   KenpoFlashcardsWebServer_Packaged\...
 REM Reads:
 REM   .\KenpoFlashcardsWebServer_Packaged\version.json
 REM Excludes (recursively, guaranteed):
-REM   .venv, __pycache__, *.pyc
+REM   .venv, __pycache__, build, dist, *.pyc
 REM Writes log:
 REM   logs\KenpoFlashcardsWebServer_Packaged.log
 REM ============================================================
@@ -96,7 +96,7 @@ mkdir "%STAGE%\%PROJ%" >>"%LOG%" 2>&1
 
 REM Copy project to stage while excluding directories by NAME (recursive)
 REM robocopy exit codes 0-7 = OK, >=8 = failure
-robocopy "%SRC%" "%STAGE%\%PROJ%" /E /R:1 /W:1 /NFL /NDL /NP /NJH /NJS /XD ".venv" "__pycache__" >>"%LOG%" 2>&1
+robocopy "%SRC%" "%STAGE%\%PROJ%" /E /R:1 /W:1 /NFL /NDL /NP /NJH /NJS /XD ".venv" "__pycache__" "%SRC%\build" "%SRC%\dist" "%SRC%\packaging\output" >>"%LOG%" 2>&1
 set "RC=%ERRORLEVEL%"
 >>"%LOG%" echo ROBOCOPY_EXIT_CODE=%RC%
 if %RC% GEQ 8 (
@@ -122,12 +122,33 @@ if not "%ZERR%"=="0" (
   goto :fail_cleanup
 )
 
-REM Verify .venv did not slip in (log only)
+REM Verify excluded folders did not slip in (log only)
 "%SEVENZIP%" l "%ZIPPATH%" | findstr /i "\.venv" >nul 2>&1
 if "%ERRORLEVEL%"=="0" (
   >>"%LOG%" echo WARNING: .venv paths detected in zip listing
 ) else (
   >>"%LOG%" echo Verified: no .venv paths detected
+)
+
+"%SEVENZIP%" l "%ZIPPATH%" | findstr /i "build/" >nul 2>&1
+if "%ERRORLEVEL%"=="0" (
+  >>"%LOG%" echo WARNING: build/ paths detected in zip listing
+) else (
+  >>"%LOG%" echo Verified: no build/ paths detected
+)
+
+"%SEVENZIP%" l "%ZIPPATH%" | findstr /i "dist/" >nul 2>&1
+if "%ERRORLEVEL%"=="0" (
+  >>"%LOG%" echo WARNING: dist/ paths detected in zip listing
+) else (
+  >>"%LOG%" echo Verified: no dist/ paths detected
+)
+
+"%SEVENZIP%" l "%ZIPPATH%" | findstr /i "packaging/output/" >nul 2>&1
+if "%ERRORLEVEL%"=="0" (
+  >>"%LOG%" echo WARNING: packaging/output/ paths detected in zip listing
+) else (
+  >>"%LOG%" echo Verified: no packaging/output/ paths detected
 )
 
 REM Cleanup stage

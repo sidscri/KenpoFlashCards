@@ -1,7 +1,7 @@
 {
   "app_name": "KenpoFlashcardsWebServer_Packaged",
-  "version": "1.1.0",
-  "build": 5,
+  "version": "1.1.1",
+  "build": 6,
   "release_date": "2026-01-22",
-  "notes": "Fixed initial data seeding - bundled data now copies to LocalAppData on first run."
+  "notes": "Added configurable host/port via server_config.json - supports 0.0.0.0, ::, localhost, or specific IPs like Tailscale addresses."
 }

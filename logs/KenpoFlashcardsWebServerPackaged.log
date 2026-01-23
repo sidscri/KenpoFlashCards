@@ -1,34 +1,33 @@
-START Thu 01/22/2026 17:12:24.54
+START Thu 01/22/2026 21:02:05.65
 BASE=C:\Users\Sidscri\Documents\GitHub\sidscri-apps
 SRC=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged
 VERJSON=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\version.json
 SEVENZIP=C:\Program Files\7-Zip\7z.exe
-RAW_VER=1.1.0
-RAW_BUILD=5
-ZIPPATH=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged-v1.1.0 v5.zip
+RAW_VER=1.1.1
+RAW_BUILD=6
+ZIPPATH=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged-v1.1.1 v6.zip
 STAGE=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage
 
 ROBOCOPY_EXIT_CODE=1
-Deleted file - C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage\KenpoFlashcardsWebServer_Packaged\build\kenpo_tray\localpycs\pyimod01_archive.pyc
-Deleted file - C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage\KenpoFlashcardsWebServer_Packaged\build\kenpo_tray\localpycs\pyimod02_importers.pyc
-Deleted file - C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage\KenpoFlashcardsWebServer_Packaged\build\kenpo_tray\localpycs\pyimod03_ctypes.pyc
-Deleted file - C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage\KenpoFlashcardsWebServer_Packaged\build\kenpo_tray\localpycs\pyimod04_pywin32.pyc
-Deleted file - C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage\KenpoFlashcardsWebServer_Packaged\build\kenpo_tray\localpycs\struct.pyc
+Could Not Find C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage\KenpoFlashcardsWebServer_Packaged\*.pyc
 Running 7z (from stage)...
 
 7-Zip 25.01 (x64) : Copyright (c) 1999-2025 Igor Pavlov : 2025-08-03
 
 Scanning the drive:
-88 folders, 1150 files, 68287232 bytes (66 MiB)
+19 folders, 69 files, 663052 bytes (648 KiB)
 
-Creating archive: C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged-v1.1.0 v5.zip
+Creating archive: C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged-v1.1.1 v6.zip
 
-Add new data to archive: 88 folders, 1150 files, 68287232 bytes (66 MiB)
+Add new data to archive: 19 folders, 69 files, 663052 bytes (648 KiB)
 
 
-Files read from disk: 1150
-Archive size: 48389876 bytes (47 MiB)
+Files read from disk: 69
+Archive size: 393228 bytes (385 KiB)
 Everything is Ok
 7Z_EXIT_CODE=0
 Verified: no .venv paths detected
+Verified: no build/ paths detected
+Verified: no dist/ paths detected
+Verified: no packaging/output/ paths detected
 SUCCESS

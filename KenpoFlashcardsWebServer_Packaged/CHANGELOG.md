@@ -2,6 +2,25 @@
 
 All notable changes to the Windows packaged/installer distribution are documented here.
 
+## v1.1.1 (build 6) — 2026-01-22
+
+### Added
+- **Configurable host/port binding** via `server_config.json`:
+  - `host`: Set to `"0.0.0.0"` (all IPv4 interfaces), `"::"` (all interfaces including IPv6), `"127.0.0.1"` (localhost only), or a specific IP like `"192.168.0.129"` for Tailscale/LAN access
+  - `port`: Default 8009, change if needed
+  - `browser_url`: The URL opened in your browser (e.g., `"http://192.168.0.129:8009"` for remote access)
+  - `open_browser`: Set to `false` to disable auto-opening browser on startup
+- **System tray menu additions**:
+  - "Server Info" - Shows current host, port, and config file location
+  - "Edit Settings" - Opens `server_config.json` in your default editor
+  - "Open Data Folder" - Opens the Kenpo Flashcards data folder
+- Config file is auto-created in `%LOCALAPPDATA%\Kenpo Flashcards\server_config.json` on first run
+
+### Changed
+- Default host binding changed from `127.0.0.1` to `0.0.0.0` for easier LAN/Tailscale access
+- Tray icon tooltip now shows current host:port binding
+- Updated tray icon image
+
 ## v1.1.0 (build 5) — 2026-01-22
 
 ### Fixed

@@ -3,6 +3,7 @@ Kenpo Flashcards Web - System Tray helper
 
 - Opens the web UI
 - Starts/stops/restarts the Windows service (NSSM) if installed
+- Reads server_config.json for host/port configuration
 """
 
 import os
@@ -11,6 +12,7 @@ import webbrowser
 import subprocess
 import threading
 import time
+import json
 from pathlib import Path
 
 import pystray
@@ -21,14 +23,62 @@ ROOT = Path(__file__).resolve().parents[1]
 ICON_PATH = Path(__file__).with_name("icon.png")
 SERVICE_NAME = "KenpoFlashcardsWeb"
 
+def _get_config_path():
+    """Get config path - check user data dir first, fall back to app dir."""
+    user_config = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "Kenpo Flashcards" / "server_config.json"
+    app_config = ROOT / "server_config.json"
+    
+    if user_config.exists():
+        return user_config
+    elif app_config.exists():
+        return app_config
+    return user_config
+
+def _load_config():
+    """Load configuration from server_config.json."""
+    config_path = _get_config_path()
+    default_config = {
+        "host": "0.0.0.0",
+        "port": 8009,
+        "open_browser": True,
+        "browser_url": "http://localhost:8009"
+    }
+    
+    try:
+        if config_path.exists():
+            with open(config_path, 'r') as f:
+                loaded = json.load(f)
+                for key, value in default_config.items():
+                    if key not in loaded:
+                        loaded[key] = value
+                return loaded
+    except Exception:
+        pass
+    
+    return default_config
+
+CONFIG = _load_config()
+
 def _port() -> int:
     try:
-        return int(os.environ.get("KENPO_WEB_PORT") or 8009)
+        return int(os.environ.get("KENPO_WEB_PORT") or CONFIG.get("port", 8009))
     except Exception:
         return 8009
 
+def _host() -> str:
+    return os.environ.get("KENPO_HOST") or CONFIG.get("host", "0.0.0.0")
+
 def base_url() -> str:
-    return f"http://127.0.0.1:{_port()}"
+    """URL for health checks - always use localhost for local checks."""
+    host = _host()
+    # For wildcard bindings, check on localhost
+    if host in ("0.0.0.0", "::", ""):
+        return f"http://127.0.0.1:{_port()}"
+    return f"http://{host}:{_port()}"
+
+def browser_url() -> str:
+    """URL to open in browser."""
+    return CONFIG.get("browser_url", f"http://localhost:{_port()}")
 
 def is_running() -> bool:
     try:
@@ -65,7 +115,7 @@ def service_restart():
         _sc("start", SERVICE_NAME)
 
 def open_app():
-    webbrowser.open_new_tab(base_url())
+    webbrowser.open_new_tab(browser_url())
 
 def start_server_fallback():
     """
@@ -78,13 +128,29 @@ def start_server_fallback():
         return
     env = os.environ.copy()
     env.setdefault("KENPO_WEB_PORT", str(_port()))
+    env.setdefault("KENPO_HOST", _host())
     subprocess.Popen([str(py), str(ROOT / "app.py")], cwd=str(ROOT), env=env,
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+def _open_config():
+    """Open the config file in the default editor."""
+    config_path = _get_config_path()
+    try:
+        if sys.platform == 'win32':
+            os.startfile(str(config_path))
+        elif sys.platform == 'darwin':
+            subprocess.run(['open', str(config_path)])
+        else:
+            subprocess.run(['xdg-open', str(config_path)])
+    except Exception:
+        pass
 
 def _update_title(icon: pystray.Icon):
     while True:
         running = is_running()
-        icon.title = f"Kenpo Flashcards ({'Running' if running else 'Stopped'})"
+        host = _host()
+        port = _port()
+        icon.title = f"Kenpo Flashcards ({host}:{port}) - {'Running' if running else 'Stopped'}"
         time.sleep(2.0)
 
 def on_start(icon, item):
@@ -105,12 +171,17 @@ def on_restart(icon, item):
         # fallback: just start if not running
         start_server_fallback()
 
+def on_settings(icon, item):
+    _open_config()
+
 def on_quit(icon, item):
     icon.stop()
 
 def build_menu():
     return pystray.Menu(
         pystray.MenuItem("Open Kenpo Flashcards", lambda i, it: open_app(), default=True),
+        pystray.Menu.SEPARATOR,
+        pystray.MenuItem("Edit Settings", on_settings),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("Start", on_start),
         pystray.MenuItem("Stop", on_stop),
@@ -121,7 +192,9 @@ def build_menu():
 
 def main():
     image = Image.open(ICON_PATH)
-    icon = pystray.Icon("KenpoFlashcards", image, "Kenpo Flashcards", menu=build_menu())
+    host = _host()
+    port = _port()
+    icon = pystray.Icon("KenpoFlashcards", image, f"Kenpo Flashcards ({host}:{port})", menu=build_menu())
     threading.Thread(target=_update_title, args=(icon,), daemon=True).start()
     icon.run()
 

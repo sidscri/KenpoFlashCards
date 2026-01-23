@@ -2,7 +2,7 @@
 
 A Windows **installer** build of the Kenpo Flashcards Web Server + Tray Launcher.
 
-- **Packaged Version:** **v1.1.0 (build 5)**
+- **Packaged Version:** **v1.1.1 (build 6)**
 - **Bundled Web Server:** **v5.5.2 (build 29)**
 
 ## What you get
@@ -10,6 +10,63 @@ A Windows **installer** build of the Kenpo Flashcards Web Server + Tray Launcher
 - **Windows installer (Inno Setup)** that installs to **Program Files** and adds Start Menu shortcuts.
 - **Tray Launcher** (`KenpoFlashcardsTray.exe`) so you can start/stop the server from the system tray.
 - **Local web UI** (Flashcards + Admin tools) accessible from your browser.
+- **Configurable network binding** - access from localhost, LAN, or Tailscale.
+
+## What's new in v1.1.1 (build 6)
+
+- **Configurable host/port binding** via `server_config.json`:
+  - Bind to `0.0.0.0` (all interfaces), `::` (IPv6), `127.0.0.1` (localhost only), or a specific IP like `192.168.0.129`
+  - Configure which URL opens in your browser (e.g., your Tailscale IP)
+  - Optionally disable auto-opening browser on startup
+- **New tray menu options**: Server Info, Edit Settings, Open Data Folder
+- **Default binding changed to `0.0.0.0`** for easier LAN/Tailscale access
+
+## Configuration
+
+On first run, a config file is created at:
+
+```
+%LOCALAPPDATA%\Kenpo Flashcards\server_config.json
+```
+
+Edit this file to configure your server (or right-click the tray icon → "Edit Settings"):
+
+```json
+{
+  "host": "0.0.0.0",
+  "port": 8009,
+  "open_browser": true,
+  "browser_url": "http://localhost:8009"
+}
+```
+
+### Configuration options
+
+| Setting | Description | Examples |
+|---------|-------------|----------|
+| `host` | IP address to bind to | `"0.0.0.0"` (all IPv4), `"::"` (all incl. IPv6), `"127.0.0.1"` (localhost only), `"192.168.0.129"` (specific IP) |
+| `port` | Port number | `8009` (default) |
+| `open_browser` | Auto-open browser on startup | `true` / `false` |
+| `browser_url` | URL to open in browser | `"http://localhost:8009"`, `"http://192.168.0.129:8009"` |
+
+### Common configurations
+
+**Localhost only (default before v1.1.1):**
+```json
+{ "host": "127.0.0.1", "port": 8009, "browser_url": "http://localhost:8009" }
+```
+
+**LAN access (current default):**
+```json
+{ "host": "0.0.0.0", "port": 8009, "browser_url": "http://localhost:8009" }
+```
+
+**Tailscale access:**
+```json
+{ "host": "0.0.0.0", "port": 8009, "browser_url": "http://YOUR-TAILSCALE-IP:8009" }
+```
+
+After editing, restart the tray app for changes to take effect.
 
 ## What's new in v1.1.0 (build 5)
 
