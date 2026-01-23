@@ -5,7 +5,7 @@
 
 Flask-based web application providing sync API and web UI for Kenpo Flashcards.
 
-**Current Version:** v6.0.0 (build 31)  
+**Current Version:** v5.5.3 (build 30)  
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -16,13 +16,11 @@ Flask-based web application providing sync API and web UI for Kenpo Flashcards.
 - **Progress Sync** - Push/pull card progress between devices
 - **Breakdown Sync** - Shared term breakdown database
 - **Web UI** - Browser-based flashcard interface
-- **Custom Set** - Starred cards for personalized study (v6.0.0+)
 - **Helper Mapping** - Canonical card IDs for cross-device consistency
 - **AI Integration** - ChatGPT and Gemini API for breakdown autofill
 - **Encrypted API Keys** - Secure storage shared between Android and web
 - **Shared API Keys** - All authenticated users can pull API keys (v5.5.2+)
 - **Admin Management** - Centralized admin users Source of Truth
-- **Auto-speak** - Voice settings for auto-speak on card change and flip (v6.0.0+)
 
 ---
 
@@ -70,16 +68,6 @@ Open: `http://localhost:8009`
 | `/api/sync/helper` | GET | Canonical ID mapping |
 | `/api/sync/apikeys` | GET | **Get API keys (all users)** ✨ v5.5.2 |
 
-### Custom Set (v6.0.0+)
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/custom_set` | GET | Get custom set cards |
-| `/api/custom_set/add` | POST | Add card to custom set |
-| `/api/custom_set/remove` | POST | Remove card from custom set |
-| `/api/custom_set/toggle` | POST | Toggle card in/out of custom set |
-| `/api/custom_set/set_status` | POST | Set internal status within custom set |
-| `/api/custom_set/clear` | POST | Clear entire custom set |
-
 ### Breakdowns
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -93,7 +81,6 @@ Open: `http://localhost:8009`
 | `/api/admin/apikeys` | POST | Save encrypted API keys (admin) |
 | `/api/admin/status` | GET | Check admin status |
 | `/api/admin/users` | GET | Get admin usernames (SoT, no auth) |
-| `/api/admin/stats` | GET | **Admin dashboard stats** ✨ v6.0.0 |
 
 ### Web Admin (Session Required)
 | Endpoint | Method | Description |
@@ -107,7 +94,7 @@ Open: `http://localhost:8009`
 | `/api/version` | GET | Server version info |
 | `/api/health` | GET | Server health check |
 | `/about` | GET | About page |
-| `/admin` | GET | Admin dashboard (redesigned v6.0.0) |
+| `/admin` | GET | Admin diagnostics |
 | `/ai-access.html` | GET | AI Access settings (admin) |
 | `/user-guide` | GET | User guide page |
 
@@ -221,7 +208,7 @@ Should return JSON with `version`, `term_to_id`, `cards`
 ```
 http://localhost:8009/api/version
 ```
-Should return `{"version": "6.0.0", "build": 31, ...}`
+Should return `{"version": "5.5.3", "build": 30, ...}`
 
 ### 3. Test Admin Users Endpoint
 ```
@@ -238,8 +225,6 @@ Confirm `data/helper.json` and `data/admin_users.json` exist on disk.
 
 | Version | Build | Key Changes |
 |---------|-------|-------------|
-| **6.0.0** | 31 | Custom Set, auto-speak settings, admin dashboard redesign |
-| **5.5.3** | 30 | Progress timestamps, offline pending queue sync |
 | **5.5.2** | 29 | `GET /api/sync/apikeys` for all users, API keys shared on login |
 | **5.5.1** | 28 | `GET /api/sync/apikeys` for all users, API keys shared on login |
 | **5.5.0** | 27 | AI Access page, model selection, startup key loading, admin_users.json SoT |
@@ -267,7 +252,7 @@ KenpoFlashcardsWebServer/
 │   ├── index.html         # Web UI
 │   ├── app.js             # Frontend JavaScript
 │   ├── styles.css         # Styles
-│   ├── admin.html         # Admin dashboard (redesigned v6.0.0)
+│   ├── admin.html         # Admin diagnostics
 │   ├── ai-access.html     # AI Access settings (admin)
 │   ├── about.html         # About page
 │   ├── user-guide.html    # User guide
@@ -285,4 +270,15 @@ KenpoFlashcardsWebServer/
 ## 📄 License
 
 Personal/educational use for learning American Kenpo Karate vocabulary.
+
+## v5.5.2 (v29) – Login fix
+
+- Fixed login regression for admin users after moving admin usernames to **admin_users.json**.
+- Login is **case-insensitive**.
+- For personal LAN deployments: admin users may log in from the private network with a **blank password** (to avoid lockouts).
+  - Recommended: set an admin password in profiles.json if you want strict security.
+
+### Logs access change
+
+The admin Logs panel no longer requires localhost. It now requires an **authenticated admin session**.
 

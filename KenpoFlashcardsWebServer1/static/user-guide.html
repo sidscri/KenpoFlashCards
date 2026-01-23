@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>User Guide • Kenpo Flashcards (Web)</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    .page { max-width: 980px; margin: 0 auto; padding: 18px; }
+    .card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10); border-radius: 14px; padding: 16px; margin: 12px 0; }
+    .muted { opacity: 0.85; }
+    a { color: inherit; }
+    .btnrow a { display:inline-block; margin-right:10px; padding:10px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.18); text-decoration:none; }
+    .btnrow a:hover { background: rgba(255,255,255,0.06); }
+    @media print {
+      .btnrow { display:none; }
+      body { background:#fff !important; color:#000 !important; }
+      .card { border: 1px solid #aaa; background:#fff; }
+      a { color:#000; text-decoration:none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>User Guide</h1>
+    <p class="muted"><strong>Created by Sidney Shelton</strong> •
+      <a href="mailto:Sidscri@yahoo.com?subject=Kenpo%20Flashcards%20(Web)%20-%20User%20Guide%20Question">Sidscri@yahoo.com</a>
+    </p>
+
+    <div class="btnrow">
+      <a href="/">Back to App</a>
+      <a href="/about">About</a>
+      <a href="/user-guide.pdf">Download PDF</a>
+      <a href="#" onclick="window.print(); return false;">Print</a>
+    </div>
+
+    <div class="card">
+      <h2>Overview</h2>
+      <p>
+        Kenpo Flashcards helps you study vocabulary and track progress across devices.
+        Cards are organized by group/subgroup and you can move a term between <b>Unlearned</b>, <b>Unsure</b>, and <b>Learned</b>.
+        The web server can also store and sync AI-powered breakdowns.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Sync (Android ↔ Web)</h2>
+      <ul>
+        <li>Progress sync: push/pull learning status.</li>
+        <li>Breakdown sync: saved breakdowns can be pulled on other devices.</li>
+        <li>Card IDs are normalized using the server helper mapping for consistent cross-device matching.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Version</h2>
+      <div id="verBox" class="muted">Loading version…</div>
+    </div>
+
+    <script>
+      fetch("/api/version").then(r => r.json()).then(v => {
+        document.getElementById("verBox").textContent =
+          `${v.name} v${v.version} (build ${v.build}) • ${v.released || ""}`;
+      }).catch(() => {
+        document.getElementById("verBox").textContent = "Version unavailable";
+      });
+    </script>
+  </div>
+</body>
+</html>

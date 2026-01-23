@@ -1,13 +1,10 @@
 let allGroups = [];
 let scopeGroup = "";         // selected group for studying ("" means all)
 let allCardsMode = true; // studying all cards across groups    // "All Cards" button (flat mode)
-let activeTab = "active";    // active | unsure | learned | custom
+let activeTab = "active";    // active | unsure | learned
 
 // Learned tab can be viewed as a list (default) or studied like a deck
 let learnedViewMode = "list"; // list | study
-
-// Custom Set view filter
-let customViewMode = "all"; // all | unsure | learned
 
 function updateFilterHighlight(){
   const btn = $("allCardsBtn");
@@ -28,19 +25,6 @@ function updateLearnedViewHighlight(){
   const bStudy = $("learnedViewStudyBtn");
   if(bList) bList.classList.toggle("active", learnedViewMode === "list");
   if(bStudy) bStudy.classList.toggle("active", learnedViewMode === "study");
-}
-
-function updateCustomViewHighlight(){
-  const wrap = $("customViewToggle");
-  if(!wrap) return;
-  const show = (activeTab === "custom");
-  wrap.classList.toggle("hidden", !show);
-  const bAll = $("customViewAllBtn");
-  const bUnsure = $("customViewUnsureBtn");
-  const bLearned = $("customViewLearnedBtn");
-  if(bAll) bAll.classList.toggle("active", customViewMode === "all");
-  if(bUnsure) bUnsure.classList.toggle("active", customViewMode === "unsure");
-  if(bLearned) bLearned.classList.toggle("active", customViewMode === "learned");
 }
 
 let deck = [];
@@ -217,41 +201,7 @@ function shuffle(a){
 }
 
 function isFlipped(){ return $("card").classList.contains("flipped"); }
-function flip(){ 
-  const wasFlipped = isFlipped();
-  $("card").classList.toggle("flipped");
-  
-  // Speak definition when flipped to back (definition side)
-  const settings = window.__activeSettings || settingsAll || {};
-  if(!wasFlipped && settings.speak_definition_on_flip && deck.length){
-    const c = deck[deckIndex];
-    const reversed = !!settings.reverse_faces;
-    // When flipping to back: if not reversed, back shows definition; if reversed, back shows term
-    const textToSpeak = reversed ? c.term : c.meaning;
-    if(textToSpeak){
-      setTimeout(() => speakText(textToSpeak), 100);
-    }
-  }
-}
-
-function speakText(text){
-  if(!text || !("speechSynthesis" in window)) return;
-  
-  const settings = window.__activeSettings || settingsAll || {};
-  window.speechSynthesis.cancel();
-  
-  const u = new SpeechSynthesisUtterance(text);
-  u.rate = settings.speech_rate || 1.0;
-  
-  const voiceName = settings.speech_voice || "";
-  if(voiceName){
-    const voices = window.speechSynthesis.getVoices();
-    const voice = voices.find(v => v.name === voiceName);
-    if(voice) u.voice = voice;
-  }
-  
-  window.speechSynthesis.speak(u);
-}
+function flip(){ $("card").classList.toggle("flipped"); }
 
 function setTab(tab){
   activeTab = tab;
@@ -264,17 +214,13 @@ function setTab(tab){
   if(lvList) lvList.classList.toggle("active", tab === "learned" && learnedViewMode === "list");
   if(lvStudy) lvStudy.classList.toggle("active", tab === "learned" && learnedViewMode === "study");
 
-  // Show/hide the Custom Set view toggle
-  updateCustomViewHighlight();
-
   // Update study action button labels based on current mode
   updateStudyActionButtons();
-  for(const [id, name] of [["tabActive","active"],["tabUnsure","unsure"],["tabLearned","learned"],["tabAll","all"],["tabCustom","custom"]]){
-    const el = $(id);
-    if(el) el.classList.toggle("active", tab===name);
+for(const [id, name] of [["tabActive","active"],["tabUnsure","unsure"],["tabLearned","learned"],["tabAll","all"]]){
+    $(id).classList.toggle("active", tab===name);
   }
 
-  const study = (tab === "active" || tab === "unsure" || tab === "custom" || (tab === "learned" && learnedViewMode === "study"));
+  const study = (tab === "active" || tab === "unsure" || (tab === "learned" && learnedViewMode === "study"));
   $("viewStudy").classList.toggle("hidden", !study);
   $("viewList").classList.toggle("hidden", study);
   $("viewSettings").classList.add("hidden");
@@ -1061,93 +1007,10 @@ async function loadDeckForStudy(){
   renderStudyCard();
 }
 
-// Custom Set deck loading
-let customSetData = null;
-
-async function loadCustomSetForStudy(){
-  const settings = await getScopeSettings();
-  window.__activeSettings = settings;
-
-  const q = ($("searchBox").value || "").trim();
-  
-  try {
-    const res = await jget("/api/custom_set");
-    customSetData = res;
-    
-    let cards = res.cards || [];
-    
-    // Filter by custom view mode
-    if(customViewMode === "unsure"){
-      cards = cards.filter(c => c.custom_status === "unsure");
-    } else if(customViewMode === "learned"){
-      cards = cards.filter(c => c.custom_status === "learned");
-    } else {
-      // "all" - show active and unsure only (exclude custom-learned)
-      cards = cards.filter(c => c.custom_status !== "learned");
-    }
-    
-    // Apply search filter
-    if(q){
-      const ql = q.toLowerCase();
-      cards = cards.filter(c => {
-        const hay = `${c.term || ""} ${c.meaning || ""} ${c.pron || ""}`.toLowerCase();
-        return hay.includes(ql);
-      });
-    }
-    
-    // Apply randomization if enabled
-    if(settings.custom_set_random_order){
-      shuffle(cards);
-    }
-    
-    deck = cards;
-    deckIndex = 0;
-    
-    updateRandomStudyUI();
-    renderStudyCard();
-    
-    // Update counts display for custom set
-    if(customSetData){
-      const counts = customSetData.counts || {};
-      setStatus(`Custom Set: ${counts.total || 0} cards (${counts.active || 0} active, ${counts.unsure || 0} unsure, ${counts.learned || 0} learned)`);
-    }
-  } catch(e){
-    console.error("Failed to load custom set:", e);
-    deck = [];
-    deckIndex = 0;
-    renderStudyCard();
-  }
-}
-
-async function toggleCustomSet(cardId){
-  try {
-    const res = await jpost("/api/custom_set/toggle", { id: cardId });
-    return res.in_custom_set;
-  } catch(e){
-    console.error("Failed to toggle custom set:", e);
-    return null;
-  }
-}
-
-async function setCustomSetStatus(cardId, status){
-  try {
-    await jpost("/api/custom_set/set_status", { id: cardId, status: status });
-    await refresh();
-  } catch(e){
-    console.error("Failed to set custom set status:", e);
-  }
-}
-
 async function setCurrentStatus(status){
   if(!deck.length) return;
   const c = deck[deckIndex];
-  
-  // For custom set, use custom set status API
-  if(activeTab === "custom"){
-    await jpost("/api/custom_set/set_status", { id: c.id, status: status });
-  } else {
-    await jpost("/api/set_status", {id: c.id, status});
-  }
+  await jpost("/api/set_status", {id: c.id, status});
 
   deck.splice(deckIndex, 1);
   if(deckIndex >= deck.length) deckIndex = 0;
@@ -1160,23 +1023,11 @@ function nextCard(){
   if(!deck.length) return;
   deckIndex = (deckIndex + 1) % deck.length;
   renderStudyCard();
-  
-  // Auto-speak on card change
-  const settings = window.__activeSettings || settingsAll || {};
-  if(settings.auto_speak_on_card_change && deck.length){
-    setTimeout(() => speakCard(deck[deckIndex]), 100);
-  }
 }
 function prevCard(){
   if(!deck.length) return;
   deckIndex = (deckIndex - 1 + deck.length) % deck.length;
   renderStudyCard();
-  
-  // Auto-speak on card change
-  const settings = window.__activeSettings || settingsAll || {};
-  if(settings.auto_speak_on_card_change && deck.length){
-    setTimeout(() => speakCard(deck[deckIndex]), 100);
-  }
 }
 
 async function loadList(status){
@@ -1295,25 +1146,6 @@ if(chk) left.appendChild(chk);
       speakBtn.addEventListener("click", ()=>{ speakCard(c); });
       right.appendChild(speakBtn);
 
-      // Star button for Custom Set
-      const starBtn = document.createElement("button");
-      starBtn.className = "secondary iconOnly"; 
-      starBtn.textContent = c.in_custom_set ? "★" : "☆"; 
-      starBtn.title = c.in_custom_set ? "Remove from Custom Set" : "Add to Custom Set"; 
-      starBtn.setAttribute("aria-label", starBtn.title);
-      starBtn.style.color = c.in_custom_set ? "#fbbf24" : "";
-      starBtn.addEventListener("click", async ()=>{ 
-        const inSet = await toggleCustomSet(c.id);
-        if(inSet !== null){
-          c.in_custom_set = inSet;
-          starBtn.textContent = inSet ? "★" : "☆";
-          starBtn.title = inSet ? "Remove from Custom Set" : "Add to Custom Set";
-          starBtn.style.color = inSet ? "#fbbf24" : "";
-          setStatus(inSet ? "Added to Custom Set" : "Removed from Custom Set");
-        }
-      });
-      right.appendChild(starBtn);
-
       const brBtn = document.createElement("button");
       brBtn.className = "secondary iconOnly"; brBtn.textContent = "🧩"; brBtn.title = "Breakdown"; brBtn.setAttribute("aria-label","Breakdown");
       brBtn.addEventListener("click", ()=>{ openBreakdown(c); });
@@ -1367,7 +1199,6 @@ if(chk) left.appendChild(chk);
 async function refresh(){
   updateFilterHighlight();
   updateLearnedViewHighlight();
-  updateCustomViewHighlight();
   if(!currentUser){
     const ok = await ensureLoggedIn();
     if(!ok) return;
@@ -1378,7 +1209,7 @@ async function refresh(){
     return;
   }
 
-  const isStudyMode = (activeTab === "active" || activeTab === "unsure" || activeTab === "custom" || (activeTab === "learned" && learnedViewMode === "study"));
+  const isStudyMode = (activeTab === "active" || activeTab === "unsure" || (activeTab === "learned" && learnedViewMode === "study"));
 
   const rWrap = $("randomStudyWrap");
   if(rWrap){
@@ -1391,14 +1222,10 @@ async function refresh(){
   }
 
   if(isStudyMode){
-    if(activeTab === "custom"){
-      await loadCustomSetForStudy();
-    } else {
-      await loadDeckForStudy();
-    }
+    await loadDeckForStudy();
     const s = window.__activeSettings || settingsAll || {};
     const allLabel = (s.all_mode === "flat") ? "All (flat)" : "All (grouped)";
-    const studyLabel = (activeTab === "active") ? "Unlearned" : (activeTab === "learned" ? "Learned" : (activeTab === "unsure" ? "Unsure" : (activeTab === "custom" ? "Custom Set" : (activeTab||""))));
+    const studyLabel = (activeTab === "active") ? "Unlearned" : (activeTab === "learned" ? "Learned" : (activeTab === "unsure" ? "Unsure" : (activeTab||"")));
     setStatus(`${(scopeGroup || (allCardsMode ? allLabel : ""))} • Studying: ${studyLabel}`);
   } else {
     $("viewStudy").classList.add("hidden");
@@ -1533,7 +1360,6 @@ async function saveSettings(){
     show_group_label: $("setShowGroup").checked,
     show_subgroup_label: $("setShowSubgroup").checked,
     reverse_faces: $("setReverseFaces").checked,
-    show_breakdown_on_definition: $("setShowBreakdownOnDef") ? $("setShowBreakdownOnDef").checked : true,
     breakdown_apply_all_tabs: $("setBreakdownApplyAll") ? $("setBreakdownApplyAll").checked : false,
     breakdown_remove_all_tabs: $("setBreakdownRemoveAll") ? $("setBreakdownRemoveAll").checked : false,
     breakdown_remove_unlearned: $("setBreakdownRemoveUnlearned") ? $("setBreakdownRemoveUnlearned").checked : false,
@@ -1543,9 +1369,7 @@ async function saveSettings(){
     group_order: $("setGroupOrder").value,
     card_order: $("setCardOrder").value,
     speech_rate: parseFloat($("setSpeechRate").value) || 1.0,
-    speech_voice: $("setSpeechVoice").value || "",
-    auto_speak_on_card_change: $("setAutoSpeakOnCardChange") ? $("setAutoSpeakOnCardChange").checked : false,
-    speak_definition_on_flip: $("setSpeakDefinitionOnFlip") ? $("setSpeakDefinitionOnFlip").checked : false
+    speech_voice: $("setSpeechVoice").value || ""
   };
 
   // Only save tab-specific + list-page settings at the All-Groups scope
@@ -1835,7 +1659,6 @@ async function main(){
   bind("tabUnsure","click", ()=>setTab("unsure"));
   bind("tabLearned","click", ()=>setTab("learned"));
   bind("tabAll","click", ()=>setTab("all"));
-  bind("tabCustom","click", ()=>setTab("custom"));
 
   // Learned tab view toggle
   bind("learnedViewListBtn","click", async ()=>{
@@ -1847,23 +1670,6 @@ async function main(){
     learnedViewMode = "study";
     // Use setTab so the active highlight updates correctly
     setTab("learned");
-  });
-
-  // Custom Set view toggle
-  bind("customViewAllBtn","click", async ()=>{
-    customViewMode = "all";
-    updateCustomViewHighlight();
-    await refresh();
-  });
-  bind("customViewUnsureBtn","click", async ()=>{
-    customViewMode = "unsure";
-    updateCustomViewHighlight();
-    await refresh();
-  });
-  bind("customViewLearnedBtn","click", async ()=>{
-    customViewMode = "learned";
-    updateCustomViewHighlight();
-    await refresh();
   });
 
   bind("nextBtn","click", nextCard);

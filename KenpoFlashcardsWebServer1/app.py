@@ -799,17 +799,16 @@ def _default_settings() -> Dict[str, Any]:
     return {
         "all": {
             "randomize": False,
-            # Default OFF (user can enable to link Unlearned/Unsure/Learned study tabs)
-            "link_randomize_study_tabs": False,
+        # Default OFF (user can enable to link Unlearned/Unsure/Learned study tabs)
+        "link_randomize_study_tabs": False,
             "randomize_unlearned": False,
             "randomize_unsure": False,
             "randomize_learned_study": False,
-            "show_group_label": False,
+        "show_group_label": False,
             "show_subgroup_label": False,
             "reverse_faces": False,
             # When enabled, study cards will show a saved term breakdown (parts + literal meaning)
             # on the definition side (meaning side). If a card has no saved breakdown, nothing is shown.
-            "show_breakdown_on_definition": True,
             "breakdown_apply_all_tabs": False,
             "breakdown_remove_all_tabs": False,
             "breakdown_remove_unlearned": False,
@@ -824,23 +823,9 @@ def _default_settings() -> Dict[str, Any]:
             "group_order": "alpha",
             "card_order": "json",
             # Default to OpenAI only (Gemini optional)
-            "breakdown_ai_provider": "openai",
-            # Voice/Speech settings
-            "speech_rate": 1.0,
-            "speech_voice": "",
-            "auto_speak_on_card_change": False,
-            "speak_definition_on_flip": False,
-            # Custom Set settings
-            "custom_set_random_order": False,
-            "custom_set_reverse_cards": False,
-            "custom_set_show_group_label": False,
-            "custom_set_show_breakdown": True,
+            "breakdown_ai_provider": "openai"
         },
-        "groups": {},
-        # Custom Set card IDs (starred cards)
-        "custom_set": [],
-        # Custom Set internal status tracking
-        "custom_set_status": {}
+        "groups": {}
     }
 
 
@@ -1301,263 +1286,6 @@ def api_counts():
     return jsonify(counts)
 
 
-# ============ CUSTOM SET API ============
-
-@app.get("/api/custom_set")
-def api_custom_set_get():
-    """Get custom set cards with their status."""
-    uid, _ = require_user()
-    if not uid:
-        return jsonify({"error": "login_required"}), 401
-    
-    cards, status = load_cards_cached()
-    if status != "ok":
-        return jsonify({"error": status}), 500
-    
-    progress = load_progress(uid)
-    settings = progress.get("__settings__", _default_settings())
-    custom_set_ids = settings.get("custom_set", [])
-    custom_set_status = settings.get("custom_set_status", {})
-    
-    # Build card lookup
-    cards_by_id = {c["id"]: c for c in cards}
-    
-    out = []
-    for cid in custom_set_ids:
-        card = cards_by_id.get(cid)
-        if card:
-            cc = dict(card)
-            cc["custom_status"] = custom_set_status.get(cid, "active")
-            cc["main_status"] = card_status(progress, cid)
-            out.append(cc)
-    
-    return jsonify({
-        "cards": out,
-        "counts": {
-            "total": len(out),
-            "active": sum(1 for c in out if c.get("custom_status") == "active"),
-            "unsure": sum(1 for c in out if c.get("custom_status") == "unsure"),
-            "learned": sum(1 for c in out if c.get("custom_status") == "learned"),
-        }
-    })
-
-
-@app.post("/api/custom_set/add")
-def api_custom_set_add():
-    """Add a card to custom set."""
-    uid, _ = require_user()
-    if not uid:
-        return jsonify({"error": "login_required"}), 401
-    
-    data = request.get_json(force=True) or {}
-    cid = data.get("id")
-    if not cid:
-        return jsonify({"error": "id required"}), 400
-    
-    progress = load_progress(uid)
-    settings = progress.setdefault("__settings__", _default_settings())
-    custom_set = settings.setdefault("custom_set", [])
-    
-    if cid not in custom_set:
-        custom_set.append(cid)
-        save_progress(uid, progress)
-    
-    return jsonify({"ok": True, "in_custom_set": True})
-
-
-@app.post("/api/custom_set/remove")
-def api_custom_set_remove():
-    """Remove a card from custom set."""
-    uid, _ = require_user()
-    if not uid:
-        return jsonify({"error": "login_required"}), 401
-    
-    data = request.get_json(force=True) or {}
-    cid = data.get("id")
-    if not cid:
-        return jsonify({"error": "id required"}), 400
-    
-    progress = load_progress(uid)
-    settings = progress.setdefault("__settings__", _default_settings())
-    custom_set = settings.setdefault("custom_set", [])
-    custom_set_status = settings.setdefault("custom_set_status", {})
-    
-    if cid in custom_set:
-        custom_set.remove(cid)
-        custom_set_status.pop(cid, None)
-        save_progress(uid, progress)
-    
-    return jsonify({"ok": True, "in_custom_set": False})
-
-
-@app.post("/api/custom_set/toggle")
-def api_custom_set_toggle():
-    """Toggle a card in/out of custom set."""
-    uid, _ = require_user()
-    if not uid:
-        return jsonify({"error": "login_required"}), 401
-    
-    data = request.get_json(force=True) or {}
-    cid = data.get("id")
-    if not cid:
-        return jsonify({"error": "id required"}), 400
-    
-    progress = load_progress(uid)
-    settings = progress.setdefault("__settings__", _default_settings())
-    custom_set = settings.setdefault("custom_set", [])
-    custom_set_status = settings.setdefault("custom_set_status", {})
-    
-    if cid in custom_set:
-        custom_set.remove(cid)
-        custom_set_status.pop(cid, None)
-        in_set = False
-    else:
-        custom_set.append(cid)
-        in_set = True
-    
-    save_progress(uid, progress)
-    return jsonify({"ok": True, "in_custom_set": in_set})
-
-
-@app.post("/api/custom_set/set_status")
-def api_custom_set_set_status():
-    """Set custom set internal status for a card."""
-    uid, _ = require_user()
-    if not uid:
-        return jsonify({"error": "login_required"}), 401
-    
-    data = request.get_json(force=True) or {}
-    cid = data.get("id")
-    status = data.get("status")
-    reflect_main = data.get("reflect_main", False)
-    
-    if not cid or status not in ("active", "unsure", "learned"):
-        return jsonify({"error": "id and valid status required"}), 400
-    
-    progress = load_progress(uid)
-    settings = progress.setdefault("__settings__", _default_settings())
-    custom_set_status = settings.setdefault("custom_set_status", {})
-    
-    custom_set_status[cid] = status
-    
-    # Optionally reflect status change in main deck
-    if reflect_main:
-        set_card_status(progress, cid, status)
-    
-    save_progress(uid, progress)
-    return jsonify({"ok": True})
-
-
-@app.post("/api/custom_set/clear")
-def api_custom_set_clear():
-    """Clear entire custom set."""
-    uid, _ = require_user()
-    if not uid:
-        return jsonify({"error": "login_required"}), 401
-    
-    progress = load_progress(uid)
-    settings = progress.setdefault("__settings__", _default_settings())
-    settings["custom_set"] = []
-    settings["custom_set_status"] = {}
-    save_progress(uid, progress)
-    
-    return jsonify({"ok": True})
-
-
-# ============ ADMIN STATS API ============
-
-@app.get("/api/admin/stats")
-def api_admin_stats():
-    """Get comprehensive admin statistics for dashboard."""
-    uid = current_user_id()
-    if not uid:
-        return jsonify({"error": "login_required"}), 401
-    
-    user = _get_user(uid)
-    username = user.get("username", "") if user else ""
-    if not _is_admin_user(username):
-        return jsonify({"error": "admin_required"}), 403
-    
-    # Load all data
-    cards, status = load_cards_cached()
-    profiles = _load_profiles()
-    breakdowns = _load_breakdowns()
-    
-    # User stats
-    users = profiles.get("users", {})
-    total_users = len(users)
-    
-    # Card stats
-    total_cards = len(cards) if status == "ok" else 0
-    groups = set()
-    if status == "ok":
-        for c in cards:
-            groups.add(c.get("group", ""))
-    
-    # Breakdown stats
-    total_breakdowns = len(breakdowns)
-    breakdowns_with_content = sum(1 for b in breakdowns.values() 
-                                   if isinstance(b, dict) and 
-                                   (b.get("parts") or b.get("literal")))
-    
-    # Progress stats across all users
-    total_learned = 0
-    total_unsure = 0
-    total_active = 0
-    
-    for user_id in users:
-        try:
-            progress = load_progress(user_id)
-            for k, v in progress.items():
-                if k.startswith("__"):
-                    continue
-                if isinstance(v, dict):
-                    s = v.get("status", "active")
-                    if s == "learned":
-                        total_learned += 1
-                    elif s == "unsure":
-                        total_unsure += 1
-                    elif s == "active":
-                        total_active += 1
-        except Exception:
-            pass
-    
-    # API key status
-    keys = _load_encrypted_api_keys()
-    
-    return jsonify({
-        "users": {
-            "total": total_users,
-            "admins": list(ADMIN_USERNAMES)
-        },
-        "cards": {
-            "total": total_cards,
-            "groups": len(groups),
-            "group_list": sorted(groups)
-        },
-        "breakdowns": {
-            "total": total_breakdowns,
-            "with_content": breakdowns_with_content
-        },
-        "progress": {
-            "total_learned": total_learned,
-            "total_unsure": total_unsure,
-            "total_active": total_active
-        },
-        "ai": {
-            "chatgpt_configured": bool(keys.get("chatGptKey")),
-            "chatgpt_model": keys.get("chatGptModel", "gpt-4o"),
-            "gemini_configured": bool(keys.get("geminiKey")),
-            "gemini_model": keys.get("geminiModel", "gemini-1.5-flash")
-        },
-        "server": {
-            "version": get_version().get("version", ""),
-            "build": get_version().get("build", ""),
-            "uptime": _now()
-        }
-    })
-
-
 @app.get("/api/cards")
 def api_cards():
     uid, _ = require_user()
@@ -1575,11 +1303,6 @@ def api_cards():
         return jsonify({"error": status}), 500
 
     progress = load_progress(uid)
-    
-    # Get custom set IDs for this user
-    settings = progress.get("__settings__", _default_settings())
-    custom_set_ids = set(settings.get("custom_set", []))
-    
     out: List[Dict[str, Any]] = []
     for c in cards:
         if group and c["group"] != group:
@@ -1596,7 +1319,6 @@ def api_cards():
 
         cc = dict(c)
         cc["status"] = s
-        cc["in_custom_set"] = c["id"] in custom_set_ids
         out.append(cc)
 
     return jsonify(out)

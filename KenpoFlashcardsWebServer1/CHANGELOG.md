@@ -15,31 +15,6 @@ The format is simple and practical:
 
 ---
 
-## 6.0.0 (build 31) — 2026-01-22
-
-### Added
-- **Custom Set (Starred Cards)**: New ⭐ tab for studying a personalized set of starred cards
-  - ☆/★ toggle buttons in All list to add/remove cards
-  - Internal status tracking (Active/Unsure/Learned) within custom set
-  - Filter views: All, Unsure, Learned within custom set
-  - API endpoints: `/api/custom_set`, `/api/custom_set/add`, `/api/custom_set/remove`, `/api/custom_set/toggle`, `/api/custom_set/set_status`, `/api/custom_set/clear`
-- **Show breakdown on definition toggle**: New setting to show/hide breakdown on card back
-- **Auto-speak on card change**: Automatically speaks term when navigating prev/next
-- **Speak definition on flip**: Automatically speaks definition when card flips to back
-- **Admin Dashboard redesign**: Modern dashboard with stat cards, progress bars, AI status indicators
-  - Visual stats for Users, Cards, Breakdowns, Learning Progress
-  - AI Configuration panel with ChatGPT/Gemini status
-  - Quick Actions section for health checks
-  - Card groups display and admin users list
-- **API endpoint**: `/api/admin/stats` for comprehensive admin statistics
-- Cards API now includes `in_custom_set` field
-
-### Changed
-- Admin page completely redesigned with modern UI, gradients, and animations
-- Settings now include `show_breakdown_on_definition`, `auto_speak_on_card_change`, `speak_definition_on_flip`
-
----
-
 ## 5.5.3 (build 30) — 2026-01-18
 
 - Sync: progress entries now include per-card `updated_at` timestamps

@@ -1,7 +1,7 @@
 {
   "name": "KenpoFlashcardsWebServer",
-  "version": "5.5.3",
-  "build": 30,
+  "version": "6.0.0",
+  "build": 31,
   "released": "2026-01-22",
-  "notes": "Patch release: version/docs sync for Android 4.4.2 (no server code changes)."
+  "notes": "Added: Custom Set (starred cards) tab, show_breakdown_on_definition toggle, auto-speak on card change, speak definition on flip. Improved: Admin dashboard with stats, graphs, and better UI."
 }

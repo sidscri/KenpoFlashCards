@@ -1,11 +1,11 @@
-START Thu 01/22/2026 20:53:23.75
+START Thu 01/22/2026 21:43:59.92
 BASE=C:\Users\Sidscri\Documents\GitHub\sidscri-apps
 SRC=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer
 VERJSON=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer\version.json
 SEVENZIP=C:\Program Files\7-Zip\7z.exe
-RAW_VER=5.5.3
-RAW_BUILD=30
-ZIPPATH=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer-v5.5.3 v30.zip
+RAW_VER=6.0.0
+RAW_BUILD=31
+ZIPPATH=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer-v6.0.0 v31.zip
 STAGE=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\_zip_stage
 
 ROBOCOPY_EXIT_CODE=1
@@ -15,15 +15,15 @@ Running 7z (from stage)...
 7-Zip 25.01 (x64) : Copyright (c) 1999-2025 Igor Pavlov : 2025-08-03
 
 Scanning the drive:
-10 folders, 34 files, 930081 bytes (909 KiB)
+10 folders, 34 files, 963458 bytes (941 KiB)
 
-Creating archive: C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer-v5.5.3 v30.zip
+Creating archive: C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer-v6.0.0 v31.zip
 
-Add new data to archive: 10 folders, 34 files, 930081 bytes (909 KiB)
+Add new data to archive: 10 folders, 34 files, 963458 bytes (941 KiB)
 
 
 Files read from disk: 34
-Archive size: 695965 bytes (680 KiB)
+Archive size: 702060 bytes (686 KiB)
 Everything is Ok
 7Z_EXIT_CODE=0
 Verified: no .venv paths detected

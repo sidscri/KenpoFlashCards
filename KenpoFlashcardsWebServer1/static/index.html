@@ -27,19 +27,11 @@
         <button class="tab" id="tabUnsure">Unsure</button>
         <button class="tab" id="tabLearned">Learned</button>
         <button class="tab small" id="tabAll">All</button>
-        <button class="tab small" id="tabCustom" title="Custom Set (starred cards)">⭐</button>
         
         <!-- Learned page view toggle (only shown when Learned tab is active) -->
         <div class="tabsRight hidden" id="learnedViewToggle" aria-label="Learned view toggle">
           <button class="tab tiny" id="learnedViewListBtn" title="Learned: List view">List</button>
           <button class="tab tiny" id="learnedViewStudyBtn" title="Learned: Study view">Study</button>
-        </div>
-        
-        <!-- Custom Set view toggle (only shown when Custom tab is active) -->
-        <div class="tabsRight hidden" id="customViewToggle" aria-label="Custom Set view toggle">
-          <button class="tab tiny active" id="customViewAllBtn" title="All Custom">All</button>
-          <button class="tab tiny" id="customViewUnsureBtn" title="Unsure in Custom">Unsure</button>
-          <button class="tab tiny" id="customViewLearnedBtn" title="Learned in Custom">Learned</button>
         </div>
       </div>
 
@@ -225,14 +217,6 @@
                     <div class="settingsSectionTitle">Term breakdown on Study cards</div>
 
           <label class="settingRow">
-            <span class="switch small"><input type="checkbox" id="setShowBreakdownOnDef" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Show breakdown on definition side</div>
-              <div class="settingDesc">Display the term breakdown (parts + literal meaning) on the back of the card when flipped.</div>
-            </div>
-          </label>
-
-          <label class="settingRow">
             <span class="switch small"><input type="checkbox" id="setBreakdownApplyAll" /><span class="slider"></span></span>
             <div class="settingText">
               <div class="settingTitle">Use one breakdown setting for all Study tabs</div>
@@ -382,22 +366,6 @@
               <div class="helpText">Adjust speech speed from 0.5x (slow) to 2x (fast).</div>
             </label>
           </div>
-
-          <label class="settingRow">
-            <span class="switch small"><input type="checkbox" id="setAutoSpeakOnCardChange" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Auto-speak term on card change</div>
-              <div class="settingDesc">Automatically speak the term when navigating to the next or previous card.</div>
-            </div>
-          </label>
-
-          <label class="settingRow">
-            <span class="switch small"><input type="checkbox" id="setSpeakDefinitionOnFlip" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Speak definition when flipped</div>
-              <div class="settingDesc">Automatically speak the definition when the card is flipped to the back side.</div>
-            </div>
-          </label>
 
           <div class="actionsRow" style="margin-top:10px;">
             <button id="resetVoiceBtn" class="secondary">Reset Voice to Default</button>
