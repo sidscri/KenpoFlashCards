@@ -294,11 +294,37 @@ Confirm `data/helper.json` and `data/admin_users.json` exist on disk.
 
 ---
 
+## 📖 Documentation
+
+### User Guide (`/user-guide`)
+Comprehensive documentation covering all features:
+- Getting Started & Quick Start
+- Study Tabs (Unlearned, Unsure, Learned, All, Custom Set)
+- Edit Decks & Switching Study Subjects
+- AI Card Generator (Keywords, Photo, Document)
+- Adding Cards Manually with AI Assistance
+- Custom Set (Starred Cards)
+- Word Breakdowns
+- Settings & Voice Options
+- Syncing Progress
+- Keyboard Shortcuts
+- Troubleshooting
+
+### About Page (`/about`)
+Interactive page with tabbed sections:
+- **Overview**: Version info, description, quick start
+- **Features**: Grid of all features with icons
+- **Technology**: Tech stack, project structure, API integration
+- **Changelog**: Recent version history
+- **Contact**: Email, feature requests, bug reporting
+
+---
+
 ## 📋 Version History
 
 | Version | Build | Key Changes |
 |---------|-------|-------------|
-| **7.0.5** | 38 | AI Deck Generator (keywords/photo/doc), Edit Deck, logout confirmation, context-aware AI |
+| **7.0.5** | 38 | AI Deck Generator, Edit Deck, deck switching fix, comprehensive User Guide, interactive About page |
 | **7.0.4** | 37 | AI Deck Generator initial, user cards in study deck |
 | **7.0.3** | 36 | Health check fix, AI key loading, random toggle persistence |
 | **7.0.2** | 35 | Pick Random N, User Management, password reset |

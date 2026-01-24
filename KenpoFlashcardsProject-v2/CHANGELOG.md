@@ -1,5 +1,34 @@
 # Changelog — KenpoFlashcardsProject-v2 (Android)
 
+## 5.3.0 (build 35) — 2026-01-24
+
+### Added — Web Server Sync Integration
+- **Deck Sync**: Pull and push custom decks to/from web server
+  - `WebAppSync.pullDecks()` - Download decks from server
+  - `WebAppSync.pushDecks()` - Upload decks to server
+- **User Cards Sync**: Pull and push user-created flashcards
+  - `WebAppSync.pullUserCards()` - Download user cards from server
+  - `WebAppSync.pushUserCards()` - Upload user cards to server
+- **Vocabulary Sync**: Pull canonical kenpo_words.json from server
+  - `WebAppSync.pullVocabulary()` - Download built-in vocabulary
+- **Full Sync Methods**: Sync everything at once
+  - `Repository.syncPullAll()` - Pull decks, cards, and progress
+  - `Repository.syncPushAll()` - Push decks, cards, and progress
+
+### Changed
+- Web server is now the canonical source for kenpo_words.json
+- Decks created on web can be synced to Android and vice versa
+- User cards are now sharable between web and Android
+
+### Technical
+- Added `DeckSyncResult`, `UserCardsSyncResult`, `VocabularySyncResult` data classes
+- Repository now has deck and user card sync integration
+- Server URL for vocabulary: `/api/vocabulary`
+- Server URL for deck sync: `/api/sync/decks`
+- Server URL for user cards sync: `/api/sync/user_cards`
+
+---
+
 ## 5.2.0 (build 34) — 2026-01-22
 
 ### Changed

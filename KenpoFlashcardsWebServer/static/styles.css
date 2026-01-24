@@ -1467,3 +1467,14 @@ button.danger{background:#321313;border-color:#6e2222}
 .deckActiveLabel{color:#22c55e;font-size:12px;font-weight:600;}
 .deckActions{display:flex;gap:8px;align-items:center;}
 
+
+/* Header deck title */
+.appTitle{font-weight:700;}
+.deckTitle{font-weight:400;color:#5ca5ff;font-size:0.7em;opacity:0.9;}
+.deckTitle:before{content:"• ";color:#666;}
+
+
+/* Set default deck button */
+.deckDefaultBtn{background:transparent;border:1px solid #666;color:#888;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:14px;}
+.deckDefaultBtn:hover{background:rgba(234,179,8,0.2);border-color:#eab308;color:#eab308;}
+

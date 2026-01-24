@@ -1243,10 +1243,36 @@ def api_version():
     return jsonify(get_version())
 @app.get("/api/groups")
 def api_groups():
-    cards, status = load_cards_cached()
-    if status != "ok":
-        return jsonify({"error": status}), 500
-    return jsonify(sorted({c["group"] for c in cards}))
+    uid, _ = require_user()
+    deck_id = request.args.get("deck_id", "")
+    
+    # Get active deck from settings if not specified
+    if uid and not deck_id:
+        progress = load_progress(uid)
+        settings = progress.get("__settings__", _default_settings())
+        deck_id = settings.get("activeDeckId", "kenpo")
+    
+    if not deck_id or deck_id == "kenpo":
+        # Built-in Kenpo deck
+        cards, status = load_cards_cached()
+        if status != "ok":
+            return jsonify({"error": status}), 500
+        all_cards = list(cards)
+        # Also include user cards for kenpo deck
+        if uid:
+            user_cards = _load_user_cards(uid)
+            kenpo_user_cards = [c for c in user_cards if c.get("deckId", "kenpo") == "kenpo"]
+            all_cards = all_cards + kenpo_user_cards
+    else:
+        # User-created deck
+        if not uid:
+            return jsonify([])
+        user_cards = _load_user_cards(uid)
+        all_cards = [c for c in user_cards if c.get("deckId") == deck_id]
+    
+    # Get unique groups
+    groups = sorted({c.get("group", "") for c in all_cards if c.get("group")})
+    return jsonify(groups)
 
 import datetime
 
@@ -1429,11 +1455,12 @@ def api_counts():
         return jsonify({"error": "login_required"}), 401
 
     group = request.args.get("group", "")
+    deck_id = request.args.get("deck_id", "")
     
     # Get user's settings to check active deck
     progress = load_progress(uid)
     settings = progress.get("__settings__", _default_settings())
-    active_deck_id = settings.get("activeDeckId", "kenpo")
+    active_deck_id = deck_id or settings.get("activeDeckId", "kenpo")
     
     # Load cards based on deck
     if active_deck_id == "kenpo":
@@ -2897,6 +2924,41 @@ def api_delete_deck(deck_id: str):
     return jsonify({"success": True, "deleted": deck_id})
 
 
+@app.post("/api/decks/<deck_id>/set_default")
+def api_set_default_deck(deck_id: str):
+    """Set a deck as the default startup deck."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    decks = _load_decks()
+    
+    # Check deck exists
+    deck_found = False
+    for d in decks:
+        if d.get("id") == deck_id:
+            deck_found = True
+            break
+    
+    if not deck_found:
+        return jsonify({"error": "Deck not found"}), 404
+    
+    # Clear all isDefault flags, then set the new one
+    for d in decks:
+        d["isDefault"] = (d.get("id") == deck_id)
+    
+    _save_decks(decks)
+    
+    # Also save as the user's active deck preference
+    progress = load_progress(uid)
+    settings = progress.get("__settings__", _default_settings())
+    settings["activeDeckId"] = deck_id
+    progress["__settings__"] = settings
+    save_progress(uid, progress)
+    
+    return jsonify({"success": True, "defaultDeckId": deck_id})
+
+
 @app.get("/api/user_cards")
 def api_get_user_cards():
     """Get all user-created cards."""
@@ -3459,6 +3521,228 @@ def security_txt():
 @app.get("/<path:filename>")
 def static_files(filename):
     return send_from_directory("static", filename)
+
+
+# ============ ANDROID SYNC API ============
+
+@app.get("/api/vocabulary")
+def api_get_vocabulary():
+    """Get the kenpo vocabulary file (for Android app sync)."""
+    # Return the canonical kenpo_words.json from data folder
+    vocab_path = DATA_DIR / "kenpo_words.json"
+    if vocab_path.exists():
+        with open(vocab_path, "r", encoding="utf-8") as f:
+            return jsonify(json.load(f))
+    else:
+        # Fallback: load from cards if vocab file doesn't exist
+        cards, status = load_cards_cached()
+        if status == "ok":
+            # Convert to the format expected by Android
+            vocab = []
+            for c in cards:
+                vocab.append({
+                    "group": c.get("group", ""),
+                    "subgroup": c.get("subgroup"),
+                    "term": c.get("term", ""),
+                    "pron": c.get("pron"),
+                    "meaning": c.get("meaning", "")
+                })
+            return jsonify(vocab)
+        return jsonify({"error": "Vocabulary not available"}), 500
+
+
+@app.get("/api/sync/decks")
+def api_sync_get_decks():
+    """Get all decks for Android sync (requires auth)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    decks = _load_decks()
+    
+    # Update card counts for user-created decks
+    user_cards = _load_user_cards(uid)
+    for deck in decks:
+        if not deck.get("isBuiltIn"):
+            deck["cardCount"] = len([c for c in user_cards if c.get("deckId") == deck.get("id")])
+    
+    # Get user's active deck setting
+    progress = load_progress(uid)
+    settings = progress.get("__settings__", _default_settings())
+    active_deck_id = settings.get("activeDeckId", "kenpo")
+    
+    return jsonify({
+        "decks": decks,
+        "activeDeckId": active_deck_id
+    })
+
+
+@app.post("/api/sync/decks")
+def api_sync_push_decks():
+    """Push deck changes from Android (requires auth)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    data = request.get_json() or {}
+    incoming_decks = data.get("decks", [])
+    active_deck_id = data.get("activeDeckId", "")
+    
+    if not incoming_decks:
+        return jsonify({"error": "No decks provided"}), 400
+    
+    # Load existing decks
+    existing_decks = _load_decks()
+    existing_by_id = {d["id"]: d for d in existing_decks}
+    
+    # Merge incoming decks (Android wins for non-built-in decks)
+    for incoming in incoming_decks:
+        deck_id = incoming.get("id")
+        if not deck_id:
+            continue
+        
+        # Skip built-in decks
+        if incoming.get("isBuiltIn"):
+            continue
+        
+        if deck_id in existing_by_id:
+            # Update existing
+            existing = existing_by_id[deck_id]
+            existing["name"] = incoming.get("name", existing["name"])
+            existing["description"] = incoming.get("description", existing["description"])
+            existing["isDefault"] = incoming.get("isDefault", existing.get("isDefault", False))
+            existing["updatedAt"] = int(time.time())
+        else:
+            # Add new deck
+            new_deck = {
+                "id": deck_id,
+                "name": incoming.get("name", "Untitled"),
+                "description": incoming.get("description", ""),
+                "isDefault": incoming.get("isDefault", False),
+                "isBuiltIn": False,
+                "sourceFile": None,
+                "cardCount": incoming.get("cardCount", 0),
+                "createdAt": incoming.get("createdAt", int(time.time())),
+                "updatedAt": int(time.time())
+            }
+            existing_decks.append(new_deck)
+    
+    _save_decks(existing_decks)
+    
+    # Update active deck setting if provided
+    if active_deck_id:
+        progress = load_progress(uid)
+        settings = progress.get("__settings__", _default_settings())
+        settings["activeDeckId"] = active_deck_id
+        progress["__settings__"] = settings
+        save_progress(uid, progress)
+    
+    return jsonify({"success": True, "deckCount": len(existing_decks)})
+
+
+@app.get("/api/sync/user_cards")
+def api_sync_get_user_cards():
+    """Get all user-created cards for Android sync (requires auth)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    deck_id = request.args.get("deck_id", "")
+    cards = _load_user_cards(uid)
+    
+    if deck_id:
+        cards = [c for c in cards if c.get("deckId") == deck_id]
+    
+    return jsonify({"cards": cards})
+
+
+@app.post("/api/sync/user_cards")
+def api_sync_push_user_cards():
+    """Push user-created cards from Android (requires auth)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    data = request.get_json() or {}
+    incoming_cards = data.get("cards", [])
+    deck_id = data.get("deckId", "")
+    replace_all = data.get("replaceAll", False)  # If true, replace all cards for this deck
+    
+    if not incoming_cards:
+        return jsonify({"error": "No cards provided"}), 400
+    
+    existing_cards = _load_user_cards(uid)
+    
+    if replace_all and deck_id:
+        # Remove all existing cards for this deck
+        existing_cards = [c for c in existing_cards if c.get("deckId") != deck_id]
+    
+    # Build lookup of existing cards by ID
+    existing_by_id = {c["id"]: c for c in existing_cards}
+    
+    added = 0
+    updated = 0
+    
+    for incoming in incoming_cards:
+        card_id = incoming.get("id")
+        if not card_id:
+            # Generate new ID
+            card_id = _generate_card_id()
+            incoming["id"] = card_id
+        
+        if card_id in existing_by_id:
+            # Update existing card
+            existing = existing_by_id[card_id]
+            existing["term"] = incoming.get("term", existing["term"])
+            existing["meaning"] = incoming.get("meaning", existing["meaning"])
+            existing["pron"] = incoming.get("pron", existing.get("pron", ""))
+            existing["group"] = incoming.get("group", existing.get("group", ""))
+            existing["deckId"] = incoming.get("deckId", existing.get("deckId", "kenpo"))
+            existing["updatedAt"] = int(time.time())
+            updated += 1
+        else:
+            # Add new card
+            new_card = {
+                "id": card_id,
+                "term": incoming.get("term", ""),
+                "meaning": incoming.get("meaning", ""),
+                "pron": incoming.get("pron", ""),
+                "group": incoming.get("group", ""),
+                "subgroup": incoming.get("subgroup", ""),
+                "deckId": incoming.get("deckId", deck_id or "kenpo"),
+                "isUserCreated": True,
+                "createdAt": incoming.get("createdAt", int(time.time())),
+                "updatedAt": int(time.time())
+            }
+            existing_cards.append(new_card)
+            added += 1
+    
+    _save_user_cards(uid, existing_cards)
+    
+    return jsonify({
+        "success": True,
+        "added": added,
+        "updated": updated,
+        "totalCards": len(existing_cards)
+    })
+
+
+@app.delete("/api/sync/user_cards/<card_id>")
+def api_sync_delete_user_card(card_id: str):
+    """Delete a user-created card (for Android sync)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    cards = _load_user_cards(uid)
+    original_count = len(cards)
+    cards = [c for c in cards if c.get("id") != card_id]
+    
+    if len(cards) == original_count:
+        return jsonify({"error": "Card not found"}), 404
+    
+    _save_user_cards(uid, cards)
+    return jsonify({"success": True, "deleted": card_id})
 
 
 def _load_api_keys_on_startup():

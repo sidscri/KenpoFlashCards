@@ -526,6 +526,255 @@ object WebAppSync {
             emptySet()
         }
     }
+    
+    // ============ DECK SYNC ============
+    
+    data class DeckSyncResult(
+        val success: Boolean,
+        val decks: List<StudyDeck> = emptyList(),
+        val activeDeckId: String = "kenpo",
+        val error: String = ""
+    )
+    
+    /**
+     * Pull decks from server
+     */
+    suspend fun pullDecks(serverUrl: String, token: String): DeckSyncResult = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("$serverUrl/api/sync/decks")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("Authorization", "Bearer $token")
+            conn.connectTimeout = 10000
+            conn.readTimeout = 10000
+            
+            if (conn.responseCode == 200) {
+                val response = conn.inputStream.bufferedReader().readText()
+                val json = JSONObject(response)
+                val decksArray = json.optJSONArray("decks") ?: JSONArray()
+                val activeDeckId = json.optString("activeDeckId", "kenpo")
+                
+                val decks = mutableListOf<StudyDeck>()
+                for (i in 0 until decksArray.length()) {
+                    val dObj = decksArray.optJSONObject(i) ?: continue
+                    decks.add(StudyDeck(
+                        id = dObj.optString("id", ""),
+                        name = dObj.optString("name", ""),
+                        description = dObj.optString("description", ""),
+                        isDefault = dObj.optBoolean("isDefault", false),
+                        isBuiltIn = dObj.optBoolean("isBuiltIn", false),
+                        sourceFile = dObj.optString("sourceFile", null),
+                        cardCount = dObj.optInt("cardCount", 0),
+                        createdAt = dObj.optLong("createdAt", 0),
+                        updatedAt = dObj.optLong("updatedAt", 0)
+                    ))
+                }
+                
+                DeckSyncResult(success = true, decks = decks, activeDeckId = activeDeckId)
+            } else {
+                DeckSyncResult(success = false, error = "Pull failed: ${conn.responseCode}")
+            }
+        } catch (e: Exception) {
+            DeckSyncResult(success = false, error = e.message ?: "Pull failed")
+        }
+    }
+    
+    /**
+     * Push decks to server
+     */
+    suspend fun pushDecks(serverUrl: String, token: String, decks: List<StudyDeck>, activeDeckId: String): SyncResult = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("$serverUrl/api/sync/decks")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("Authorization", "Bearer $token")
+            conn.doOutput = true
+            conn.connectTimeout = 10000
+            conn.readTimeout = 10000
+            
+            val decksArray = JSONArray()
+            decks.forEach { deck ->
+                val dObj = JSONObject().apply {
+                    put("id", deck.id)
+                    put("name", deck.name)
+                    put("description", deck.description)
+                    put("isDefault", deck.isDefault)
+                    put("isBuiltIn", deck.isBuiltIn)
+                    put("sourceFile", deck.sourceFile)
+                    put("cardCount", deck.cardCount)
+                    put("createdAt", deck.createdAt)
+                    put("updatedAt", deck.updatedAt)
+                }
+                decksArray.put(dObj)
+            }
+            
+            val body = JSONObject().apply {
+                put("decks", decksArray)
+                put("activeDeckId", activeDeckId)
+            }
+            
+            conn.outputStream.use { it.write(body.toString().toByteArray()) }
+            
+            if (conn.responseCode == 200) {
+                SyncResult(success = true, message = "Decks synced")
+            } else {
+                SyncResult(success = false, error = "Push failed: ${conn.responseCode}")
+            }
+        } catch (e: Exception) {
+            SyncResult(success = false, error = e.message ?: "Push failed")
+        }
+    }
+    
+    // ============ USER CARDS SYNC ============
+    
+    data class UserCardsSyncResult(
+        val success: Boolean,
+        val cards: List<FlashCard> = emptyList(),
+        val error: String = ""
+    )
+    
+    /**
+     * Pull user cards from server
+     */
+    suspend fun pullUserCards(serverUrl: String, token: String, deckId: String = ""): UserCardsSyncResult = withContext(Dispatchers.IO) {
+        try {
+            val deckParam = if (deckId.isNotBlank()) "?deck_id=$deckId" else ""
+            val url = URL("$serverUrl/api/sync/user_cards$deckParam")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("Authorization", "Bearer $token")
+            conn.connectTimeout = 10000
+            conn.readTimeout = 10000
+            
+            if (conn.responseCode == 200) {
+                val response = conn.inputStream.bufferedReader().readText()
+                val json = JSONObject(response)
+                val cardsArray = json.optJSONArray("cards") ?: JSONArray()
+                
+                val cards = mutableListOf<FlashCard>()
+                for (i in 0 until cardsArray.length()) {
+                    val cObj = cardsArray.optJSONObject(i) ?: continue
+                    cards.add(FlashCard(
+                        id = cObj.optString("id", ""),
+                        group = cObj.optString("group", ""),
+                        subgroup = cObj.optString("subgroup", null),
+                        term = cObj.optString("term", ""),
+                        pron = cObj.optString("pron", null),
+                        meaning = cObj.optString("meaning", ""),
+                        deckId = cObj.optString("deckId", "kenpo")
+                    ))
+                }
+                
+                UserCardsSyncResult(success = true, cards = cards)
+            } else {
+                UserCardsSyncResult(success = false, error = "Pull failed: ${conn.responseCode}")
+            }
+        } catch (e: Exception) {
+            UserCardsSyncResult(success = false, error = e.message ?: "Pull failed")
+        }
+    }
+    
+    /**
+     * Push user cards to server
+     */
+    suspend fun pushUserCards(serverUrl: String, token: String, cards: List<FlashCard>, deckId: String = "", replaceAll: Boolean = false): SyncResult = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("$serverUrl/api/sync/user_cards")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("Authorization", "Bearer $token")
+            conn.doOutput = true
+            conn.connectTimeout = 10000
+            conn.readTimeout = 10000
+            
+            val cardsArray = JSONArray()
+            cards.forEach { card ->
+                val cObj = JSONObject().apply {
+                    put("id", card.id)
+                    put("group", card.group)
+                    put("subgroup", card.subgroup)
+                    put("term", card.term)
+                    put("pron", card.pron)
+                    put("meaning", card.meaning)
+                    put("deckId", card.deckId)
+                }
+                cardsArray.put(cObj)
+            }
+            
+            val body = JSONObject().apply {
+                put("cards", cardsArray)
+                put("deckId", deckId)
+                put("replaceAll", replaceAll)
+            }
+            
+            conn.outputStream.use { it.write(body.toString().toByteArray()) }
+            
+            if (conn.responseCode == 200) {
+                val response = conn.inputStream.bufferedReader().readText()
+                val json = JSONObject(response)
+                val added = json.optInt("added", 0)
+                val updated = json.optInt("updated", 0)
+                SyncResult(success = true, message = "Cards synced: $added added, $updated updated")
+            } else {
+                SyncResult(success = false, error = "Push failed: ${conn.responseCode}")
+            }
+        } catch (e: Exception) {
+            SyncResult(success = false, error = e.message ?: "Push failed")
+        }
+    }
+    
+    // ============ VOCABULARY SYNC ============
+    
+    data class VocabularySyncResult(
+        val success: Boolean,
+        val cards: List<FlashCard> = emptyList(),
+        val error: String = ""
+    )
+    
+    /**
+     * Pull vocabulary (kenpo_words.json) from server
+     * This is the canonical source of the built-in vocabulary
+     */
+    suspend fun pullVocabulary(serverUrl: String): VocabularySyncResult = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("$serverUrl/api/vocabulary")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.connectTimeout = 10000
+            conn.readTimeout = 10000
+            
+            if (conn.responseCode == 200) {
+                val response = conn.inputStream.bufferedReader().readText()
+                val cardsArray = JSONArray(response)
+                
+                val cards = mutableListOf<FlashCard>()
+                for (i in 0 until cardsArray.length()) {
+                    val cObj = cardsArray.optJSONObject(i) ?: continue
+                    // Generate ID from term if not present
+                    val term = cObj.optString("term", "")
+                    val id = term.lowercase().replace(" ", "_").take(16) + "_" + i.toString().padStart(3, '0')
+                    
+                    cards.add(FlashCard(
+                        id = id,
+                        group = cObj.optString("group", ""),
+                        subgroup = cObj.optString("subgroup", null),
+                        term = term,
+                        pron = cObj.optString("pron", null),
+                        meaning = cObj.optString("meaning", ""),
+                        deckId = "kenpo"
+                    ))
+                }
+                
+                VocabularySyncResult(success = true, cards = cards)
+            } else {
+                VocabularySyncResult(success = false, error = "Pull failed: ${conn.responseCode}")
+            }
+        } catch (e: Exception) {
+            VocabularySyncResult(success = false, error = e.message ?: "Pull failed")
+        }
+    }
 }
 
 /**

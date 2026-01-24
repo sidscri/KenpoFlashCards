@@ -13,6 +13,12 @@
     .guide-meta { color: #888; font-size: 14px; }
     .guide-meta a { color: #5ca5ff; }
     
+    .guide-toc { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 20px; margin-bottom: 24px; }
+    .guide-toc h3 { margin: 0 0 12px 0; font-size: 16px; color: #fff; }
+    .guide-toc ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
+    .guide-toc li a { color: #5ca5ff; text-decoration: none; font-size: 14px; display: block; padding: 6px 0; }
+    .guide-toc li a:hover { text-decoration: underline; }
+    
     .guide-nav { display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; }
     .guide-nav a, .guide-nav button { 
       padding: 10px 18px; border-radius: 10px; text-decoration: none; font-size: 14px;
@@ -30,7 +36,7 @@
     .guide-section h2 span { font-size: 24px; }
     .guide-section h3 { font-size: 16px; margin: 20px 0 12px 0; color: #5ca5ff; }
     .guide-section p { color: #bbb; line-height: 1.7; margin: 12px 0; }
-    .guide-section ul { margin: 12px 0; padding-left: 24px; color: #bbb; }
+    .guide-section ul, .guide-section ol { margin: 12px 0; padding-left: 24px; color: #bbb; }
     .guide-section li { margin: 8px 0; line-height: 1.6; }
     
     .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-top: 16px; }
@@ -44,6 +50,15 @@
     .shortcut-table td { color: #ccc; }
     .shortcut-table kbd { background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; font-family: monospace; }
     
+    .step-box { background: rgba(31, 111, 235, 0.1); border-left: 4px solid #1f6feb; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0; }
+    .step-box strong { color: #5ca5ff; }
+    
+    .tip-box { background: rgba(34, 197, 94, 0.1); border-left: 4px solid #22c55e; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0; }
+    .tip-box strong { color: #22c55e; }
+    
+    .warning-box { background: rgba(234, 179, 8, 0.1); border-left: 4px solid #eab308; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0; }
+    .warning-box strong { color: #eab308; }
+    
     .version-box { background: rgba(31, 111, 235, 0.1); border: 1px solid rgba(31, 111, 235, 0.3); border-radius: 10px; padding: 16px; margin-top: 16px; }
     .version-box .ver { font-size: 18px; font-weight: 600; color: #fff; }
     .version-box .note { font-size: 13px; color: #888; margin-top: 4px; }
@@ -51,7 +66,7 @@
     @media print {
       body { background: #fff !important; color: #000 !important; }
       .guide-nav { display: none; }
-      .guide-section { border: 1px solid #ccc; background: #fff; }
+      .guide-section { border: 1px solid #ccc; background: #fff; page-break-inside: avoid; }
       .guide-section h2, .guide-section h3 { color: #000; }
       .guide-section p, .guide-section li { color: #333; }
     }
@@ -74,9 +89,26 @@
       <button onclick="window.print()">🖨️ Print</button>
     </nav>
 
-    <section class="guide-section">
+    <div class="guide-toc">
+      <h3>📑 Table of Contents</h3>
+      <ul>
+        <li><a href="#getting-started">Getting Started</a></li>
+        <li><a href="#study-tabs">Study Tabs</a></li>
+        <li><a href="#edit-decks">Edit Decks & Switch Subject</a></li>
+        <li><a href="#ai-generator">AI Card Generator</a></li>
+        <li><a href="#add-cards">Adding Cards Manually</a></li>
+        <li><a href="#custom-set">Custom Set (Starred Cards)</a></li>
+        <li><a href="#breakdowns">Word Breakdowns</a></li>
+        <li><a href="#settings">Settings</a></li>
+        <li><a href="#sync">Syncing Progress</a></li>
+        <li><a href="#shortcuts">Keyboard Shortcuts</a></li>
+        <li><a href="#troubleshooting">Troubleshooting</a></li>
+      </ul>
+    </div>
+
+    <section class="guide-section" id="getting-started">
       <h2><span>🎯</span> Getting Started</h2>
-      <p>Kenpo Flashcards helps you learn Korean martial arts terminology through an interactive flashcard system. Study vocabulary at your own pace and track your progress across devices.</p>
+      <p>Kenpo Flashcards helps you learn vocabulary through an interactive flashcard system. While it includes built-in Korean martial arts terminology, you can create custom decks for any subject!</p>
       
       <div class="feature-grid">
         <div class="feature-card">
@@ -85,47 +117,243 @@
         </div>
         <div class="feature-card">
           <h4>📊 Track Progress</h4>
-          <p>Mark cards as Learned, Unsure, or keep them in Unlearned. Your progress is saved automatically.</p>
+          <p>Mark cards as Learned, Unsure, or Unlearned. Progress saves automatically.</p>
         </div>
         <div class="feature-card">
-          <h4>🔄 Cross-Device Sync</h4>
-          <p>Push and pull your progress between the web app and Android app.</p>
+          <h4>🤖 AI Generation</h4>
+          <p>Generate flashcards from keywords, photos, or documents using AI.</p>
         </div>
         <div class="feature-card">
-          <h4>🧩 Breakdowns</h4>
-          <p>View and create word breakdowns showing the meaning of each part of compound terms.</p>
+          <h4>📁 Multiple Decks</h4>
+          <p>Create custom decks for different subjects - Spanish, Math, History, etc.</p>
         </div>
       </div>
     </section>
 
-    <section class="guide-section">
-      <h2><span>🎓</span> How to Study</h2>
+    <section class="guide-section" id="study-tabs">
+      <h2><span>🎓</span> Study Tabs</h2>
       
-      <h3>1. Choose Your Tab</h3>
+      <h3>Understanding the Tabs</h3>
       <ul>
-        <li><strong>Unlearned</strong> — Cards you haven't studied yet or need to review</li>
-        <li><strong>Unsure</strong> — Cards you're still learning (not quite confident)</li>
-        <li><strong>Learned</strong> — Cards you know well</li>
-        <li><strong>All</strong> — View all cards in list format</li>
+        <li><strong>Unlearned</strong> — Cards you haven't studied yet or marked as "Didn't Get It"</li>
+        <li><strong>Unsure</strong> — Cards you're still learning (marked as "Unsure")</li>
+        <li><strong>Learned</strong> — Cards you've mastered (marked as "Got It")</li>
+        <li><strong>All</strong> — View all cards in list format with search</li>
         <li><strong>⭐ Custom Set</strong> — Your starred cards for focused study</li>
       </ul>
 
-      <h3>2. Filter by Group</h3>
-      <p>Use the Group dropdown to focus on specific categories (Stances, Blocks, Commands, etc.) or click "All Cards" to study everything.</p>
+      <h3>Studying a Card</h3>
+      <ol>
+        <li>Click the card (or press <kbd>Space</kbd>) to flip between term and definition</li>
+        <li>Mark your progress using the buttons below the card</li>
+        <li>Use arrow buttons or keyboard arrows to navigate</li>
+        <li>Click 🔊 Speak to hear pronunciation</li>
+      </ol>
 
-      <h3>3. Study the Card</h3>
-      <ul>
-        <li>Click the card (or press Space) to flip between term and definition</li>
-        <li>Use the status buttons to mark your progress: Got It, Unsure, or Didn't Get It</li>
-        <li>Navigate with the arrow buttons or keyboard arrows</li>
-        <li>Click the 🔊 button to hear pronunciation</li>
-      </ul>
-
-      <h3>4. Use Random Mode</h3>
-      <p>Toggle "Random order" to shuffle cards. Click ⟳ to reshuffle at any time.</p>
+      <div class="tip-box">
+        <strong>💡 Tip:</strong> Use "Random order" toggle to shuffle cards. Click ⟳ to reshuffle anytime.
+      </div>
     </section>
 
-    <section class="guide-section">
+    <section class="guide-section" id="edit-decks">
+      <h2><span>📁</span> Edit Decks & Switch Subject</h2>
+      <p>Create and manage multiple study decks for different subjects.</p>
+
+      <h3>Accessing Edit Decks</h3>
+      <p>Click <strong>⚙️ More</strong> → scroll down to <strong>Edit Decks</strong> button, or find it in Settings.</p>
+
+      <h3>Switch Tab</h3>
+      <p>Switch between different study subjects:</p>
+      <ol>
+        <li>Go to Edit Decks → <strong>Switch</strong> tab</li>
+        <li>See your available decks with card counts</li>
+        <li>Click the <strong>Switch</strong> button on the deck you want to study</li>
+        <li>The study view will reload with that deck's cards</li>
+      </ol>
+
+      <div class="step-box">
+        <strong>Creating a New Deck:</strong><br>
+        1. Scroll to "Create New Deck" section<br>
+        2. Enter a descriptive name (e.g., "Basic Spanish Words 3rd Grade")<br>
+        3. Add a description (helps AI understand context)<br>
+        4. Click "Create Deck"
+      </div>
+
+      <h3>Editing a Deck</h3>
+      <p>Click the ✏️ button next to any user-created deck to edit its name or description.</p>
+
+      <h3>Deleting a Deck</h3>
+      <p>Click the 🗑️ button to delete a deck. This also removes all cards in that deck.</p>
+
+      <div class="warning-box">
+        <strong>⚠️ Note:</strong> The built-in "Kenpo Vocabulary" deck cannot be edited or deleted.
+      </div>
+    </section>
+
+    <section class="guide-section" id="ai-generator">
+      <h2><span>🤖</span> AI Card Generator</h2>
+      <p>Generate flashcards automatically using AI from three different sources.</p>
+
+      <h3>Accessing AI Generator</h3>
+      <p>Go to Edit Decks → <strong>🤖 AI Generator</strong> tab</p>
+
+      <h3>Method 1: Keywords</h3>
+      <ol>
+        <li>Enter a topic (e.g., "Basic Spanish greetings" or "Chemistry periodic table")</li>
+        <li>Set max cards to generate (1-200)</li>
+        <li>Click <strong>🔍 Generate</strong></li>
+        <li>Review generated cards and select which to keep</li>
+        <li>Click "Add Selected Cards to Deck"</li>
+      </ol>
+
+      <div class="tip-box">
+        <strong>💡 Tip:</strong> If you leave keywords empty, the AI will use your deck's name and description as the search topic.
+      </div>
+
+      <h3>Method 2: Photo</h3>
+      <ol>
+        <li>Click the photo upload zone or drag an image</li>
+        <li>Upload a photo of study materials, textbook pages, or existing flashcards</li>
+        <li>Click <strong>🔍 Extract</strong></li>
+        <li>AI will read the image and create flashcards from the content</li>
+      </ol>
+
+      <h3>Method 3: Document</h3>
+      <ol>
+        <li>Upload a PDF, TXT, or MD file</li>
+        <li>Click <strong>🔍 Extract</strong></li>
+        <li>AI will read the document and generate vocabulary cards</li>
+      </ol>
+
+      <h3>Duplicate Filtering</h3>
+      <p>The AI Generator automatically filters out terms that already exist in your deck. You'll see a message like "Generated 92 new cards. (8 duplicates filtered out)"</p>
+    </section>
+
+    <section class="guide-section" id="add-cards">
+      <h2><span>➕</span> Adding Cards Manually</h2>
+      <p>Add individual cards to your deck with AI assistance.</p>
+
+      <h3>Add Cards Tab</h3>
+      <ol>
+        <li>Go to Edit Decks → <strong>+ Add Cards</strong> tab</li>
+        <li>Select your target deck from the dropdown</li>
+        <li>Enter the term (required)</li>
+        <li>Enter the definition (required)</li>
+        <li>Optionally add pronunciation and group/category</li>
+        <li>Click <strong>+ Add Card</strong></li>
+      </ol>
+
+      <h3>AI Assistance Buttons</h3>
+      <p>Each field has a 🤖 button for AI help:</p>
+      <ul>
+        <li><strong>Definition 🤖</strong> — Generates 3 definition options to choose from</li>
+        <li><strong>Pronunciation 🤖</strong> — Generates phonetic pronunciation</li>
+        <li><strong>Group 🤖</strong> — Suggests category names based on existing groups</li>
+      </ul>
+
+      <div class="tip-box">
+        <strong>💡 Tip:</strong> AI definitions use your deck's name for context. A card in "Spanish Vocabulary" deck will get Spanish translations, not Kenpo definitions.
+      </div>
+
+      <h3>Your Added Cards</h3>
+      <p>Click "Show" under "Your Added Cards" to see all cards you've created. You can edit or delete them from here.</p>
+    </section>
+
+    <section class="guide-section" id="custom-set">
+      <h2><span>⭐</span> Custom Set (Starred Cards)</h2>
+      <p>Create a personalized study set by starring cards you want to focus on.</p>
+
+      <h3>Adding Cards to Custom Set</h3>
+      <ul>
+        <li>In the <strong>All</strong> tab, click ☆ next to any card to star it</li>
+        <li>On study cards, click the ⭐ button to toggle star</li>
+        <li>Starred cards appear in the ⭐ Custom Set tab</li>
+      </ul>
+
+      <h3>Studying Custom Set</h3>
+      <ul>
+        <li>Click the ⭐ tab to switch to Custom Set mode</li>
+        <li>Custom Set has its own internal status tracking (separate from main deck)</li>
+        <li>Use the 🎲 dice button to study a random subset of starred cards</li>
+      </ul>
+
+      <h3>Pick Random N</h3>
+      <p>In Custom Set, click the 🎲 button and enter a number to study a random selection of your starred cards.</p>
+    </section>
+
+    <section class="guide-section" id="breakdowns">
+      <h2><span>🧩</span> Word Breakdowns</h2>
+      <p>View the meaning of each part of compound terms.</p>
+
+      <h3>Viewing Breakdowns</h3>
+      <p>When a card has a breakdown, you'll see it displayed on the definition side. Each part shows:</p>
+      <ul>
+        <li>The original syllable/word part</li>
+        <li>Its meaning</li>
+        <li>Optional pronunciation guide</li>
+      </ul>
+
+      <h3>Creating Breakdowns</h3>
+      <ol>
+        <li>Click the "Breakdown" button on a card</li>
+        <li>Add parts using "+ Add part"</li>
+        <li>Use "Auto-fill" to let AI suggest breakdowns</li>
+        <li>Click "Save" to store the breakdown</li>
+      </ol>
+
+      <div class="tip-box">
+        <strong>💡 Tip:</strong> Breakdowns are shared across all users, so others benefit from your contributions!
+      </div>
+    </section>
+
+    <section class="guide-section" id="settings">
+      <h2><span>⚙️</span> Settings</h2>
+      <p>Customize your study experience. Access via <strong>⚙️ More</strong> button.</p>
+
+      <h3>Study Settings</h3>
+      <ul>
+        <li><strong>Randomize cards</strong> — Shuffle order for study sessions</li>
+        <li><strong>Reverse cards</strong> — Show definition first, term on back</li>
+        <li><strong>Show group labels</strong> — Display category pill on cards</li>
+      </ul>
+
+      <h3>Voice Settings</h3>
+      <ul>
+        <li><strong>Voice selection</strong> — Choose from available system voices</li>
+        <li><strong>Speech rate</strong> — Adjust speaking speed</li>
+        <li><strong>Auto-speak on card change</strong> — Automatically speak when navigating</li>
+        <li><strong>Speak definition on flip</strong> — Speak when card flips to back</li>
+        <li><strong>Speak pronunciation only</strong> — Only speak the phonetic version</li>
+      </ul>
+
+      <h3>Display Settings</h3>
+      <ul>
+        <li><strong>Show breakdown on definition</strong> — Display word breakdowns on card back</li>
+      </ul>
+    </section>
+
+    <section class="guide-section" id="sync">
+      <h2><span>🔄</span> Syncing Progress</h2>
+      <p>Keep your progress synchronized between devices (web and Android app).</p>
+
+      <h3>Push & Pull</h3>
+      <ul>
+        <li><strong>Push</strong> — Upload your current progress to the server</li>
+        <li><strong>Pull</strong> — Download progress from the server</li>
+      </ul>
+
+      <h3>How Sync Works</h3>
+      <p>Each card's status has a timestamp. When syncing, the most recent change wins. This allows offline study on multiple devices.</p>
+
+      <h3>Sync Breakdowns</h3>
+      <p>Click "Sync Breakdowns" to download all shared word breakdowns from the server.</p>
+
+      <div class="warning-box">
+        <strong>⚠️ Note:</strong> Custom decks and user-created cards are currently stored per-device and don't sync to the Android app.
+      </div>
+    </section>
+
+    <section class="guide-section" id="shortcuts">
       <h2><span>⌨️</span> Keyboard Shortcuts</h2>
       <table class="shortcut-table">
         <tr><th>Key</th><th>Action</th></tr>
@@ -134,40 +362,25 @@
         <tr><td><kbd>1</kbd></td><td>Mark as Didn't Get It (Unlearned)</td></tr>
         <tr><td><kbd>2</kbd></td><td>Mark as Unsure</td></tr>
         <tr><td><kbd>3</kbd></td><td>Mark as Got It (Learned)</td></tr>
+        <tr><td><kbd>S</kbd></td><td>Speak current card</td></tr>
       </table>
     </section>
 
-    <section class="guide-section">
-      <h2><span>🔄</span> Syncing Progress</h2>
-      <p>Keep your progress synchronized between devices:</p>
-      <ul>
-        <li><strong>Push</strong> — Upload your current progress to the server</li>
-        <li><strong>Pull</strong> — Download progress from the server to this device</li>
-        <li><strong>Sync Breakdowns</strong> — Download shared term breakdowns</li>
-      </ul>
-      <p>The sync uses timestamps to merge changes intelligently. When in doubt, the most recent change wins.</p>
-    </section>
-
-    <section class="guide-section">
-      <h2><span>⚙️</span> Settings</h2>
-      <ul>
-        <li><strong>Randomize cards</strong> — Shuffle order for study sessions</li>
-        <li><strong>Reverse cards</strong> — Show definition first, term on back</li>
-        <li><strong>Show group labels</strong> — Display category pill on cards</li>
-        <li><strong>Voice settings</strong> — Adjust speech rate and voice selection</li>
-        <li><strong>Auto-speak</strong> — Automatically speak terms when navigating</li>
-        <li><strong>Breakdown display</strong> — Control when breakdowns appear on cards</li>
-      </ul>
-    </section>
-
-    <section class="guide-section">
+    <section class="guide-section" id="troubleshooting">
       <h2><span>❓</span> Troubleshooting</h2>
+      
+      <h3>Common Issues</h3>
       <ul>
         <li><strong>Progress not saving?</strong> — Make sure you're logged in. Check the user icon in the top right.</li>
-        <li><strong>Sync stuck?</strong> — Try logging out and back in, then pull again.</li>
-        <li><strong>Cards not loading?</strong> — Check that the server is running and the kenpo_words.json file exists.</li>
-        <li><strong>Voice not working?</strong> — Ensure your browser supports speech synthesis and volume is up.</li>
+        <li><strong>Deck not switching?</strong> — Click the "Switch" button on the deck, not just the deck row.</li>
+        <li><strong>AI Generation failing?</strong> — Check that API keys are configured in Admin → AI Access.</li>
+        <li><strong>Cards not showing?</strong> — Ensure you've switched to the correct deck.</li>
+        <li><strong>Voice not working?</strong> — Check browser supports speech synthesis and volume is up.</li>
+        <li><strong>Sync issues?</strong> — Try logging out and back in, then pull again.</li>
       </ul>
+
+      <h3>Getting Help</h3>
+      <p>Contact: <a href="mailto:Sidscri@yahoo.com">Sidscri@yahoo.com</a></p>
     </section>
 
     <section class="guide-section">

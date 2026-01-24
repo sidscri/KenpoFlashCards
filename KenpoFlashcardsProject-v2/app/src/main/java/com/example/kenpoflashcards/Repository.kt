@@ -362,6 +362,149 @@ suspend fun deleteBreakdown(cardId: String) = store.deleteBreakdown(cardId)
         }
         return StatusCounts(active, unsure, learned, deleted)
     }
+    
+    // ============ DECK SYNC ============
+    
+    /**
+     * Pull decks from web server
+     */
+    suspend fun syncPullDecks(token: String, serverUrl: String): WebAppSync.DeckSyncResult {
+        if (token.isBlank()) return WebAppSync.DeckSyncResult(success = false, error = "No auth token")
+        val url = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+        
+        val result = WebAppSync.pullDecks(url, token)
+        if (result.success) {
+            // Save decks locally
+            result.decks.forEach { deck ->
+                if (!deck.isBuiltIn) {
+                    store.addDeck(deck)
+                }
+            }
+            // Update active deck setting
+            if (result.activeDeckId.isNotBlank()) {
+                val currentSettings = store.deckSettingsFlow().first()
+                store.saveDeckSettings(currentSettings.copy(activeDeckId = result.activeDeckId))
+            }
+        }
+        return result
+    }
+    
+    /**
+     * Push decks to web server
+     */
+    suspend fun syncPushDecks(token: String, serverUrl: String): WebAppSync.SyncResult {
+        if (token.isBlank()) return WebAppSync.SyncResult(success = false, error = "No auth token")
+        val url = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+        
+        val decks = store.decksFlow().first()
+        val deckSettings = store.deckSettingsFlow().first()
+        
+        return WebAppSync.pushDecks(url, token, decks, deckSettings.activeDeckId)
+    }
+    
+    // ============ USER CARDS SYNC ============
+    
+    /**
+     * Pull user cards from web server
+     */
+    suspend fun syncPullUserCards(token: String, serverUrl: String, deckId: String = ""): WebAppSync.UserCardsSyncResult {
+        if (token.isBlank()) return WebAppSync.UserCardsSyncResult(success = false, error = "No auth token")
+        val url = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+        
+        val result = WebAppSync.pullUserCards(url, token, deckId)
+        if (result.success) {
+            // Merge pulled cards with local cards
+            result.cards.forEach { card ->
+                store.addUserCard(card)
+            }
+        }
+        return result
+    }
+    
+    /**
+     * Push user cards to web server
+     */
+    suspend fun syncPushUserCards(token: String, serverUrl: String, deckId: String = ""): WebAppSync.SyncResult {
+        if (token.isBlank()) return WebAppSync.SyncResult(success = false, error = "No auth token")
+        val url = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+        
+        val cards = store.userCardsFlow().first()
+        val cardsToSync = if (deckId.isNotBlank()) {
+            cards.filter { it.deckId == deckId }
+        } else {
+            cards
+        }
+        
+        return WebAppSync.pushUserCards(url, token, cardsToSync, deckId)
+    }
+    
+    /**
+     * Full sync: pull decks, user cards, and progress from server
+     */
+    suspend fun syncPullAll(token: String, serverUrl: String): WebAppSync.SyncResult {
+        if (token.isBlank()) return WebAppSync.SyncResult(success = false, error = "No auth token")
+        val url = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+        
+        val errors = mutableListOf<String>()
+        
+        // Pull decks
+        val decksResult = syncPullDecks(token, url)
+        if (!decksResult.success) {
+            errors.add("Decks: ${decksResult.error}")
+        }
+        
+        // Pull user cards
+        val cardsResult = syncPullUserCards(token, url)
+        if (!cardsResult.success) {
+            errors.add("User cards: ${cardsResult.error}")
+        }
+        
+        // Pull progress (existing method)
+        val progressResult = syncPullProgressWithToken(token, url)
+        if (!progressResult.success) {
+            errors.add("Progress: ${progressResult.error}")
+        }
+        
+        return if (errors.isEmpty()) {
+            WebAppSync.SyncResult(success = true, message = "Full sync complete")
+        } else {
+            WebAppSync.SyncResult(success = false, error = errors.joinToString("; "))
+        }
+    }
+    
+    /**
+     * Full sync: push decks, user cards, and progress to server
+     */
+    suspend fun syncPushAll(token: String, serverUrl: String): WebAppSync.SyncResult {
+        if (token.isBlank()) return WebAppSync.SyncResult(success = false, error = "No auth token")
+        val url = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+        
+        val errors = mutableListOf<String>()
+        
+        // Push decks
+        val decksResult = syncPushDecks(token, url)
+        if (!decksResult.success) {
+            errors.add("Decks: ${decksResult.error}")
+        }
+        
+        // Push user cards
+        val cardsResult = syncPushUserCards(token, url)
+        if (!cardsResult.success) {
+            errors.add("User cards: ${cardsResult.error}")
+        }
+        
+        // Push progress (existing method)
+        val progressResult = syncPushProgressWithToken(token, url)
+        if (!progressResult.success) {
+            errors.add("Progress: ${progressResult.error}")
+        }
+        
+        return if (errors.isEmpty()) {
+            WebAppSync.SyncResult(success = true, message = "Full sync complete")
+        } else {
+            WebAppSync.SyncResult(success = false, error = errors.joinToString("; "))
+        }
+    }
 }
 
 data class StatusCounts(val active: Int, val unsure: Int, val learned: Int, val deleted: Int) {

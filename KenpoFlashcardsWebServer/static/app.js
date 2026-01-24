@@ -71,6 +71,21 @@ let aiStatus = { openai_available: false, openai_model: "", gemini_available: fa
 
 async function postLoginInit(){
   if(appInitialized) return;
+  
+  // Load saved active deck from settings FIRST
+  try {
+    const settings = await jget("/api/settings?scope=all");
+    if(settings.activeDeckId){
+      activeDeckId = settings.activeDeckId;
+    }
+  } catch(e){}
+  
+  // Load decks to get deck names for header
+  try {
+    currentDecks = await jget("/api/decks");
+    updateHeaderDeckName();
+  } catch(e){}
+  
   await loadGroups();
   await loadHealth();
   try{ aiStatus = await jget("/api/ai"); } catch(e){ aiStatus = { openai_available:false, openai_model:"", gemini_available:false, gemini_model:"", selected_provider:"auto" }; }
@@ -332,8 +347,11 @@ function updateStudyActionButtons(){
 async function refreshCounts(){
   try{
     const groupParam = scopeGroup ? `&group=${encodeURIComponent(scopeGroup)}` : "";
-    const c = await jget(`/api/counts?${groupParam}`);
+    const deckParam = activeDeckId ? `&deck_id=${encodeURIComponent(activeDeckId)}` : "";
+    const c = await jget(`/api/counts?${groupParam}${deckParam}`);
     $("countsLine").textContent = `Unlearned: ${c.active} | Unsure: ${c.unsure} | Learned: ${c.learned}`;
+    // Update header card count
+    updateHeaderCardCount(c.total);
   } catch(e){
     $("countsLine").textContent = `Unlearned: — | Unsure: — | Learned: —`;
   }
@@ -341,12 +359,31 @@ async function refreshCounts(){
 
 async function loadHealth(){
   const h = await jget("/api/health");
-  // Don't show local file path on the page
+  // This will be updated by refreshCounts with actual deck card count
   $("healthLine").textContent = `Cards loaded: ${h.cards_loaded}`;
 }
 
+// Update the header card count based on current deck
+function updateHeaderCardCount(total){
+  $("healthLine").textContent = `Cards loaded: ${total}`;
+}
+
+// Update header to show current deck name
+function updateHeaderDeckName(){
+  const el = $("headerDeckName");
+  if(!el) return;
+  
+  if(currentDecks && currentDecks.length > 0){
+    const deck = currentDecks.find(d => d.id === activeDeckId);
+    el.textContent = deck ? deck.name : "Kenpo Vocabulary";
+  } else {
+    el.textContent = "Kenpo Vocabulary";
+  }
+}
+
 async function loadGroups(){
-  allGroups = await jget("/api/groups");
+  const deckParam = activeDeckId ? `?deck_id=${encodeURIComponent(activeDeckId)}` : "";
+  allGroups = await jget("/api/groups" + deckParam);
 
   const sel = $("groupSelect");
   sel.innerHTML = "";
@@ -1085,8 +1122,9 @@ async function loadDeckForStudy(){
   const groupParam = scopeGroup ? `&group=${encodeURIComponent(scopeGroup)}` : "";
   const statusParam = `status=${encodeURIComponent(activeTab)}`;
   const qParam = q ? `&q=${encodeURIComponent(q)}` : "";
+  const deckParam = activeDeckId ? `&deck_id=${encodeURIComponent(activeDeckId)}` : "";
 
-  const cards = await jget(`/api/cards?${statusParam}${groupParam}${qParam}`);
+  const cards = await jget(`/api/cards?${statusParam}${groupParam}${qParam}${deckParam}`);
   const deckSettings = Object.assign({}, settings);
   deckSettings.randomize = getStudyRandomizeFlag(settings);
   deck = buildDeck(cards, deckSettings);
@@ -1238,7 +1276,8 @@ async function loadList(status){
   const q = ($("searchBox").value || "").trim();
   const groupParam = scopeGroup ? `&group=${encodeURIComponent(scopeGroup)}` : "";
   const qParam = q ? `&q=${encodeURIComponent(q)}` : "";
-  let cards = await jget(`/api/cards?status=${encodeURIComponent(status)}${groupParam}${qParam}`);
+  const deckParam = activeDeckId ? `&deck_id=${encodeURIComponent(activeDeckId)}` : "";
+  let cards = await jget(`/api/cards?status=${encodeURIComponent(status)}${groupParam}${qParam}${deckParam}`);
 
   const titleMap = {learned:"Learned", deleted:"Deleted", all:"All"};
   $("listTitle").textContent = titleMap[status] || "List";
@@ -2471,6 +2510,15 @@ function showEditDecksStatus(message, type = "info"){
 async function loadDecks(){
   try {
     currentDecks = await jget("/api/decks");
+    
+    // Load saved active deck from settings
+    try {
+      const settings = await jget("/api/settings?scope=all");
+      if(settings.activeDeckId){
+        activeDeckId = settings.activeDeckId;
+      }
+    } catch(e){}
+    
     renderDecksList();
     updateDeckDropdown();
   } catch(e){
@@ -2495,13 +2543,14 @@ function renderDecksList(){
         <div class="deckName">
           ${escapeHtml(deck.name)}
           ${deck.isBuiltIn ? '<span class="deckBadge">Built-in</span>' : ''}
-          ${deck.isDefault ? '<span class="deckBadge default">★</span>' : ''}
+          ${deck.isDefault ? '<span class="deckBadge default">★ Default</span>' : ''}
         </div>
         <div class="deckDesc">${escapeHtml(deck.description || "")}</div>
         <div class="deckCount">${deck.cardCount} cards</div>
       </div>
       <div class="deckActions">
         ${!isActive ? '<button class="deckSwitchBtn appBtn primary small" title="Switch to this deck">Switch</button>' : '<span class="deckActiveLabel">✓ Active</span>'}
+        ${!deck.isDefault ? '<button class="deckDefaultBtn" title="Set as default startup deck">★</button>' : ''}
         ${!deck.isBuiltIn ? '<button class="deckEditBtn" title="Edit deck">✏️</button>' : ''}
         ${!deck.isBuiltIn ? '<button class="deckDeleteBtn" title="Delete deck">🗑️</button>' : ''}
       </div>
@@ -2512,6 +2561,14 @@ function renderDecksList(){
       switchBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         switchToDeck(deck.id);
+      });
+    }
+    
+    const defaultBtn = div.querySelector(".deckDefaultBtn");
+    if(defaultBtn){
+      defaultBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        setDefaultDeck(deck.id, deck.name);
       });
     }
     
@@ -2567,6 +2624,12 @@ async function switchToDeck(deckId){
   
   showEditDecksStatus(`Switched to "${deckName}"`, "success");
   
+  // Update header deck name
+  updateHeaderDeckName();
+  
+  // Reload groups for the new deck
+  await reloadGroupsForDeck();
+  
   // Reload counts and cards for the new deck
   await refreshCounts();
   
@@ -2580,6 +2643,33 @@ async function switchToDeck(deckId){
   loadUserCards();
 }
 
+// Reload groups dropdown for current deck
+async function reloadGroupsForDeck(){
+  const deckParam = activeDeckId ? `?deck_id=${encodeURIComponent(activeDeckId)}` : "";
+  allGroups = await jget("/api/groups" + deckParam);
+  
+  const sel = $("groupSelect");
+  sel.innerHTML = "";
+  const optPick = document.createElement("option");
+  optPick.value = "";
+  optPick.textContent = "Select group…";
+  sel.appendChild(optPick);
+  
+  for(const g of allGroups){
+    const o = document.createElement("option");
+    o.value = g;
+    o.textContent = g;
+    sel.appendChild(o);
+  }
+  
+  scopeGroup = "";
+  sel.value = "";
+  allCardsMode = true;
+  
+  updateFilterHighlight();
+  setupGroupDropdown(allGroups);
+}
+
 // Delete a deck
 async function deleteDeck(deckId, deckName){
   if(!confirm(`Delete deck "${deckName}"? This cannot be undone.`)) return;
@@ -2590,6 +2680,17 @@ async function deleteDeck(deckId, deckName){
     loadDecks();
   } catch(e){
     showEditDecksStatus("Failed to delete deck: " + e.message, "error");
+  }
+}
+
+// Set a deck as the default startup deck
+async function setDefaultDeck(deckId, deckName){
+  try {
+    await jpost(`/api/decks/${deckId}/set_default`, {});
+    showEditDecksStatus(`Set "${deckName}" as default startup deck`, "success");
+    loadDecks();
+  } catch(e){
+    showEditDecksStatus("Failed to set default: " + e.message, "error");
   }
 }
 

@@ -1,7 +1,7 @@
 {
-  "name": "KenpoFlashcardsWebServer",
-  "version": "7.0.5",
-  "build": 38,
+  "name": "Study Flashcards",
+  "version": "7.0.7",
+  "build": 40,
   "released": "2026-01-24",
-  "notes": "Fixed: AI generator now works, deck switching actually changes cards, logout confirmation, AI definitions use deck context not just Kenpo. Max cards 1-200."
+  "notes": "Added Android sync API endpoints: /api/vocabulary, /api/sync/decks, /api/sync/user_cards. kenpo_words.json now canonical in web server."
 }

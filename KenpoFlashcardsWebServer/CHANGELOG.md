@@ -1,4 +1,4 @@
-# Changelog — KenpoFlashcardsWebServer
+# Changelog — Study Flashcards (formerly KenpoFlashcardsWebServer)
 
 All notable changes to this project will be documented in this file.
 
@@ -15,6 +15,42 @@ The format is simple and practical:
 
 ---
 
+## 7.0.7 (build 40) — 2026-01-24
+
+### Added — Android Sync API
+- **`GET /api/vocabulary`**: Returns kenpo_words.json (canonical source for built-in vocabulary)
+- **`GET /api/sync/decks`**: Pull all decks for Android sync (requires auth)
+- **`POST /api/sync/decks`**: Push deck changes from Android (requires auth)
+- **`GET /api/sync/user_cards`**: Pull user-created cards (requires auth, optional deck_id filter)
+- **`POST /api/sync/user_cards`**: Push user cards from Android (requires auth)
+- **`DELETE /api/sync/user_cards/<card_id>`**: Delete a user card (requires auth)
+
+### Changed
+- **kenpo_words.json** now stored in `data/` folder as canonical source
+- Android app can now sync decks and user cards with web server
+- Full cross-platform deck and card sharing
+
+---
+
+## 7.0.6 (build 39) — 2026-01-24
+
+### Added
+- **Rebranded to "Study Flashcards"**: Generic app name that works for any subject
+- **Header shows active deck**: App title now shows "Study Flashcards • [Deck Name]"
+- **Set Default Deck**: ★ button to set a deck as the default startup deck
+- **API endpoint**: `POST /api/decks/:id/set_default` - Sets a deck as default
+
+### Changed
+- **Groups filter respects active deck**: Group dropdown now shows groups from the active deck, not just Kenpo
+- **Page title**: Changed from "Kenpo Flashcards (Web)" to "Study Flashcards"
+
+### Fixed
+- **Deck resets on page refresh**: Now properly loads saved `activeDeckId` before initializing app
+- **Groups showing Kenpo for custom decks**: Groups API now accepts `deck_id` parameter
+- **Deck switching not fully reloading**: Now reloads groups, counts, cards, and header on switch
+
+---
+
 ## 7.0.5 (build 38) — 2026-01-24
 
 ### Added
@@ -27,6 +63,17 @@ The format is simple and practical:
   - Default keywords: Uses deck name + description if no keywords entered
 - **Edit Deck**: ✏️ button to edit deck name and description
 - **Logout confirmation**: "Are you sure?" prompt before logging out
+- **📖 Comprehensive User Guide**: Complete rewrite with all features documented
+  - Table of contents with jump links
+  - Step-by-step instructions for all features
+  - Tip boxes, warning boxes, and keyboard shortcuts table
+  - Sections: Getting Started, Study Tabs, Edit Decks, AI Generator, Custom Set, Breakdowns, Settings, Sync, Troubleshooting
+- **📱 Interactive About Page**: New tabbed interface
+  - Overview with version card and quick start
+  - Features grid with icons
+  - Technology stack badges
+  - Changelog summary
+  - Contact section with email button
 - **API endpoints**:
   - `POST /api/ai/generate_deck` - Generate cards from keywords, photo, or document
   - `POST /api/decks/:id` - Update deck name/description
@@ -38,11 +85,14 @@ The format is simple and practical:
 - **AI group suggestions**: Now generic, not Kenpo-specific
 - **Generate button**: Smaller "🔍 Generate" instead of full text
 - **Max cards**: Increased from 50 to 200
+- **Header card count**: Now shows count for active deck (not always 88)
 
 ### Fixed
-- **Deck switching**: Now actually reloads cards when switching decks
-- **Cards not appearing**: Added loadCards() refresh after adding AI-generated cards
+- **Deck switching not working**: Now passes `deck_id` explicitly in all API calls
+- **Active deck not loading on startup**: Loads saved `activeDeckId` from settings before loading cards
+- **Cards not appearing after adding**: Added proper refresh of counts and study deck
 - **AI generation errors**: Added detailed server-side logging for debugging
+- **Duplicate cards in AI results**: Filters out terms that already exist in deck
 
 ---
 
