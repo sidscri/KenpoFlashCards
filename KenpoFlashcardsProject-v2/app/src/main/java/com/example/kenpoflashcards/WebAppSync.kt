@@ -10,7 +10,7 @@ import java.net.URL
 /**
  * Web App Sync Service
  * 
- * Connects to: http://sidscri.tplinkdns.com:8009
+ * Connects to: (admin-managed)
  * 
  * Server Data Structure (C:/Program Files/Kenpo Flashcards/_internal/data/):
  * - users/           -> User directories (one per user)
@@ -333,6 +333,76 @@ object WebAppSync {
         val error: String = ""
     )
     
+
+    /**
+     * App/server config result (e.g., managed sync server URL)
+     */
+    data class ServerConfigResult(
+        val success: Boolean,
+        val managedServerUrl: String = "",
+        val configVersion: Long = 0,
+        val error: String = ""
+    )
+
+    /**
+     * Pull app config from server (available to any logged-in user).
+     * Endpoint: GET /api/app/config  -> { "server_url": "...", "config_version": 1 }
+     * If the endpoint is not implemented yet, this will fail gracefully.
+     */
+    suspend fun pullServerConfig(serverUrl: String, token: String): ServerConfigResult = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("$serverUrl/api/app/config")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("Authorization", "Bearer $token")
+            conn.connectTimeout = 8000
+            conn.readTimeout = 8000
+
+            val code = conn.responseCode
+            if (code == 200) {
+                val response = conn.inputStream.bufferedReader().readText()
+                val json = JSONObject(response)
+                val su = json.optString("server_url", json.optString("managed_server_url", ""))
+                val ver = json.optLong("config_version", 0)
+                ServerConfigResult(success = true, managedServerUrl = su, configVersion = ver)
+            } else {
+                val err = try { conn.errorStream?.bufferedReader()?.readText() ?: "" } catch (_: Exception) { "" }
+                ServerConfigResult(success = false, error = "Config pull failed: $code ${err.take(120)}")
+            }
+        } catch (e: Exception) {
+            ServerConfigResult(success = false, error = e.message ?: "Config pull failed")
+        }
+    }
+
+    /**
+     * Push managed server URL to the server (admin only).
+     * Endpoint: POST /api/admin/app/config -> { "server_url": "..." }
+     */
+    suspend fun pushManagedServerUrl(serverUrl: String, token: String, newServerUrl: String): SyncResult = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("$serverUrl/api/admin/app/config")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("Authorization", "Bearer $token")
+            conn.doOutput = true
+            conn.connectTimeout = 8000
+            conn.readTimeout = 8000
+
+            val body = JSONObject().apply { put("server_url", newServerUrl) }
+            conn.outputStream.use { it.write(body.toString().toByteArray()) }
+
+            if (conn.responseCode == 200) {
+                SyncResult(success = true, message = "Server URL updated")
+            } else {
+                val err = try { conn.errorStream?.bufferedReader()?.readText() ?: "" } catch (_: Exception) { "" }
+                SyncResult(success = false, error = "Config push failed: ${conn.responseCode} ${err.take(120)}")
+            }
+        } catch (e: Exception) {
+            SyncResult(success = false, error = e.message ?: "Config push failed")
+        }
+    }
+
     /**
      * Push API keys to server (admin only)
      * Server encrypts and stores in secure file

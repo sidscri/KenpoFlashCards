@@ -283,6 +283,21 @@ suspend fun deleteBreakdown(cardId: String) = store.deleteBreakdown(cardId)
         val url = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
         return WebAppSync.pullApiKeysForUser(url, token)
     }
+
+    // Pull app/server config (managed server URL) from server
+    suspend fun syncPullServerConfig(token: String, serverUrl: String): WebAppSync.ServerConfigResult {
+        if (token.isBlank()) return WebAppSync.ServerConfigResult(false, error = "No auth token")
+        val url = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+        return WebAppSync.pullServerConfig(url, token)
+    }
+
+    // Push managed server URL to server (admin only)
+    suspend fun syncPushManagedServerUrl(token: String, serverUrl: String, newServerUrl: String): WebAppSync.SyncResult {
+        if (token.isBlank()) return WebAppSync.SyncResult(false, error = "No auth token")
+        val url = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+        return WebAppSync.pushManagedServerUrl(url, token, newServerUrl)
+    }
+
     
 
     // Push only pending progress deltas (if any)

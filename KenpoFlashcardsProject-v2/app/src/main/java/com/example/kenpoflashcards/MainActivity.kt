@@ -1225,6 +1225,8 @@ fun AdminScreen(nav: NavHostController, repo: Repository) {
     var chatGptModel by remember(adminSettings) { mutableStateOf(adminSettings.chatGptModel) }
     var geminiKey by remember(adminSettings) { mutableStateOf(adminSettings.geminiApiKey) }
     var geminiModel by remember(adminSettings) { mutableStateOf(adminSettings.geminiModel) }
+    var managedServerUrl by remember(adminSettings) { mutableStateOf(adminSettings.webAppUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }) }
+
     var statusMessage by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var showChatGptModelDropdown by remember { mutableStateOf(false) }
@@ -1346,6 +1348,61 @@ fun AdminScreen(nav: NavHostController, repo: Repository) {
             
             Spacer(Modifier.height(20.dp)); HorizontalDivider(color = DarkBorder); Spacer(Modifier.height(16.dp))
             
+
+
+            // ==================== SERVER URL (ADMIN) ====================
+            Text("Server URL", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+            Spacer(Modifier.height(4.dp))
+            Text("Admins can update the sync server URL and push it to all users via the web server config.", color = DarkMuted, fontSize = 11.sp)
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                managedServerUrl,
+                { managedServerUrl = it },
+                Modifier.fillMaxWidth(),
+                label = { Text("Managed Server URL (Admin)") },
+                singleLine = true,
+                textStyle = LocalTextStyle.current.copy(fontSize = 12.sp),
+                leadingIcon = { Icon(Icons.Default.Cloud, "Server") }
+            )
+            Spacer(Modifier.height(8.dp))
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button({
+                    scope.launch {
+                        repo.saveAdminSettings(adminSettings.copy(webAppUrl = managedServerUrl))
+                        statusMessage = "Server URL saved locally"
+                    }
+                }, Modifier.weight(1f)) { Text("Save Locally") }
+
+                Button({
+                    if (adminSettings.authToken.isBlank()) { statusMessage = "Error: Login required"; return@Button }
+                    isLoading = true
+                    scope.launch {
+                        val res = repo.syncPushManagedServerUrl(adminSettings.authToken, adminSettings.webAppUrl, managedServerUrl)
+                        statusMessage = if (res.success) "Server URL pushed to server!" else "Error: ${res.error}"
+                        isLoading = false
+                    }
+                }, Modifier.weight(1f), enabled = !isLoading && adminSettings.isLoggedIn) { Text(if (isLoading) "..." else "Push URL") }
+            }
+
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton({
+                if (adminSettings.authToken.isBlank()) { statusMessage = "Error: Login required"; return@OutlinedButton }
+                isLoading = true
+                scope.launch {
+                    val cfg = repo.syncPullServerConfig(adminSettings.authToken, adminSettings.webAppUrl)
+                    if (cfg.success && cfg.managedServerUrl.isNotBlank()) {
+                        managedServerUrl = cfg.managedServerUrl
+                        repo.saveAdminSettings(adminSettings.copy(webAppUrl = cfg.managedServerUrl))
+                        statusMessage = "Server URL pulled from server"
+                    } else {
+                        statusMessage = "Error: ${cfg.error.ifBlank { "Config endpoint not available" }}"
+                    }
+                    isLoading = false
+                }
+            }, Modifier.fillMaxWidth(), enabled = !isLoading && adminSettings.isLoggedIn) { Text(if (isLoading) "..." else "Pull URL from Server") }
+
+            Spacer(Modifier.height(20.dp)); HorizontalDivider(color = DarkBorder); Spacer(Modifier.height(16.dp))
             // Sync API Keys with Server
             Text("Sync with Server", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
             Spacer(Modifier.height(4.dp))
@@ -1527,7 +1584,7 @@ fun LoginScreen(nav: NavHostController, repo: Repository) {
         Column(Modifier.fillMaxSize().padding(pad).padding(12.dp).verticalScroll(rememberScrollState())) {
             Text("Web App Sync", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
             Spacer(Modifier.height(4.dp))
-            Text("Sync progress with: sidscri.tplinkdns.com:8009", color = DarkMuted, fontSize = 11.sp)
+            Text("Sync server is managed by an admin. No manual server entry is required for regular users.", color = DarkMuted, fontSize = 11.sp)
             Spacer(Modifier.height(12.dp))
             
             if (adminSettings.isLoggedIn) {
@@ -1550,8 +1607,11 @@ fun LoginScreen(nav: NavHostController, repo: Repository) {
                     Icon(Icons.Default.Logout, "Logout"); Spacer(Modifier.width(8.dp)); Text("Logout") 
                 }
             } else {
-                OutlinedTextField(serverUrl, { serverUrl = it }, Modifier.fillMaxWidth(), label = { Text("Server URL") }, singleLine = true, textStyle = LocalTextStyle.current.copy(fontSize = 12.sp), leadingIcon = { Icon(Icons.Default.Cloud, "Server") })
-                Spacer(Modifier.height(8.dp))
+                val isAdminCandidate = AdminUsers.isAdmin(username)
+                if (isAdminCandidate) {
+                    OutlinedTextField(serverUrl, { serverUrl = it }, Modifier.fillMaxWidth(), label = { Text("Server URL (Admin)") }, singleLine = true, textStyle = LocalTextStyle.current.copy(fontSize = 12.sp), leadingIcon = { Icon(Icons.Default.Cloud, "Server") })
+                    Spacer(Modifier.height(8.dp))
+                }
                 OutlinedTextField(username, { username = it }, Modifier.fillMaxWidth(), label = { Text("Username") }, singleLine = true, leadingIcon = { Icon(Icons.Default.Person, "User") })
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(password, { password = it }, Modifier.fillMaxWidth(), label = { Text("Password") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), leadingIcon = { Icon(Icons.Default.Lock, "Password") })
@@ -1562,7 +1622,12 @@ fun LoginScreen(nav: NavHostController, repo: Repository) {
                     scope.launch {
                         val result = repo.syncLogin(username, password)
                         if (result.success) {
-                            val effectiveUrl = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+                            var effectiveUrl = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+                            // Pull admin-managed config (if server supports it)
+                            val cfg = repo.syncPullServerConfig(result.token, effectiveUrl)
+                            if (cfg.success && cfg.managedServerUrl.isNotBlank() && cfg.managedServerUrl != effectiveUrl) {
+                                effectiveUrl = cfg.managedServerUrl
+                            }
                             
                             // Check if this is first login on this device (lastSyncTime == 0)
                             isFirstLogin = adminSettings.lastSyncTime == 0L

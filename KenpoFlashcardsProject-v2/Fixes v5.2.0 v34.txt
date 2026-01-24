@@ -6,4 +6,5 @@ Created: Thu 01/22/2026
   `c:/personal-servers/kenpoflashcardswebserver/data/`
   to:
   `C:/Program Files/Kenpo Flashcards/_internal/data/`
-  (Reflects Windows installer deployment location)
+  (Reflects Windows installer deployment location)Created: Fri 01/23/2026 23:51:20.82
+
