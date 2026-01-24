@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Tuple, Optional
 
 import requests
 
-from flask import Flask, jsonify, request, send_from_directory, session
+from flask import Flask, jsonify, request, send_from_directory, session, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # =========================================================
@@ -1483,9 +1483,19 @@ def api_admin_stats():
     profiles = _load_profiles()
     breakdowns = _load_breakdowns()
     
-    # User stats
+    # User stats with list
     users = profiles.get("users", {})
     total_users = len(users)
+    user_list = []
+    for user_id, udata in users.items():
+        if isinstance(udata, dict):
+            uname = udata.get("username", "")
+            user_list.append({
+                "id": user_id,
+                "username": uname,
+                "is_admin": _is_admin_user(uname),
+                "password_reset_required": udata.get("password_reset_required", False)
+            })
     
     # Card stats
     total_cards = len(cards) if status == "ok" else 0
@@ -1528,7 +1538,8 @@ def api_admin_stats():
     return jsonify({
         "users": {
             "total": total_users,
-            "admins": list(ADMIN_USERNAMES)
+            "admins": list(ADMIN_USERNAMES),
+            "list": user_list
         },
         "cards": {
             "total": total_cards,
@@ -1556,6 +1567,90 @@ def api_admin_stats():
             "uptime": _now()
         }
     })
+
+
+@app.post("/api/admin/user/update")
+def api_admin_user_update():
+    """Update user admin status."""
+    global ADMIN_USERNAMES
+    
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    if not _is_admin_user(username):
+        return jsonify({"error": "admin_required"}), 403
+    
+    data = request.get_json() or {}
+    target_user_id = data.get("user_id", "")
+    is_admin = data.get("is_admin", False)
+    
+    if not target_user_id:
+        return jsonify({"error": "user_id required"}), 400
+    
+    profiles = _load_profiles()
+    target_user = profiles.get("users", {}).get(target_user_id)
+    if not target_user:
+        return jsonify({"error": "user not found"}), 404
+    
+    target_username = target_user.get("username", "")
+    
+    # Update admin_users.json
+    admin_users_path = os.path.join(DATA_DIR, "admin_users.json")
+    try:
+        with open(admin_users_path, "r", encoding="utf-8") as f:
+            admin_data = json.load(f)
+    except Exception:
+        admin_data = {"admins": list(ADMIN_USERNAMES)}
+    
+    admins = set(admin_data.get("admins", []))
+    if is_admin:
+        admins.add(target_username.lower())
+    else:
+        admins.discard(target_username.lower())
+    
+    admin_data["admins"] = list(admins)
+    with open(admin_users_path, "w", encoding="utf-8") as f:
+        json.dump(admin_data, f, ensure_ascii=False, indent=2)
+    
+    # Reload admin usernames
+    ADMIN_USERNAMES = _load_admin_usernames()
+    
+    return jsonify({"success": True})
+
+
+@app.post("/api/admin/user/reset_password")
+def api_admin_user_reset_password():
+    """Reset user password to default and require change on next login."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    if not _is_admin_user(username):
+        return jsonify({"error": "admin_required"}), 403
+    
+    data = request.get_json() or {}
+    target_user_id = data.get("user_id", "")
+    
+    if not target_user_id:
+        return jsonify({"error": "user_id required"}), 400
+    
+    profiles = _load_profiles()
+    if target_user_id not in profiles.get("users", {}):
+        return jsonify({"error": "user not found"}), 404
+    
+    # Set password to default and flag for reset
+    default_password = "123456789"
+    profiles["users"][target_user_id]["password_hash"] = generate_password_hash(default_password)
+    profiles["users"][target_user_id]["password_reset_required"] = True
+    
+    _save_profiles(profiles)
+    
+    return jsonify({"success": True})
 
 
 @app.get("/api/cards")
@@ -2410,6 +2505,399 @@ def web_admin_save_apikeys():
         return jsonify({'success': True, 'message': 'API keys saved'})
     else:
         return jsonify({'error': 'Failed to save'}), 500
+
+
+# ============================================================
+# DECK MANAGEMENT & USER CARDS
+# ============================================================
+
+# Paths for deck and user cards storage
+DECKS_PATH = os.path.join(DATA_DIR, "decks.json")
+USER_CARDS_DIR = os.path.join(DATA_DIR, "user_cards")
+
+def _load_decks() -> List[Dict[str, Any]]:
+    """Load deck definitions. Always includes the built-in Kenpo deck."""
+    kenpo_deck = {
+        "id": "kenpo",
+        "name": "Kenpo Vocabulary",
+        "description": "Korean martial arts terminology for Kenpo students",
+        "isDefault": True,
+        "isBuiltIn": True,
+        "sourceFile": "kenpo_words.json",
+        "cardCount": 88,
+        "createdAt": 0,
+        "updatedAt": 0
+    }
+    
+    if not os.path.exists(DECKS_PATH):
+        return [kenpo_deck]
+    
+    try:
+        with open(DECKS_PATH, "r", encoding="utf-8") as f:
+            decks = json.load(f)
+        if not isinstance(decks, list):
+            decks = []
+        # Ensure kenpo deck is always first
+        deck_ids = [d.get("id") for d in decks]
+        if "kenpo" not in deck_ids:
+            decks.insert(0, kenpo_deck)
+        else:
+            # Update kenpo deck to ensure it has correct properties
+            for i, d in enumerate(decks):
+                if d.get("id") == "kenpo":
+                    decks[i] = kenpo_deck
+                    break
+        return decks
+    except Exception:
+        return [kenpo_deck]
+
+
+def _save_decks(decks: List[Dict[str, Any]]) -> None:
+    """Save deck definitions."""
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(DECKS_PATH, "w", encoding="utf-8") as f:
+        json.dump(decks, f, ensure_ascii=False, indent=2)
+
+
+def _user_cards_path(user_id: str) -> str:
+    """Get path to user's custom cards file."""
+    udir = os.path.join(USER_CARDS_DIR, user_id)
+    os.makedirs(udir, exist_ok=True)
+    return os.path.join(udir, "cards.json")
+
+
+def _load_user_cards(user_id: str) -> List[Dict[str, Any]]:
+    """Load user-created cards."""
+    path = _user_cards_path(user_id)
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            cards = json.load(f)
+        return cards if isinstance(cards, list) else []
+    except Exception:
+        return []
+
+
+def _save_user_cards(user_id: str, cards: List[Dict[str, Any]]) -> None:
+    """Save user-created cards."""
+    path = _user_cards_path(user_id)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(cards, f, ensure_ascii=False, indent=2)
+
+
+def _generate_card_id() -> str:
+    """Generate a unique 16-character hex ID for a new card."""
+    return uuid.uuid4().hex[:16]
+
+
+@app.get("/api/decks")
+def api_get_decks():
+    """Get all available decks."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    decks = _load_decks()
+    
+    # Update card counts for user-created decks
+    user_cards = _load_user_cards(uid)
+    for deck in decks:
+        if not deck.get("isBuiltIn"):
+            deck["cardCount"] = len([c for c in user_cards if c.get("deckId") == deck.get("id")])
+    
+    return jsonify(decks)
+
+
+@app.post("/api/decks")
+def api_create_deck():
+    """Create a new user deck."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    data = request.get_json() or {}
+    name = str(data.get("name", "")).strip()
+    description = str(data.get("description", "")).strip()
+    
+    if not name:
+        return jsonify({"error": "Deck name is required"}), 400
+    
+    decks = _load_decks()
+    
+    # Check for duplicate name
+    for d in decks:
+        if d.get("name", "").lower() == name.lower():
+            return jsonify({"error": "A deck with this name already exists"}), 400
+    
+    new_deck = {
+        "id": f"deck_{uuid.uuid4().hex[:8]}",
+        "name": name,
+        "description": description,
+        "isDefault": False,
+        "isBuiltIn": False,
+        "sourceFile": None,
+        "cardCount": 0,
+        "createdAt": int(time.time()),
+        "updatedAt": int(time.time())
+    }
+    
+    decks.append(new_deck)
+    _save_decks(decks)
+    
+    return jsonify(new_deck)
+
+
+@app.delete("/api/decks/<deck_id>")
+def api_delete_deck(deck_id: str):
+    """Delete a user-created deck."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    decks = _load_decks()
+    
+    # Find and validate deck
+    deck_to_delete = None
+    for d in decks:
+        if d.get("id") == deck_id:
+            deck_to_delete = d
+            break
+    
+    if not deck_to_delete:
+        return jsonify({"error": "Deck not found"}), 404
+    
+    if deck_to_delete.get("isBuiltIn"):
+        return jsonify({"error": "Cannot delete built-in deck"}), 400
+    
+    # Remove deck
+    decks = [d for d in decks if d.get("id") != deck_id]
+    _save_decks(decks)
+    
+    # Also remove user cards from this deck
+    user_cards = _load_user_cards(uid)
+    user_cards = [c for c in user_cards if c.get("deckId") != deck_id]
+    _save_user_cards(uid, user_cards)
+    
+    return jsonify({"success": True, "deleted": deck_id})
+
+
+@app.get("/api/user_cards")
+def api_get_user_cards():
+    """Get all user-created cards."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    deck_id = request.args.get("deck_id", "")
+    cards = _load_user_cards(uid)
+    
+    if deck_id:
+        cards = [c for c in cards if c.get("deckId") == deck_id]
+    
+    return jsonify(cards)
+
+
+@app.post("/api/user_cards")
+def api_add_user_card():
+    """Add a new user-created card."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    data = request.get_json() or {}
+    term = str(data.get("term", "")).strip()
+    meaning = str(data.get("meaning", "")).strip()
+    pron = str(data.get("pron", "")).strip()
+    group = str(data.get("group", "")).strip()
+    deck_id = str(data.get("deckId", "kenpo")).strip()
+    
+    if not term:
+        return jsonify({"error": "Term is required"}), 400
+    if not meaning:
+        return jsonify({"error": "Definition is required"}), 400
+    
+    cards = _load_user_cards(uid)
+    
+    new_card = {
+        "id": _generate_card_id(),
+        "term": term,
+        "meaning": meaning,
+        "pron": pron,
+        "group": group,
+        "subgroup": "",
+        "deckId": deck_id,
+        "isUserCreated": True,
+        "createdAt": int(time.time()),
+        "updatedAt": int(time.time())
+    }
+    
+    cards.append(new_card)
+    _save_user_cards(uid, cards)
+    
+    return jsonify(new_card)
+
+
+@app.put("/api/user_cards/<card_id>")
+def api_update_user_card(card_id: str):
+    """Update a user-created card."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    data = request.get_json() or {}
+    cards = _load_user_cards(uid)
+    
+    card_found = False
+    for i, c in enumerate(cards):
+        if c.get("id") == card_id:
+            card_found = True
+            # Update fields
+            if "term" in data:
+                cards[i]["term"] = str(data["term"]).strip()
+            if "meaning" in data:
+                cards[i]["meaning"] = str(data["meaning"]).strip()
+            if "pron" in data:
+                cards[i]["pron"] = str(data["pron"]).strip()
+            if "group" in data:
+                cards[i]["group"] = str(data["group"]).strip()
+            if "deckId" in data:
+                cards[i]["deckId"] = str(data["deckId"]).strip()
+            cards[i]["updatedAt"] = int(time.time())
+            break
+    
+    if not card_found:
+        return jsonify({"error": "Card not found"}), 404
+    
+    _save_user_cards(uid, cards)
+    return jsonify(cards[i])
+
+
+@app.delete("/api/user_cards/<card_id>")
+def api_delete_user_card(card_id: str):
+    """Delete a user-created card."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    cards = _load_user_cards(uid)
+    original_count = len(cards)
+    cards = [c for c in cards if c.get("id") != card_id]
+    
+    if len(cards) == original_count:
+        return jsonify({"error": "Card not found"}), 404
+    
+    _save_user_cards(uid, cards)
+    return jsonify({"success": True, "deleted": card_id})
+
+
+@app.post("/api/ai/generate_definition")
+def api_ai_generate_definition():
+    """Generate definition options using AI."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    data = request.get_json() or {}
+    term = str(data.get("term", "")).strip()
+    
+    if not term:
+        return jsonify({"error": "Term is required"}), 400
+    
+    if not OPENAI_API_KEY and not GEMINI_API_KEY:
+        return jsonify({"error": "No AI provider configured"}), 400
+    
+    prompt = f"""Generate 3 different definitions for the term "{term}" in the context of Korean martial arts vocabulary.
+Return ONLY a JSON array with 3 strings, no explanation. Example: ["definition 1", "definition 2", "definition 3"]"""
+    
+    try:
+        if OPENAI_API_KEY:
+            result = _call_openai_chat(prompt, OPENAI_MODEL, OPENAI_API_KEY)
+        else:
+            result = _call_gemini_chat(prompt, GEMINI_MODEL, GEMINI_API_KEY)
+        
+        # Parse JSON array from result
+        import re
+        match = re.search(r'\[.*\]', result, re.DOTALL)
+        if match:
+            definitions = json.loads(match.group())
+            return jsonify({"definitions": definitions})
+        else:
+            return jsonify({"definitions": [result.strip()]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.post("/api/ai/generate_pronunciation")
+def api_ai_generate_pronunciation():
+    """Generate pronunciation using AI."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    data = request.get_json() or {}
+    term = str(data.get("term", "")).strip()
+    
+    if not term:
+        return jsonify({"error": "Term is required"}), 400
+    
+    if not OPENAI_API_KEY and not GEMINI_API_KEY:
+        return jsonify({"error": "No AI provider configured"}), 400
+    
+    prompt = f"""Provide the English phonetic pronunciation for the Korean martial arts term "{term}".
+Return ONLY the pronunciation guide, nothing else. Example: tay-kwon-doh"""
+    
+    try:
+        if OPENAI_API_KEY:
+            result = _call_openai_chat(prompt, OPENAI_MODEL, OPENAI_API_KEY)
+        else:
+            result = _call_gemini_chat(prompt, GEMINI_MODEL, GEMINI_API_KEY)
+        
+        return jsonify({"pronunciation": result.strip()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.post("/api/ai/generate_group")
+def api_ai_generate_group():
+    """Generate group suggestions using AI."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    data = request.get_json() or {}
+    term = str(data.get("term", "")).strip()
+    meaning = str(data.get("meaning", "")).strip()
+    existing_groups = data.get("existingGroups", [])
+    
+    if not term:
+        return jsonify({"error": "Term is required"}), 400
+    
+    if not OPENAI_API_KEY and not GEMINI_API_KEY:
+        return jsonify({"error": "No AI provider configured"}), 400
+    
+    groups_str = ", ".join(existing_groups[:20]) if existing_groups else "None yet"
+    
+    prompt = f"""Suggest 3 category/group names for the Korean martial arts term "{term}" (meaning: {meaning}).
+Existing groups in the deck: {groups_str}
+Prefer existing groups if they fit. Return ONLY a JSON array with 3 strings. Example: ["Stances", "Kicks", "Commands"]"""
+    
+    try:
+        if OPENAI_API_KEY:
+            result = _call_openai_chat(prompt, OPENAI_MODEL, OPENAI_API_KEY)
+        else:
+            result = _call_gemini_chat(prompt, GEMINI_MODEL, GEMINI_API_KEY)
+        
+        import re
+        match = re.search(r'\[.*\]', result, re.DOTALL)
+        if match:
+            groups = json.loads(match.group())
+            return jsonify({"groups": groups})
+        else:
+            return jsonify({"groups": [result.strip()]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # --- Common public files (avoid 404 noise) ---

@@ -3,68 +3,189 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>User Guide • Kenpo Flashcards (Web)</title>
+  <title>User Guide • Kenpo Flashcards</title>
   <link rel="stylesheet" href="/styles.css" />
   <style>
-    .page { max-width: 980px; margin: 0 auto; padding: 18px; }
-    .card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10); border-radius: 14px; padding: 16px; margin: 12px 0; }
-    .muted { opacity: 0.85; }
-    a { color: inherit; }
-    .btnrow a { display:inline-block; margin-right:10px; padding:10px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.18); text-decoration:none; }
-    .btnrow a:hover { background: rgba(255,255,255,0.06); }
+    .guide-page { max-width: 900px; margin: 0 auto; padding: 24px; }
+    .guide-header { margin-bottom: 32px; }
+    .guide-header h1 { font-size: 32px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+    .guide-header h1 span { font-size: 36px; }
+    .guide-meta { color: #888; font-size: 14px; }
+    .guide-meta a { color: #5ca5ff; }
+    
+    .guide-nav { display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; }
+    .guide-nav a, .guide-nav button { 
+      padding: 10px 18px; border-radius: 10px; text-decoration: none; font-size: 14px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      color: #ccc; transition: all 0.2s; cursor: pointer;
+    }
+    .guide-nav a:hover, .guide-nav button:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .guide-nav .primary { background: linear-gradient(135deg, #1f6feb 0%, #1d4ed8 100%); color: #fff; border: none; }
+    
+    .guide-section { 
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); 
+      border-radius: 16px; padding: 24px; margin-bottom: 20px;
+    }
+    .guide-section h2 { font-size: 20px; margin: 0 0 16px 0; display: flex; align-items: center; gap: 10px; }
+    .guide-section h2 span { font-size: 24px; }
+    .guide-section h3 { font-size: 16px; margin: 20px 0 12px 0; color: #5ca5ff; }
+    .guide-section p { color: #bbb; line-height: 1.7; margin: 12px 0; }
+    .guide-section ul { margin: 12px 0; padding-left: 24px; color: #bbb; }
+    .guide-section li { margin: 8px 0; line-height: 1.6; }
+    
+    .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-top: 16px; }
+    .feature-card { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 16px; }
+    .feature-card h4 { margin: 0 0 8px 0; color: #fff; font-size: 15px; }
+    .feature-card p { margin: 0; font-size: 13px; color: #888; }
+    
+    .shortcut-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    .shortcut-table th, .shortcut-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .shortcut-table th { color: #888; font-size: 12px; text-transform: uppercase; }
+    .shortcut-table td { color: #ccc; }
+    .shortcut-table kbd { background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; font-family: monospace; }
+    
+    .version-box { background: rgba(31, 111, 235, 0.1); border: 1px solid rgba(31, 111, 235, 0.3); border-radius: 10px; padding: 16px; margin-top: 16px; }
+    .version-box .ver { font-size: 18px; font-weight: 600; color: #fff; }
+    .version-box .note { font-size: 13px; color: #888; margin-top: 4px; }
+    
     @media print {
-      .btnrow { display:none; }
-      body { background:#fff !important; color:#000 !important; }
-      .card { border: 1px solid #aaa; background:#fff; }
-      a { color:#000; text-decoration:none; }
+      body { background: #fff !important; color: #000 !important; }
+      .guide-nav { display: none; }
+      .guide-section { border: 1px solid #ccc; background: #fff; }
+      .guide-section h2, .guide-section h3 { color: #000; }
+      .guide-section p, .guide-section li { color: #333; }
     }
   </style>
 </head>
 <body>
-  <div class="page">
-    <h1>User Guide</h1>
-    <p class="muted"><strong>Created by Sidney Shelton</strong> •
-      <a href="mailto:Sidscri@yahoo.com?subject=Kenpo%20Flashcards%20(Web)%20-%20User%20Guide%20Question">Sidscri@yahoo.com</a>
-    </p>
-
-    <div class="btnrow">
-      <a href="/">Back to App</a>
-      <a href="/about">About</a>
-      <a href="/user-guide.pdf">Download PDF</a>
-      <a href="#" onclick="window.print(); return false;">Print</a>
-    </div>
-
-    <div class="card">
-      <h2>Overview</h2>
-      <p>
-        Kenpo Flashcards helps you study vocabulary and track progress across devices.
-        Cards are organized by group/subgroup and you can move a term between <b>Unlearned</b>, <b>Unsure</b>, and <b>Learned</b>.
-        The web server can also store and sync AI-powered breakdowns.
+  <div class="guide-page">
+    <header class="guide-header">
+      <h1><span>📖</span> User Guide</h1>
+      <p class="guide-meta">
+        <strong>Kenpo Flashcards</strong> • Created by Sidney Shelton • 
+        <a href="mailto:Sidscri@yahoo.com">Sidscri@yahoo.com</a>
       </p>
-    </div>
+    </header>
 
-    <div class="card">
-      <h2>Sync (Android ↔ Web)</h2>
+    <nav class="guide-nav">
+      <a href="/" class="primary">← Back to App</a>
+      <a href="/about">About</a>
+      <a href="/admin">Admin</a>
+      <button onclick="window.print()">🖨️ Print</button>
+    </nav>
+
+    <section class="guide-section">
+      <h2><span>🎯</span> Getting Started</h2>
+      <p>Kenpo Flashcards helps you learn Korean martial arts terminology through an interactive flashcard system. Study vocabulary at your own pace and track your progress across devices.</p>
+      
+      <div class="feature-grid">
+        <div class="feature-card">
+          <h4>📚 Study Cards</h4>
+          <p>Flip through flashcards showing terms and definitions. Click or press Space to flip.</p>
+        </div>
+        <div class="feature-card">
+          <h4>📊 Track Progress</h4>
+          <p>Mark cards as Learned, Unsure, or keep them in Unlearned. Your progress is saved automatically.</p>
+        </div>
+        <div class="feature-card">
+          <h4>🔄 Cross-Device Sync</h4>
+          <p>Push and pull your progress between the web app and Android app.</p>
+        </div>
+        <div class="feature-card">
+          <h4>🧩 Breakdowns</h4>
+          <p>View and create word breakdowns showing the meaning of each part of compound terms.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="guide-section">
+      <h2><span>🎓</span> How to Study</h2>
+      
+      <h3>1. Choose Your Tab</h3>
       <ul>
-        <li>Progress sync: push/pull learning status.</li>
-        <li>Breakdown sync: saved breakdowns can be pulled on other devices.</li>
-        <li>Card IDs are normalized using the server helper mapping for consistent cross-device matching.</li>
+        <li><strong>Unlearned</strong> — Cards you haven't studied yet or need to review</li>
+        <li><strong>Unsure</strong> — Cards you're still learning (not quite confident)</li>
+        <li><strong>Learned</strong> — Cards you know well</li>
+        <li><strong>All</strong> — View all cards in list format</li>
+        <li><strong>⭐ Custom Set</strong> — Your starred cards for focused study</li>
       </ul>
-    </div>
 
-    <div class="card">
-      <h2>Version</h2>
-      <div id="verBox" class="muted">Loading version…</div>
-    </div>
+      <h3>2. Filter by Group</h3>
+      <p>Use the Group dropdown to focus on specific categories (Stances, Blocks, Commands, etc.) or click "All Cards" to study everything.</p>
 
-    <script>
-      fetch("/api/version").then(r => r.json()).then(v => {
-        document.getElementById("verBox").textContent =
-          `${v.name} v${v.version} (build ${v.build}) • ${v.released || ""}`;
-      }).catch(() => {
-        document.getElementById("verBox").textContent = "Version unavailable";
-      });
-    </script>
+      <h3>3. Study the Card</h3>
+      <ul>
+        <li>Click the card (or press Space) to flip between term and definition</li>
+        <li>Use the status buttons to mark your progress: Got It, Unsure, or Didn't Get It</li>
+        <li>Navigate with the arrow buttons or keyboard arrows</li>
+        <li>Click the 🔊 button to hear pronunciation</li>
+      </ul>
+
+      <h3>4. Use Random Mode</h3>
+      <p>Toggle "Random order" to shuffle cards. Click ⟳ to reshuffle at any time.</p>
+    </section>
+
+    <section class="guide-section">
+      <h2><span>⌨️</span> Keyboard Shortcuts</h2>
+      <table class="shortcut-table">
+        <tr><th>Key</th><th>Action</th></tr>
+        <tr><td><kbd>Space</kbd> or <kbd>Enter</kbd></td><td>Flip card</td></tr>
+        <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Previous / Next card</td></tr>
+        <tr><td><kbd>1</kbd></td><td>Mark as Didn't Get It (Unlearned)</td></tr>
+        <tr><td><kbd>2</kbd></td><td>Mark as Unsure</td></tr>
+        <tr><td><kbd>3</kbd></td><td>Mark as Got It (Learned)</td></tr>
+      </table>
+    </section>
+
+    <section class="guide-section">
+      <h2><span>🔄</span> Syncing Progress</h2>
+      <p>Keep your progress synchronized between devices:</p>
+      <ul>
+        <li><strong>Push</strong> — Upload your current progress to the server</li>
+        <li><strong>Pull</strong> — Download progress from the server to this device</li>
+        <li><strong>Sync Breakdowns</strong> — Download shared term breakdowns</li>
+      </ul>
+      <p>The sync uses timestamps to merge changes intelligently. When in doubt, the most recent change wins.</p>
+    </section>
+
+    <section class="guide-section">
+      <h2><span>⚙️</span> Settings</h2>
+      <ul>
+        <li><strong>Randomize cards</strong> — Shuffle order for study sessions</li>
+        <li><strong>Reverse cards</strong> — Show definition first, term on back</li>
+        <li><strong>Show group labels</strong> — Display category pill on cards</li>
+        <li><strong>Voice settings</strong> — Adjust speech rate and voice selection</li>
+        <li><strong>Auto-speak</strong> — Automatically speak terms when navigating</li>
+        <li><strong>Breakdown display</strong> — Control when breakdowns appear on cards</li>
+      </ul>
+    </section>
+
+    <section class="guide-section">
+      <h2><span>❓</span> Troubleshooting</h2>
+      <ul>
+        <li><strong>Progress not saving?</strong> — Make sure you're logged in. Check the user icon in the top right.</li>
+        <li><strong>Sync stuck?</strong> — Try logging out and back in, then pull again.</li>
+        <li><strong>Cards not loading?</strong> — Check that the server is running and the kenpo_words.json file exists.</li>
+        <li><strong>Voice not working?</strong> — Ensure your browser supports speech synthesis and volume is up.</li>
+      </ul>
+    </section>
+
+    <section class="guide-section">
+      <h2><span>ℹ️</span> Version Info</h2>
+      <div class="version-box">
+        <div class="ver" id="versionText">Loading...</div>
+        <div class="note" id="versionNote"></div>
+      </div>
+    </section>
   </div>
+
+  <script>
+    fetch("/api/version").then(r => r.json()).then(v => {
+      document.getElementById("versionText").textContent = `${v.name} v${v.version} (build ${v.build})`;
+      document.getElementById("versionNote").textContent = `Released: ${v.released || 'N/A'}`;
+    }).catch(() => {
+      document.getElementById("versionText").textContent = "Version info unavailable";
+    });
+  </script>
 </body>
 </html>

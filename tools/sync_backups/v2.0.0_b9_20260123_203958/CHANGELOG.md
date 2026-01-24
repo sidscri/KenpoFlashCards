@@ -2,6 +2,37 @@
 
 All notable changes to the Windows packaged/installer distribution are documented here.
 
+## v1.3.0 (build 8) — 2026-01-23
+
+### Added
+- **Upgrade Tool** (`tools/` folder) — Python script and batch file to safely sync web server updates to the packaged project:
+  - Syncs `app.py`, `static/`, `requirements.txt`, `CHANGELOG.md` from web server
+  - Merges `data/` folder (preserves user data, updates structure)
+  - Protects packaging files (`packaging/`, `windows_service/`, `windows_tray/`, icons, shortcuts)
+  - Creates automatic backups in `.sync_backups/` before making changes
+  - Supports dry-run mode to preview changes
+  - Updates `version.json` with web server version tracking
+
+### Changed
+- **Updated bundled Web Server to v6.1.0 (build 32)** (from v6.0.0 build 31), including:
+  - **Sync Progress page** — new settings section matching Android app with Push/Pull buttons, login status banner, auto-sync info, and breakdown sync
+  - **Settings tabbed navigation** — quick nav tabs (📚 Study, 🎨 Display, 🔊 Voice, 🔄 Sync, 🤖 AI) with highlighted active tab
+  - **Star button on study cards** — toggle ☆/★ directly from study view to add/remove from Custom Set
+  - **Sort by status dropdown** — All list can now be sorted by Unlearned first, Unsure first, Learned first, or Alphabetical
+  - **Logout moved to user menu** — click User dropdown to see logout option with icon
+  - **App-like button styling** — gradient backgrounds matching Android app (blue primary, green success, red danger)
+  - **Settings redesign** — card-based layout with modern styling
+
+## v1.2.0 (build 7) — 2026-01-22
+
+### Changed
+- **Updated bundled Web Server to v6.0.0 (build 31)** (from v5.5.2 build 29), including:
+  - **Custom Set (⭐ Starred Cards)** — star/unstar cards and study a personalized set (All/Unsure/Learned filters)
+  - **New study settings**: `show_breakdown_on_definition`, `auto_speak_on_card_change`, `speak_definition_on_flip`
+  - **Admin Dashboard redesign** with richer statistics + AI status indicators
+  - **New API endpoint**: `/api/admin/stats`
+  - **Sync improvements**: per-card `updated_at` timestamps and newer-wins merge logic (better offline sync)
+
 ## v1.1.1 (build 6) — 2026-01-22
 
 ### Added

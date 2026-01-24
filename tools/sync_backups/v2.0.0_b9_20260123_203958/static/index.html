@@ -42,7 +42,6 @@
           <button class="tab tiny active" id="customViewAllBtn" title="All Custom">All</button>
           <button class="tab tiny" id="customViewUnsureBtn" title="Unsure in Custom">Unsure</button>
           <button class="tab tiny" id="customViewLearnedBtn" title="Learned in Custom">Learned</button>
-          <button class="tab tiny" id="customRandomPickBtn" title="Pick random N cards">🎲</button>
         </div>
       </div>
 
@@ -63,10 +62,7 @@
         </div>
 
         <div class="rightControls">
-          <div class="searchWrapper">
-            <input id="searchBox" placeholder="Search (term / meaning / pron)" />
-            <button id="searchClearBtn" class="searchClearBtn hidden" title="Clear search" aria-label="Clear search">✕</button>
-          </div>
+          <input id="searchBox" placeholder="Search (term / meaning / pron)" />
           <button id="breakdownsBtn" class="secondary iconOnly" title="Breakdowns" aria-label="Breakdowns">🧩</button>
           <button id="settingsBtn" class="secondary">⚙️ More</button>
         </div>
@@ -86,7 +82,7 @@
               <input type="checkbox" id="randomStudyChk" />
               <span class="slider"></span>
             </label>
-            <button id="randomRefreshBtn" class="iconBtn" title="Reshuffle deck">⟳</button>
+            <button id="randomRefreshBtn" class="iconBtn" title="Reshuffle" aria-label="Reshuffle" style="display:none;">⟳</button>
           </div>
         </div>
 
@@ -149,11 +145,6 @@
         <div class="settingsPage">
           <h2>Settings</h2>
           
-          <!-- Edit Decks Button -->
-          <div class="settingsQuickAction">
-            <button id="openEditDecksBtn" class="appBtn primary fullWidth">📚 Edit Decks</button>
-          </div>
-          
           <!-- Quick Nav Tabs -->
           <div class="settingsNav">
             <button class="settingsNavBtn active" data-section="study">📚 Study</button>
@@ -210,13 +201,6 @@
                 <span class="switch small"><input type="checkbox" id="setRandomizeLearnedStudy" /><span class="slider"></span></span>
                 <div class="settingText">
                   <div class="settingTitle">Learned Study: Random order</div>
-                </div>
-              </label>
-
-              <label class="settingRow">
-                <span class="switch small"><input type="checkbox" id="setRandomizeCustomSet" /><span class="slider"></span></span>
-                <div class="settingText">
-                  <div class="settingTitle">Custom Set: Random order</div>
                 </div>
               </label>
 
@@ -385,14 +369,6 @@
               </div>
 
               <label class="settingRow">
-                <span class="switch small"><input type="checkbox" id="setSpeakPronunciationOnly" /><span class="slider"></span></span>
-                <div class="settingText">
-                  <div class="settingTitle">Speak pronunciation only</div>
-                  <div class="settingDesc">Use pronunciation text instead of term when speaking.</div>
-                </div>
-              </label>
-
-              <label class="settingRow">
                 <span class="switch small"><input type="checkbox" id="setAutoSpeakOnCardChange" /><span class="slider"></span></span>
                 <div class="settingText">
                   <div class="settingTitle">Auto-speak term on card change</div>
@@ -497,147 +473,6 @@
             <button id="resetSettingsBtn" class="appBtn danger">🔄 Reset to Default</button>
             <button id="saveSettingsBtn" class="appBtn success">💾 Save Settings</button>
             <button id="closeSettingsBtn" class="appBtn secondary">Close</button>
-          </div>
-        </div>
-      </section>
-
-      <!-- EDIT DECKS VIEW -->
-      <section id="viewEditDecks" class="view hidden">
-        <div class="editDecksPage">
-          <div class="editDecksHeader">
-            <h2>📚 Edit Decks</h2>
-            <button id="closeEditDecksBtn" class="appBtn secondary">← Back</button>
-          </div>
-
-          <!-- Tab navigation -->
-          <div class="editDecksTabs">
-            <button class="editDecksTab active" data-tab="switch">🔄 Switch</button>
-            <button class="editDecksTab" data-tab="add">➕ Add Cards</button>
-            <button class="editDecksTab" data-tab="deleted">🗑️ Deleted</button>
-          </div>
-
-          <div class="editDecksStatus" id="editDecksStatus"></div>
-
-          <!-- SWITCH TAB -->
-          <div class="editDecksSection active" id="editDecksSwitchTab" data-section="switch">
-            <div class="settingsCard">
-              <div class="settingsCardHeader">Switch Study Subject</div>
-              <p class="settingDesc">Select which flashcard deck to study</p>
-
-              <!-- Current deck indicator -->
-              <div class="currentDeckBanner" id="currentDeckBanner">
-                <div class="currentDeckIcon">✓</div>
-                <div class="currentDeckInfo">
-                  <div class="currentDeckName" id="currentDeckName">Kenpo Vocabulary</div>
-                  <div class="currentDeckCount" id="currentDeckCount">88 cards</div>
-                </div>
-              </div>
-
-              <div class="settingsSectionTitle">Available Decks</div>
-              <div class="decksList" id="decksList">
-                <!-- Populated by JS -->
-              </div>
-
-              <div class="settingsSectionTitle" style="margin-top: 24px;">Create New Deck</div>
-              <div class="createDeckForm">
-                <label class="field">
-                  <span>Deck Name</span>
-                  <input id="newDeckName" placeholder="e.g., Japanese Vocabulary" />
-                </label>
-                <label class="field">
-                  <span>Description</span>
-                  <input id="newDeckDescription" placeholder="Brief description..." />
-                </label>
-                <button id="createDeckBtn" class="appBtn success">Create Deck</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- ADD CARDS TAB -->
-          <div class="editDecksSection" id="editDecksAddTab" data-section="add">
-            <div class="settingsCard">
-              <div class="settingsCardHeader">Add New Card</div>
-              <p class="settingDesc">Manually add a term and definition to your deck</p>
-
-              <div class="addCardForm">
-                <label class="field">
-                  <span>Target Deck</span>
-                  <select id="addCardDeck">
-                    <option value="kenpo">Kenpo Vocabulary</option>
-                  </select>
-                </label>
-
-                <label class="field">
-                  <span>Term *</span>
-                  <div class="inputWithBtn">
-                    <input id="addCardTerm" placeholder="e.g., Taekwondo" />
-                  </div>
-                </label>
-
-                <label class="field">
-                  <span>Definition *</span>
-                  <div class="inputWithBtn">
-                    <input id="addCardMeaning" placeholder="e.g., The Way of the Foot and Fist" />
-                    <button id="aiGenDefBtn" class="appBtn secondary small" title="Generate definitions with AI">🤖</button>
-                  </div>
-                  <div class="aiDropdown hidden" id="aiDefDropdown">
-                    <div class="aiDropdownTitle">AI Suggestions:</div>
-                    <div class="aiDropdownList" id="aiDefList"></div>
-                  </div>
-                </label>
-
-                <label class="field">
-                  <span>Pronunciation</span>
-                  <div class="inputWithBtn">
-                    <input id="addCardPron" placeholder="e.g., tay-kwon-doh" />
-                    <button id="aiGenPronBtn" class="appBtn secondary small" title="Generate pronunciation with AI">🤖</button>
-                  </div>
-                </label>
-
-                <label class="field">
-                  <span>Group/Category</span>
-                  <div class="inputWithBtn">
-                    <input id="addCardGroup" placeholder="e.g., Martial Arts Styles" />
-                    <button id="aiGenGroupBtn" class="appBtn secondary small" title="Suggest groups with AI">🤖</button>
-                  </div>
-                  <div class="aiDropdown hidden" id="aiGroupDropdown">
-                    <div class="aiDropdownTitle">AI Suggestions:</div>
-                    <div class="aiDropdownList" id="aiGroupList"></div>
-                  </div>
-                </label>
-
-                <div class="settingsBtnRow">
-                  <button id="addCardBtn" class="appBtn success">➕ Add Card</button>
-                  <button id="clearAddCardBtn" class="appBtn secondary">Clear</button>
-                </div>
-              </div>
-
-              <!-- User Cards Section -->
-              <div class="settingsSectionTitle" style="margin-top: 24px;">
-                Your Added Cards
-                <button id="toggleUserCardsBtn" class="appBtn secondary small">Show</button>
-              </div>
-              <div class="userCardsList hidden" id="userCardsList">
-                <!-- Populated by JS -->
-              </div>
-            </div>
-          </div>
-
-          <!-- DELETED TAB -->
-          <div class="editDecksSection" id="editDecksDeletedTab" data-section="deleted">
-            <div class="settingsCard">
-              <div class="settingsCardHeader">🗑️ Deleted Cards</div>
-              <p class="settingDesc">Cards you've removed from study. Restore them to bring them back.</p>
-
-              <div class="deletedSearchRow">
-                <input id="deletedSearch" placeholder="Search deleted cards..." />
-                <span class="deletedCount" id="deletedCount">0 deleted</span>
-              </div>
-
-              <div class="deletedCardsList" id="deletedCardsList">
-                <!-- Populated by JS -->
-              </div>
-            </div>
           </div>
         </div>
       </section>

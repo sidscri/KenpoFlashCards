@@ -307,5 +307,27 @@
     "notes": "",
     "updated_at": 1768920081,
     "updated_by": "1cc70e61cd9e"
+  },
+  "f56fca7803410eec": {
+    "id": "f56fca7803410eec",
+    "term": "Shuriken",
+    "parts": [
+      {
+        "part": "Shu",
+        "meaning": "hand"
+      },
+      {
+        "part": "Ri",
+        "meaning": "release"
+      },
+      {
+        "part": "Ken",
+        "meaning": "blade"
+      }
+    ],
+    "literal": "Hand Release Blade",
+    "notes": "",
+    "updated_at": 1769222235,
+    "updated_by": null
   }
 }

@@ -216,6 +216,27 @@ function shuffle(a){
   }
 }
 
+function updateSearchClearButton(){
+  const searchBox = $("searchBox");
+  const clearBtn = $("searchClearBtn");
+  if(!clearBtn) return;
+  if(searchBox && searchBox.value.trim()){
+    clearBtn.classList.remove("hidden");
+  } else {
+    clearBtn.classList.add("hidden");
+  }
+}
+
+function reshuffleDeck(){
+  if(deck.length > 1){
+    shuffle(deck);
+    deckIndex = 0;
+    renderStudyCard();
+    setStatus("Deck reshuffled!");
+    setTimeout(() => setStatus(""), 1500);
+  }
+}
+
 function isFlipped(){ return $("card").classList.contains("flipped"); }
 function flip(){ 
   const wasFlipped = isFlipped();
@@ -1017,8 +1038,13 @@ function speakCard(card){
   
   const settings = window.__activeSettings || settingsAll || {};
   
-  // Use pronunciation if available, otherwise use term
-  const say = card.pron ? cleanPronunciationForSpeech(card.pron) : card.term;
+  // Use pronunciation if speak_pronunciation_only is enabled and pron exists, otherwise use term
+  let say;
+  if(settings.speak_pronunciation_only && card.pron){
+    say = cleanPronunciationForSpeech(card.pron);
+  } else {
+    say = card.pron ? cleanPronunciationForSpeech(card.pron) : card.term;
+  }
 
   if(!say) return;
 
@@ -1067,6 +1093,8 @@ async function loadDeckForStudy(){
 // Custom Set deck loading
 let customSetData = null;
 
+let customRandomLimit = 0; // 0 means no limit
+
 async function loadCustomSetForStudy(){
   const settings = await getScopeSettings();
   window.__activeSettings = settings;
@@ -1098,9 +1126,14 @@ async function loadCustomSetForStudy(){
       });
     }
     
-    // Apply randomization if enabled
-    if(settings.custom_set_random_order){
+    // Apply randomization if enabled or if random limit is set
+    if(settings.randomize_custom_set || customRandomLimit > 0){
       shuffle(cards);
+    }
+    
+    // Apply random limit if set
+    if(customRandomLimit > 0 && cards.length > customRandomLimit){
+      cards = cards.slice(0, customRandomLimit);
     }
     
     deck = cards;
@@ -1112,7 +1145,11 @@ async function loadCustomSetForStudy(){
     // Update counts display for custom set
     if(customSetData){
       const counts = customSetData.counts || {};
-      setStatus(`Custom Set: ${counts.total || 0} cards (${counts.active || 0} active, ${counts.unsure || 0} unsure, ${counts.learned || 0} learned)`);
+      let statusMsg = `Custom Set: ${counts.total || 0} cards`;
+      if(customRandomLimit > 0){
+        statusMsg = `🎲 Random ${Math.min(customRandomLimit, deck.length)} of ${counts.total || 0} cards`;
+      }
+      setStatus(statusMsg);
     }
   } catch(e){
     console.error("Failed to load custom set:", e);
@@ -1472,6 +1509,7 @@ async function loadSettingsForm(scope){
   if($("setRandomizeUnlearned")) $("setRandomizeUnlearned").checked = (typeof effective.randomize_unlearned === "boolean") ? effective.randomize_unlearned : baseRand;
   if($("setRandomizeUnsure")) $("setRandomizeUnsure").checked = (typeof effective.randomize_unsure === "boolean") ? effective.randomize_unsure : baseRand;
   if($("setRandomizeLearnedStudy")) $("setRandomizeLearnedStudy").checked = (typeof effective.randomize_learned_study === "boolean") ? effective.randomize_learned_study : baseRand;
+  if($("setRandomizeCustomSet")) $("setRandomizeCustomSet").checked = (typeof effective.randomize_custom_set === "boolean") ? effective.randomize_custom_set : baseRand;
 
 $("setShowGroup").checked = effective.show_group_label !== false;
   $("setShowSubgroup").checked = effective.show_subgroup_label !== false;
@@ -1490,6 +1528,7 @@ $("setShowGroup").checked = effective.show_group_label !== false;
   // Voice settings
   $("setSpeechRate").value = effective.speech_rate || 1.0;
   updateRateLabel(effective.speech_rate || 1.0);
+  if($("setSpeakPronunciationOnly")) $("setSpeakPronunciationOnly").checked = !!effective.speak_pronunciation_only;
   
   // Populate voice dropdown and select saved voice
   await populateVoiceDropdown();
@@ -1576,7 +1615,8 @@ async function saveSettings(){
     speech_rate: parseFloat($("setSpeechRate").value) || 1.0,
     speech_voice: $("setSpeechVoice").value || "",
     auto_speak_on_card_change: $("setAutoSpeakOnCardChange") ? $("setAutoSpeakOnCardChange").checked : false,
-    speak_definition_on_flip: $("setSpeakDefinitionOnFlip") ? $("setSpeakDefinitionOnFlip").checked : false
+    speak_definition_on_flip: $("setSpeakDefinitionOnFlip") ? $("setSpeakDefinitionOnFlip").checked : false,
+    speak_pronunciation_only: $("setSpeakPronunciationOnly") ? $("setSpeakPronunciationOnly").checked : false
   };
 
   // Only save tab-specific + list-page settings at the All-Groups scope
@@ -1585,6 +1625,7 @@ async function saveSettings(){
     patch.randomize_unlearned = $("setRandomizeUnlearned") ? $("setRandomizeUnlearned").checked : patch.randomize;
     patch.randomize_unsure = $("setRandomizeUnsure") ? $("setRandomizeUnsure").checked : patch.randomize;
     patch.randomize_learned_study = $("setRandomizeLearnedStudy") ? $("setRandomizeLearnedStudy").checked : patch.randomize;
+    patch.randomize_custom_set = $("setRandomizeCustomSet") ? $("setRandomizeCustomSet").checked : patch.randomize;
 
     patch.show_definitions_all_list = $("setShowDefAllList").checked;
     patch.show_definitions_learned_list = $("setShowDefLearnedList").checked;
@@ -1877,16 +1918,32 @@ async function main(){
   // Custom Set view toggle
   bind("customViewAllBtn","click", async ()=>{
     customViewMode = "all";
+    customRandomLimit = 0;
     updateCustomViewHighlight();
     await refresh();
   });
   bind("customViewUnsureBtn","click", async ()=>{
     customViewMode = "unsure";
+    customRandomLimit = 0;
     updateCustomViewHighlight();
     await refresh();
   });
   bind("customViewLearnedBtn","click", async ()=>{
     customViewMode = "learned";
+    customRandomLimit = 0;
+    updateCustomViewHighlight();
+    await refresh();
+  });
+  bind("customRandomPickBtn","click", async ()=>{
+    const input = prompt("How many random cards to study?", "10");
+    if(input === null) return;
+    const n = parseInt(input, 10);
+    if(isNaN(n) || n < 1){
+      setStatus("Please enter a valid number");
+      return;
+    }
+    customRandomLimit = n;
+    customViewMode = "all";
     updateCustomViewHighlight();
     await refresh();
   });
@@ -1900,11 +1957,13 @@ async function main(){
 
   bind("randomRefreshBtn","click", async ()=>{
     try{
-      if(!$("randomStudyChk").checked) return;
+      // Reshuffle works even if random is not checked - instant shuffle
       if(deck && deck.length){
         shuffle(deck);
         deckIndex = 0;
         renderStudyCard();
+        setStatus("Deck reshuffled!");
+        setTimeout(() => setStatus(""), 1500);
       } else {
         await refresh();
       }
@@ -2090,7 +2149,16 @@ bind("card","click", flip);
     }
   });
 
-  bind("searchBox","input", async ()=>{ await refresh(); });
+  // Search box with clear button
+  bind("searchBox","input", async ()=>{ 
+    updateSearchClearButton();
+    await refresh(); 
+  });
+  bind("searchClearBtn","click", async ()=>{
+    $("searchBox").value = "";
+    updateSearchClearButton();
+    await refresh();
+  });
 
   bind("allCardsBtn","click", async ()=>{
     scopeGroup = "";
@@ -2337,3 +2405,478 @@ function updateStudyStarButton(card){
   btn.classList.toggle("starred", inSet);
   btn.title = inSet ? "Remove from Custom Set" : "Add to Custom Set";
 }
+
+// ============================================================
+// EDIT DECKS PAGE
+// ============================================================
+
+let currentDecks = [];
+let userCards = [];
+let activeDeckId = "kenpo";
+
+// Hide all main views
+function hideAllViews(){
+  $("viewStudy")?.classList.add("hidden");
+  $("viewList")?.classList.add("hidden");
+  $("viewSettings")?.classList.add("hidden");
+  $("viewEditDecks")?.classList.add("hidden");
+}
+
+// Open Edit Decks page
+function openEditDecks(){
+  hideAllViews();
+  $("viewEditDecks").classList.remove("hidden");
+  loadDecks();
+  loadUserCards();
+  loadDeletedCards();
+}
+
+// Close Edit Decks page
+function closeEditDecks(){
+  hideAllViews();
+  $("viewStudy").classList.remove("hidden");
+  refresh();
+}
+
+// Switch Edit Decks tabs
+function switchEditDecksTab(tabName){
+  document.querySelectorAll(".editDecksTab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".editDecksSection").forEach(s => s.classList.remove("active"));
+  
+  document.querySelector(`.editDecksTab[data-tab="${tabName}"]`)?.classList.add("active");
+  document.querySelector(`.editDecksSection[data-section="${tabName}"]`)?.classList.add("active");
+}
+
+// Show status message in Edit Decks
+function showEditDecksStatus(message, type = "info"){
+  const el = $("editDecksStatus");
+  el.textContent = message;
+  el.className = `editDecksStatus ${type}`;
+  el.style.display = "block";
+  if(type === "success"){
+    setTimeout(() => { el.style.display = "none"; }, 3000);
+  }
+}
+
+// Load decks from server
+async function loadDecks(){
+  try {
+    currentDecks = await jget("/api/decks");
+    renderDecksList();
+    updateDeckDropdown();
+  } catch(e){
+    showEditDecksStatus("Failed to load decks: " + e.message, "error");
+  }
+}
+
+// Render decks list
+function renderDecksList(){
+  const list = $("decksList");
+  if(!list) return;
+  
+  list.innerHTML = "";
+  
+  for(const deck of currentDecks){
+    const isActive = deck.id === activeDeckId;
+    const div = document.createElement("div");
+    div.className = "deckItem" + (isActive ? " active" : "");
+    div.innerHTML = `
+      <div class="deckRadio"></div>
+      <div class="deckInfo">
+        <div class="deckName">
+          ${escapeHtml(deck.name)}
+          ${deck.isBuiltIn ? '<span class="deckBadge">Built-in</span>' : ''}
+          ${deck.isDefault ? '<span class="deckBadge default">★</span>' : ''}
+        </div>
+        <div class="deckDesc">${escapeHtml(deck.description || "")}</div>
+        <div class="deckCount">${deck.cardCount} cards</div>
+      </div>
+      ${!deck.isBuiltIn ? '<div class="deckActions"><button class="deckDeleteBtn" title="Delete deck">🗑️</button></div>' : ''}
+    `;
+    
+    div.addEventListener("click", (e) => {
+      if(e.target.closest(".deckDeleteBtn")) return;
+      selectDeck(deck.id);
+    });
+    
+    const deleteBtn = div.querySelector(".deckDeleteBtn");
+    if(deleteBtn){
+      deleteBtn.addEventListener("click", () => deleteDeck(deck.id, deck.name));
+    }
+    
+    list.appendChild(div);
+  }
+  
+  // Update current deck banner
+  const currentDeck = currentDecks.find(d => d.id === activeDeckId) || currentDecks[0];
+  if(currentDeck){
+    $("currentDeckName").textContent = currentDeck.name;
+    $("currentDeckCount").textContent = `${currentDeck.cardCount} cards`;
+  }
+}
+
+// Select a deck
+function selectDeck(deckId){
+  activeDeckId = deckId;
+  renderDecksList();
+  showEditDecksStatus("Switched to deck", "success");
+  // Note: In a full implementation, this would also filter cards by deck
+}
+
+// Delete a deck
+async function deleteDeck(deckId, deckName){
+  if(!confirm(`Delete deck "${deckName}"? This cannot be undone.`)) return;
+  
+  try {
+    await fetch(`/api/decks/${deckId}`, { method: "DELETE" });
+    showEditDecksStatus(`Deleted "${deckName}"`, "success");
+    loadDecks();
+  } catch(e){
+    showEditDecksStatus("Failed to delete deck: " + e.message, "error");
+  }
+}
+
+// Create a new deck
+async function createDeck(){
+  const name = $("newDeckName").value.trim();
+  const description = $("newDeckDescription").value.trim();
+  
+  if(!name){
+    showEditDecksStatus("Please enter a deck name", "error");
+    return;
+  }
+  
+  try {
+    await jpost("/api/decks", { name, description });
+    $("newDeckName").value = "";
+    $("newDeckDescription").value = "";
+    showEditDecksStatus(`Created deck "${name}"`, "success");
+    loadDecks();
+  } catch(e){
+    showEditDecksStatus("Failed to create deck: " + e.message, "error");
+  }
+}
+
+// Update deck dropdown in Add Cards tab
+function updateDeckDropdown(){
+  const select = $("addCardDeck");
+  if(!select) return;
+  
+  select.innerHTML = "";
+  for(const deck of currentDecks){
+    const opt = document.createElement("option");
+    opt.value = deck.id;
+    opt.textContent = deck.name;
+    select.appendChild(opt);
+  }
+}
+
+// Load user cards
+async function loadUserCards(){
+  try {
+    userCards = await jget("/api/user_cards");
+    renderUserCards();
+  } catch(e){
+    console.error("Failed to load user cards:", e);
+  }
+}
+
+// Render user cards list
+function renderUserCards(){
+  const list = $("userCardsList");
+  if(!list) return;
+  
+  if(userCards.length === 0){
+    list.innerHTML = '<div class="emptyState"><div class="icon">📝</div>No cards added yet</div>';
+    return;
+  }
+  
+  list.innerHTML = "";
+  for(const card of userCards){
+    const div = document.createElement("div");
+    div.className = "userCardItem";
+    div.innerHTML = `
+      <div class="userCardInfo">
+        <div class="userCardTerm">${escapeHtml(card.term)}</div>
+        <div class="userCardMeaning">${escapeHtml(card.meaning)}</div>
+      </div>
+      <div class="userCardActions">
+        <button class="edit" title="Edit">✏️</button>
+        <button class="delete" title="Delete">🗑️</button>
+      </div>
+    `;
+    
+    div.querySelector(".edit").addEventListener("click", () => editUserCard(card));
+    div.querySelector(".delete").addEventListener("click", () => deleteUserCard(card.id, card.term));
+    
+    list.appendChild(div);
+  }
+}
+
+// Toggle user cards visibility
+function toggleUserCards(){
+  const list = $("userCardsList");
+  const btn = $("toggleUserCardsBtn");
+  if(list.classList.contains("hidden")){
+    list.classList.remove("hidden");
+    btn.textContent = "Hide";
+  } else {
+    list.classList.add("hidden");
+    btn.textContent = "Show";
+  }
+}
+
+// Add a new card
+async function addUserCard(){
+  const term = $("addCardTerm").value.trim();
+  const meaning = $("addCardMeaning").value.trim();
+  const pron = $("addCardPron").value.trim();
+  const group = $("addCardGroup").value.trim();
+  const deckId = $("addCardDeck").value;
+  
+  if(!term){
+    showEditDecksStatus("Please enter a term", "error");
+    return;
+  }
+  if(!meaning){
+    showEditDecksStatus("Please enter a definition", "error");
+    return;
+  }
+  
+  try {
+    await jpost("/api/user_cards", { term, meaning, pron, group, deckId });
+    clearAddCardForm();
+    showEditDecksStatus(`Added "${term}"`, "success");
+    loadUserCards();
+    loadDecks(); // Refresh card counts
+  } catch(e){
+    showEditDecksStatus("Failed to add card: " + e.message, "error");
+  }
+}
+
+// Clear add card form
+function clearAddCardForm(){
+  $("addCardTerm").value = "";
+  $("addCardMeaning").value = "";
+  $("addCardPron").value = "";
+  $("addCardGroup").value = "";
+  $("aiDefDropdown").classList.add("hidden");
+  $("aiGroupDropdown").classList.add("hidden");
+}
+
+// Edit user card (simple prompt-based for now)
+function editUserCard(card){
+  const newTerm = prompt("Edit term:", card.term);
+  if(newTerm === null) return;
+  
+  const newMeaning = prompt("Edit definition:", card.meaning);
+  if(newMeaning === null) return;
+  
+  updateUserCard(card.id, { term: newTerm, meaning: newMeaning });
+}
+
+// Update user card
+async function updateUserCard(cardId, updates){
+  try {
+    await fetch(`/api/user_cards/${cardId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates)
+    });
+    showEditDecksStatus("Card updated", "success");
+    loadUserCards();
+  } catch(e){
+    showEditDecksStatus("Failed to update card: " + e.message, "error");
+  }
+}
+
+// Delete user card
+async function deleteUserCard(cardId, term){
+  if(!confirm(`Delete "${term}"?`)) return;
+  
+  try {
+    await fetch(`/api/user_cards/${cardId}`, { method: "DELETE" });
+    showEditDecksStatus(`Deleted "${term}"`, "success");
+    loadUserCards();
+    loadDecks();
+  } catch(e){
+    showEditDecksStatus("Failed to delete card: " + e.message, "error");
+  }
+}
+
+// AI Generate Definition
+async function aiGenerateDefinition(){
+  const term = $("addCardTerm").value.trim();
+  if(!term){
+    showEditDecksStatus("Please enter a term first", "error");
+    return;
+  }
+  
+  const dropdown = $("aiDefDropdown");
+  const list = $("aiDefList");
+  dropdown.classList.remove("hidden");
+  list.innerHTML = '<div class="aiLoading">🤖 Generating...</div>';
+  
+  try {
+    const res = await jpost("/api/ai/generate_definition", { term });
+    list.innerHTML = "";
+    
+    for(const def of (res.definitions || [])){
+      const opt = document.createElement("div");
+      opt.className = "aiOption";
+      opt.textContent = def;
+      opt.addEventListener("click", () => {
+        $("addCardMeaning").value = def;
+        dropdown.classList.add("hidden");
+      });
+      list.appendChild(opt);
+    }
+  } catch(e){
+    list.innerHTML = `<div class="aiOption" style="color:#f87171">Error: ${e.message}</div>`;
+  }
+}
+
+// AI Generate Pronunciation
+async function aiGeneratePronunciation(){
+  const term = $("addCardTerm").value.trim();
+  if(!term){
+    showEditDecksStatus("Please enter a term first", "error");
+    return;
+  }
+  
+  const btn = $("aiGenPronBtn");
+  btn.textContent = "...";
+  btn.disabled = true;
+  
+  try {
+    const res = await jpost("/api/ai/generate_pronunciation", { term });
+    $("addCardPron").value = res.pronunciation || "";
+    showEditDecksStatus("Pronunciation generated", "success");
+  } catch(e){
+    showEditDecksStatus("Failed to generate: " + e.message, "error");
+  } finally {
+    btn.textContent = "🤖";
+    btn.disabled = false;
+  }
+}
+
+// AI Generate Group
+async function aiGenerateGroup(){
+  const term = $("addCardTerm").value.trim();
+  const meaning = $("addCardMeaning").value.trim();
+  if(!term){
+    showEditDecksStatus("Please enter a term first", "error");
+    return;
+  }
+  
+  const dropdown = $("aiGroupDropdown");
+  const list = $("aiGroupList");
+  dropdown.classList.remove("hidden");
+  list.innerHTML = '<div class="aiLoading">🤖 Generating...</div>';
+  
+  // Get existing groups from cards
+  const existingGroups = [...new Set(allGroups || [])];
+  
+  try {
+    const res = await jpost("/api/ai/generate_group", { term, meaning, existingGroups });
+    list.innerHTML = "";
+    
+    for(const grp of (res.groups || [])){
+      const opt = document.createElement("div");
+      opt.className = "aiOption";
+      opt.textContent = grp;
+      opt.addEventListener("click", () => {
+        $("addCardGroup").value = grp;
+        dropdown.classList.add("hidden");
+      });
+      list.appendChild(opt);
+    }
+  } catch(e){
+    list.innerHTML = `<div class="aiOption" style="color:#f87171">Error: ${e.message}</div>`;
+  }
+}
+
+// Load deleted cards
+async function loadDeletedCards(){
+  try {
+    const cards = await jget("/api/cards?status=deleted");
+    renderDeletedCards(cards);
+  } catch(e){
+    console.error("Failed to load deleted cards:", e);
+  }
+}
+
+// Render deleted cards list
+function renderDeletedCards(cards){
+  const list = $("deletedCardsList");
+  const countEl = $("deletedCount");
+  const searchEl = $("deletedSearch");
+  
+  if(!list) return;
+  
+  const searchTerm = (searchEl?.value || "").toLowerCase();
+  const filtered = searchTerm 
+    ? cards.filter(c => c.term.toLowerCase().includes(searchTerm) || c.meaning.toLowerCase().includes(searchTerm))
+    : cards;
+  
+  countEl.textContent = `${filtered.length} deleted`;
+  
+  if(filtered.length === 0){
+    list.innerHTML = '<div class="emptyState"><div class="icon">🗑️</div>No deleted cards</div>';
+    return;
+  }
+  
+  list.innerHTML = "";
+  for(const card of filtered){
+    const div = document.createElement("div");
+    div.className = "deletedCardItem";
+    div.innerHTML = `
+      <div class="deletedCardInfo">
+        <div class="deletedCardTerm">${escapeHtml(card.term)}</div>
+        <div class="deletedCardMeaning">${escapeHtml(card.meaning)}</div>
+      </div>
+      <button class="restoreBtn">Restore</button>
+    `;
+    
+    div.querySelector(".restoreBtn").addEventListener("click", async () => {
+      try {
+        await jpost("/api/set_status", { id: card.id, status: "active" });
+        showEditDecksStatus(`Restored "${card.term}"`, "success");
+        loadDeletedCards();
+        refreshCounts();
+      } catch(e){
+        showEditDecksStatus("Failed to restore: " + e.message, "error");
+      }
+    });
+    
+    list.appendChild(div);
+  }
+}
+
+// Event bindings for Edit Decks
+document.addEventListener("DOMContentLoaded", () => {
+  // Open/Close Edit Decks
+  $("openEditDecksBtn")?.addEventListener("click", openEditDecks);
+  $("closeEditDecksBtn")?.addEventListener("click", closeEditDecks);
+  
+  // Tab switching
+  document.querySelectorAll(".editDecksTab").forEach(tab => {
+    tab.addEventListener("click", () => switchEditDecksTab(tab.dataset.tab));
+  });
+  
+  // Create deck
+  $("createDeckBtn")?.addEventListener("click", createDeck);
+  
+  // Add card
+  $("addCardBtn")?.addEventListener("click", addUserCard);
+  $("clearAddCardBtn")?.addEventListener("click", clearAddCardForm);
+  $("toggleUserCardsBtn")?.addEventListener("click", toggleUserCards);
+  
+  // AI buttons
+  $("aiGenDefBtn")?.addEventListener("click", aiGenerateDefinition);
+  $("aiGenPronBtn")?.addEventListener("click", aiGeneratePronunciation);
+  $("aiGenGroupBtn")?.addEventListener("click", aiGenerateGroup);
+  
+  // Deleted search
+  $("deletedSearch")?.addEventListener("input", () => loadDeletedCards());
+});

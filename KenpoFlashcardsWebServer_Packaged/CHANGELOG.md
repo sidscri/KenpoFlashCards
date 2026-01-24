@@ -2,6 +2,28 @@
 
 All notable changes to the Windows packaged/installer distribution are documented here.
 
+## v2.0.0 (build 9) — 2026-01-23
+
+### Changed
+- **Updated bundled Web Server to v7.0.2 (build 35)** (from v6.1.0 build 32), including:
+  - **🎲 Pick Random N**
+  - **User Management Modal**
+  - **Admin User Editing**
+  - **Password Reset**
+  - **System Status Feed**
+  - **Reshuffle button visible**
+  - **Search clear X button**
+  - **Randomize Custom Set setting**
+  - **Speak pronunciation only toggle**
+  - Reshuffle works regardless of random toggle state (instant shuffle on demand)
+  - **Edit Decks page**
+  - **Switch tab**
+  - **Add Cards tab**
+  - **Deleted tab**
+  - **Deck management**
+  - **User cards CRUD**
+  - Settings page now has "Edit Decks" button at top for quick access
+
 ## v1.3.0 (build 8) — 2026-01-23
 
 ### Added

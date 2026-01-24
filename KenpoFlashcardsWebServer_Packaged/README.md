@@ -2,8 +2,8 @@
 
 A Windows **installer** build of the Kenpo Flashcards Web Server + Tray Launcher.
 
-- **Packaged Version:** **v1.3.0 (build 8)**
-- **Bundled Web Server:** **v6.1.0 (build 32)**
+- **Packaged Version:** **v2.0.0 (build 9)**
+- **Bundled Web Server:** **v7.0.2 (build 35)**
 
 ## What you get
 
@@ -12,6 +12,24 @@ A Windows **installer** build of the Kenpo Flashcards Web Server + Tray Launcher
 - **Local web UI** (Flashcards + Admin tools) accessible from your browser.
 - **Configurable network binding** - access from localhost, LAN, or Tailscale.
 - **Upgrade Tool** to safely sync future web server updates without damaging packaging files.
+
+## What's new in v2.0.0 (build 9)
+
+- **Bundled Web Server updated to v7.0.2 (build 35)** (from v6.1.0 build 32), bringing:
+  - **🎲 Pick Random N**
+  - **User Management Modal**
+  - **Admin User Editing**
+  - **Password Reset**
+  - **System Status Feed** — style status display in admin dashboard
+  - **Reshuffle button visible**
+  - **Search clear X button**
+  - **Randomize Custom Set setting**
+  - **Speak pronunciation only toggle**
+  - **Edit Decks page**
+  - **Switch tab**
+  - **Add Cards tab**
+  - **Deleted tab**
+  - **Deck management**
 
 ## What's new in v1.3.0 (build 8)
 

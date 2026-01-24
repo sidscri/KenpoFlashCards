@@ -2,8 +2,8 @@
 
 A Windows **installer** build of the Kenpo Flashcards Web Server + Tray Launcher.
 
-- **Packaged Version:** **v1.1.1 (build 6)**
-- **Bundled Web Server:** **v5.5.2 (build 29)**
+- **Packaged Version:** **v1.3.0 (build 8)**
+- **Bundled Web Server:** **v6.1.0 (build 32)**
 
 ## What you get
 
@@ -11,6 +11,27 @@ A Windows **installer** build of the Kenpo Flashcards Web Server + Tray Launcher
 - **Tray Launcher** (`KenpoFlashcardsTray.exe`) so you can start/stop the server from the system tray.
 - **Local web UI** (Flashcards + Admin tools) accessible from your browser.
 - **Configurable network binding** - access from localhost, LAN, or Tailscale.
+- **Upgrade Tool** to safely sync future web server updates without damaging packaging files.
+
+## What's new in v1.3.0 (build 8)
+
+- **Bundled Web Server updated to v6.1.0 (build 32)** (from v6.0.0 build 31), bringing:
+  - **Sync Progress page** — new settings section matching Android app with Push/Pull buttons, login status banner, auto-sync info
+  - **Settings tabbed navigation** — quick nav tabs for Study, Display, Voice, Sync, and AI sections with highlighted active tab
+  - **Star button on study cards** — toggle ☆/★ directly from study view to add/remove from Custom Set
+  - **Sort by status dropdown** — All list can now be sorted by Unlearned, Unsure, Learned, or Alphabetical
+  - **Logout moved to user menu** — click User dropdown to see logout option
+  - **App-like button styling** — gradient backgrounds matching Android app (blue primary, green success, red danger)
+- **New: Upgrade Tool** (`tools/` folder) — Python script to safely sync web server updates to the packaged project without damaging packaging code
+
+## What's new in v1.2.0 (build 7)
+
+- **Bundled Web Server updated to v6.0.0 (build 31)** (from v5.5.2 build 29), bringing:
+  - **Custom Set (⭐ Starred Cards)** — study a personalized set of cards (add/remove stars, filter All/Unsure/Learned)
+  - **New study settings**: show/hide breakdown on definition, auto-speak on card change, speak definition on flip
+  - **Admin Dashboard redesign** with richer stats + AI status indicators
+  - **New API endpoint**: `/api/admin/stats`
+  - **Sync improvements**: per-card `updated_at` timestamps + merge logic (offline/newer-wins)
 
 ## What's new in v1.1.1 (build 6)
 
@@ -67,6 +88,33 @@ Edit this file to configure your server (or right-click the tray icon → "Edit 
 ```
 
 After editing, restart the tray app for changes to take effect.
+
+## Upgrade Tool
+
+The packaged project now includes an upgrade tool in the `tools/` folder that safely syncs updates from the main KenpoFlashcardsWebServer project.
+
+### Usage
+
+```batch
+cd tools
+upgrade_webserver.bat ..\path\to\KenpoFlashcardsWebServer-v6_2_0.zip
+```
+
+Or with Python directly:
+
+```bash
+python tools/upgrade_webserver_to_packaged.py webserver.zip ./
+```
+
+### What it does
+
+| Category | Items | Action |
+|----------|-------|--------|
+| **✅ Synced** | `app.py`, `static/`, `requirements.txt`, `CHANGELOG.md` | Updated from web server |
+| **🔀 Merged** | `data/` folder | User data preserved, structure updated |
+| **⏭️ Protected** | `packaging/`, `windows_service/`, `windows_tray/`, `server_config.json`, icons, shortcuts | Never touched |
+
+The tool creates automatic backups in `.sync_backups/` before making changes.
 
 ## What's new in v1.1.0 (build 5)
 

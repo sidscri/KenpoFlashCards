@@ -15,6 +15,66 @@ The format is simple and practical:
 
 ---
 
+## 7.0.2 (build 35) — 2026-01-23
+
+### Added
+- **🎲 Pick Random N**: Click dice button in Custom Set to study random subset of starred cards
+- **User Management Modal**: Click "Total Users" in admin to view/edit all users
+- **Admin User Editing**: Grant/revoke admin status, reset passwords
+- **Password Reset**: Admins can reset user passwords to default (123456789) with required change on next login
+- **System Status Feed**: Activity-style status display in admin dashboard
+
+### Fixed
+- **Edit Decks Page**: Now opens correctly (added missing hideAllViews function)
+- **PDF Download**: Fixed Internal Server Error (added send_file import)
+- **Admin Quick Actions**: Highlight now follows active tab (Health/Sync/AI)
+
+### Changed
+- **User Guide**: Complete redesign with better layout, feature cards, keyboard shortcuts table
+- **Admin Dashboard**: Removed Card Groups section, replaced with System Status feed
+- **Admin UI**: Cleaner quick action buttons, clickable user stats card
+
+---
+
+## 7.0.1 (build 34) — 2026-01-23
+
+### Added
+- **Reshuffle button visible**: ⟳ button now always visible on study cards (works even without random mode)
+- **Search clear X button**: Clear search with one click
+- **Randomize Custom Set setting**: Control random order separately for Custom Set
+- **Speak pronunciation only toggle**: Option to speak only pronunciation instead of term
+
+### Changed
+- Reshuffle works regardless of random toggle state (instant shuffle on demand)
+
+---
+
+## 7.0.0 (build 33) — 2026-01-23
+
+### Added
+- **Edit Decks page**: New page accessible from Settings with three tabs:
+  - **Switch tab**: View and switch between study decks, create new decks
+  - **Add Cards tab**: Manually add cards with term, definition, pronunciation, group
+  - **Deleted tab**: View and restore deleted cards
+- **Deck management**: Create and delete custom study decks
+- **User cards CRUD**: Add, edit, and delete user-created cards
+- **AI generation buttons**:
+  - Generate Definition (3 AI options to choose from)
+  - Generate Pronunciation
+  - Generate Group suggestions (considers existing groups)
+- **API endpoints**:
+  - `GET/POST /api/decks` - List and create decks
+  - `DELETE /api/decks/:id` - Delete a deck
+  - `GET/POST/PUT/DELETE /api/user_cards` - User cards CRUD
+  - `POST /api/ai/generate_definition` - AI definition generation
+  - `POST /api/ai/generate_pronunciation` - AI pronunciation generation
+  - `POST /api/ai/generate_group` - AI group suggestions
+
+### Changed
+- Settings page now has "Edit Decks" button at top for quick access
+
+---
+
 ## 6.1.0 (build 32) — 2026-01-23
 
 ### Added

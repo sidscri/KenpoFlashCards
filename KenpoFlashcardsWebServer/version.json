@@ -1,7 +1,7 @@
 {
   "name": "KenpoFlashcardsWebServer",
-  "version": "6.1.0",
-  "build": 32,
+  "version": "7.0.2",
+  "build": 35,
   "released": "2026-01-23",
-  "notes": "UI overhaul: App-like settings with tabbed navigation, Sync Progress page, star buttons on study cards, sort by status in All list, logout moved to user menu."
+  "notes": "Fixed: Edit Decks page, PDF download, Admin quick actions highlight. Added: User management modal, password reset, pick random N for Custom Set. Improved: User Guide page, Admin dashboard."
 }

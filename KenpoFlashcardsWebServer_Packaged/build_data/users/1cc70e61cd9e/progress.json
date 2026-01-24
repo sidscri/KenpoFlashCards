@@ -24,9 +24,28 @@
       "card_order": "json",
       "breakdown_ai_provider": "openai",
       "speech_rate": 1,
-      "speech_voice": ""
+      "speech_voice": "",
+      "show_breakdown_on_definition": false,
+      "auto_speak_on_card_change": false,
+      "speak_definition_on_flip": false,
+      "speak_pronunciation_only": false,
+      "randomize_custom_set": false
     },
-    "groups": {}
+    "groups": {},
+    "custom_set": [
+      "f56fca7803410eec",
+      "fe2fb19efc31fbf3",
+      "12133d4687b44f14",
+      "7560dd1bd1799718",
+      "842d4de5fa1168f8",
+      "51c709993587ad78",
+      "6ca7648b8fbe21b0",
+      "10022d13ea8d72bb",
+      "fd0e7a7f91ff997a",
+      "5ec0d2a43188c690",
+      "db4fca1ad62f88e1"
+    ],
+    "custom_set_status": {}
   },
   "88419a9e69042c12": {
     "status": "learned",
