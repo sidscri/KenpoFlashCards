@@ -433,6 +433,78 @@ def _gemini_breakdown(term: str, meaning: str = "", group: str = "") -> Tuple[Op
     except Exception as e:
         return None, {"provider": "gemini", "status": None, "message": f"Gemini error: {e.__class__.__name__}"}
 
+
+def _call_openai_chat(prompt: str, model: str, api_key: str) -> str:
+    """Simple OpenAI chat completion for generating text responses."""
+    if not api_key:
+        raise Exception("OpenAI API key not configured")
+    
+    url = f"{OPENAI_API_BASE}/v1/chat/completions"
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 500,
+        "temperature": 0.7
+    }
+    
+    r = requests.post(
+        url,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json=payload,
+        timeout=30
+    )
+    
+    if r.status_code != 200:
+        try:
+            err = r.json().get("error", {}).get("message", f"HTTP {r.status_code}")
+        except:
+            err = f"HTTP {r.status_code}"
+        raise Exception(f"OpenAI error: {err}")
+    
+    data = r.json()
+    choices = data.get("choices", [])
+    if choices and isinstance(choices[0], dict):
+        return choices[0].get("message", {}).get("content", "")
+    return ""
+
+
+def _call_gemini_chat(prompt: str, model: str, api_key: str) -> str:
+    """Simple Gemini chat for generating text responses."""
+    if not api_key:
+        raise Exception("Gemini API key not configured")
+    
+    url = f"{GEMINI_API_BASE}/v1beta/models/{model}:generateContent"
+    payload = {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}]
+    }
+    
+    r = requests.post(
+        url,
+        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
+        json=payload,
+        timeout=30
+    )
+    
+    if r.status_code != 200:
+        try:
+            err = r.json().get("error", {}).get("message", f"HTTP {r.status_code}")
+        except:
+            err = f"HTTP {r.status_code}"
+        raise Exception(f"Gemini error: {err}")
+    
+    data = r.json()
+    try:
+        cands = data.get("candidates", [])
+        if cands and isinstance(cands[0], dict):
+            content = cands[0].get("content", {})
+            parts = content.get("parts", [])
+            if parts and isinstance(parts[0], dict):
+                return parts[0].get("text", "")
+    except:
+        pass
+    return ""
+
+
 USERS_DIR = os.path.join(DATA_DIR, "users")
 PROFILES_PATH = os.path.join(DATA_DIR, "profiles.json")
 SECRET_PATH = os.path.join(DATA_DIR, "secret_key.txt")
@@ -1185,61 +1257,85 @@ def user_guide_pdf():
         from reportlab.lib.pagesizes import letter
         from reportlab.pdfgen import canvas
         from reportlab.lib.units import inch
-    except Exception:
-        return jsonify({"error": "reportlab not installed on server. Run: pip install reportlab"}), 500
+        from io import BytesIO
+    except ImportError as e:
+        # Return a helpful HTML page instead of a blank error
+        return f"""
+        <html><body style="font-family: sans-serif; padding: 40px; background: #1a1f2e; color: #fff;">
+        <h1>PDF Generation Unavailable</h1>
+        <p>The reportlab library is not installed on this server.</p>
+        <p>To enable PDF downloads, run: <code>pip install reportlab</code></p>
+        <p><a href="/user-guide" style="color: #5ca5ff;">← View User Guide (HTML)</a></p>
+        <p><a href="/" style="color: #5ca5ff;">← Back to App</a></p>
+        </body></html>
+        """, 500
 
-    v = get_version()
-    title = f"Kenpo Flashcards (Web) — User Guide  (v{v.get('version','')}, build {v.get('build','')})"
-    lines = [
-        "Created by Sidney Shelton (Sidscri@yahoo.com)",
-        "",
-        "Overview:",
-        "• Study Kenpo vocabulary and track progress across devices.",
-        "• Tabs: Unlearned / Unsure / Learned / All.",
-        "• Group filtering and All Cards mode.",
-        "• Sync: progress + breakdowns between Android and Web.",
-        "• AI Breakdowns (optional): OpenAI/Gemini configured server-side.",
-        "",
-        "How to use:",
-        "1) Choose a tab (Unlearned/Unsure/Learned/All).",
-        "2) Use Group dropdown or All Cards button to set your filter.",
-        "3) Use status buttons to move a card between states.",
-        "4) Use Search to jump to a term quickly.",
-        "5) Use Breakdown tools to view or generate a breakdown.",
-        "6) Use Sync to push/pull progress and pull breakdowns on other devices.",
-        "",
-        "Troubleshooting:",
-        "• If sync seems stuck: logout/login and pull again.",
-        "• Ensure server is running and reachable from your device.",
-        "• Visit /admin for diagnostics.",
-    ]
+    try:
+        v = get_version()
+        title = f"Kenpo Flashcards (Web) — User Guide  (v{v.get('version','')}, build {v.get('build','')})"
+        lines = [
+            "Created by Sidney Shelton (Sidscri@yahoo.com)",
+            "",
+            "Overview:",
+            "• Study Kenpo vocabulary and track progress across devices.",
+            "• Tabs: Unlearned / Unsure / Learned / All / Custom Set.",
+            "• Group filtering and All Cards mode.",
+            "• Sync: progress + breakdowns between Android and Web.",
+            "• AI Breakdowns (optional): OpenAI/Gemini configured server-side.",
+            "",
+            "How to use:",
+            "1) Choose a tab (Unlearned/Unsure/Learned/All).",
+            "2) Use Group dropdown or All Cards button to set your filter.",
+            "3) Use status buttons to move a card between states.",
+            "4) Use Search to jump to a term quickly.",
+            "5) Use Breakdown tools to view or generate a breakdown.",
+            "6) Use Sync to push/pull progress and pull breakdowns on other devices.",
+            "",
+            "Keyboard Shortcuts:",
+            "• Space/Enter: Flip card",
+            "• Arrow keys: Navigate cards",
+            "• 1/2/3: Mark as Didn't Get It / Unsure / Got It",
+            "",
+            "Troubleshooting:",
+            "• If sync seems stuck: logout/login and pull again.",
+            "• Ensure server is running and reachable from your device.",
+            "• Visit /admin for diagnostics.",
+        ]
 
-    from io import BytesIO
-    buf = BytesIO()
-    c = canvas.Canvas(buf, pagesize=letter)
-    width, height = letter
+        buf = BytesIO()
+        c = canvas.Canvas(buf, pagesize=letter)
+        width, height = letter
 
-    x = 0.8 * inch
-    y = height - 1.0 * inch
-    c.setTitle("Kenpo Flashcards User Guide")
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(x, y, title)
-    y -= 0.4 * inch
+        x = 0.8 * inch
+        y = height - 1.0 * inch
+        c.setTitle("Kenpo Flashcards User Guide")
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(x, y, title)
+        y -= 0.4 * inch
 
-    c.setFont("Helvetica", 11)
-    for ln in lines:
-        if y < 0.8 * inch:
-            c.showPage()
-            y = height - 1.0 * inch
-            c.setFont("Helvetica", 11)
-        c.drawString(x, y, ln)
-        y -= 0.22 * inch
+        c.setFont("Helvetica", 11)
+        for ln in lines:
+            if y < 0.8 * inch:
+                c.showPage()
+                y = height - 1.0 * inch
+                c.setFont("Helvetica", 11)
+            c.drawString(x, y, ln)
+            y -= 0.22 * inch
 
-    c.showPage()
-    c.save()
-    buf.seek(0)
+        c.showPage()
+        c.save()
+        buf.seek(0)
 
-    return send_file(buf, mimetype="application/pdf", as_attachment=True, download_name="KenpoFlashcards_User_Guide.pdf")
+        return send_file(buf, mimetype="application/pdf", as_attachment=True, download_name="KenpoFlashcards_User_Guide.pdf")
+    except Exception as e:
+        return f"""
+        <html><body style="font-family: sans-serif; padding: 40px; background: #1a1f2e; color: #fff;">
+        <h1>PDF Generation Error</h1>
+        <p>Error: {str(e)}</p>
+        <p><a href="/user-guide" style="color: #5ca5ff;">← View User Guide (HTML)</a></p>
+        <p><a href="/" style="color: #5ca5ff;">← Back to App</a></p>
+        </body></html>
+        """, 500
 
 @app.get("/api/whoami")
 def whoami():
@@ -1955,6 +2051,7 @@ def api_breakdown_autofill():
 
 
 @app.get("/api/ai")
+@app.get("/api/ai/status")
 def api_ai_status():
     """Simple status so the UI can show if AI autofill is available."""
     uid, _ = require_user()

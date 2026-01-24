@@ -542,8 +542,8 @@ function updateRandomStudyUI(){
     const chk = $("randomStudyChk");
     const btn = $("randomRefreshBtn");
     if(!chk || !btn) return;
-    // Always show reshuffle button so users can manually shuffle anytime
-    btn.style.display = "inline-flex";
+    const on = !!chk.checked;
+    btn.style.display = on ? "inline-flex" : "none";
   } catch(e){}
 }
 

@@ -349,7 +349,9 @@
     
     function showAction(a) {
       document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById('btn' + a.charAt(0).toUpperCase() + a.slice(1)).classList.add('active');
+      // Handle case for AI button specifically
+      const btnId = a === 'ai' ? 'btnAI' : 'btn' + a.charAt(0).toUpperCase() + a.slice(1);
+      document.getElementById(btnId).classList.add('active');
       if (a === 'health') loadHealth(); else if (a === 'helper') loadHelper(); else loadAI();
     }
 
