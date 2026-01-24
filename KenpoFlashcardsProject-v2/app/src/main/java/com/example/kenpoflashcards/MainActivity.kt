@@ -1611,6 +1611,13 @@ fun LoginScreen(nav: NavHostController, repo: Repository) {
                 if (isAdminCandidate) {
                     OutlinedTextField(serverUrl, { serverUrl = it }, Modifier.fillMaxWidth(), label = { Text("Server URL (Admin)") }, singleLine = true, textStyle = LocalTextStyle.current.copy(fontSize = 12.sp), leadingIcon = { Icon(Icons.Default.Cloud, "Server") })
                     Spacer(Modifier.height(8.dp))
+                    Button({
+                        scope.launch {
+                            repo.saveAdminSettings(adminSettings.copy(webAppUrl = serverUrl))
+                            statusMessage = "Server URL saved. You can login now."
+                        }
+                    }, Modifier.fillMaxWidth()) { Text("Save / Apply Server URL") }
+                    Spacer(Modifier.height(8.dp))
                 }
                 OutlinedTextField(username, { username = it }, Modifier.fillMaxWidth(), label = { Text("Username") }, singleLine = true, leadingIcon = { Icon(Icons.Default.Person, "User") })
                 Spacer(Modifier.height(8.dp))
@@ -1620,7 +1627,7 @@ fun LoginScreen(nav: NavHostController, repo: Repository) {
                     if (username.isBlank() || password.isBlank()) { statusMessage = "Enter username and password"; return@Button }
                     isLoading = true
                     scope.launch {
-                        val result = repo.syncLogin(username, password)
+                        val result = repo.syncLogin(username, password, serverUrl)
                         if (result.success) {
                             var effectiveUrl = serverUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
                             // Pull admin-managed config (if server supports it)

@@ -110,9 +110,9 @@ class Repository(private val context: Context, private val store: Store) {
 suspend fun deleteBreakdown(cardId: String) = store.deleteBreakdown(cardId)
     
     // Sync with web app
-    suspend fun syncLogin(username: String, password: String): WebAppSync.LoginResult {
+    suspend fun syncLogin(username: String, password: String, overrideServerUrl: String = ""): WebAppSync.LoginResult {
         val admin = adminSettingsFlow().first()
-        val serverUrl = admin.webAppUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
+        val serverUrl = overrideServerUrl.ifBlank { admin.webAppUrl }.ifBlank { WebAppSync.DEFAULT_SERVER_URL }
         return WebAppSync.login(serverUrl, username, password)
     }
     
