@@ -1429,14 +1429,31 @@ def api_counts():
         return jsonify({"error": "login_required"}), 401
 
     group = request.args.get("group", "")
-    cards, status = load_cards_cached()
-    if status != "ok":
-        return jsonify({"error": status}), 500
-
+    
+    # Get user's settings to check active deck
     progress = load_progress(uid)
+    settings = progress.get("__settings__", _default_settings())
+    active_deck_id = settings.get("activeDeckId", "kenpo")
+    
+    # Load cards based on deck
+    if active_deck_id == "kenpo":
+        # Built-in Kenpo deck
+        cards, status = load_cards_cached()
+        if status != "ok":
+            return jsonify({"error": status}), 500
+        all_cards = list(cards)
+        # Also add any user cards assigned to kenpo deck
+        user_cards = _load_user_cards(uid)
+        kenpo_user_cards = [c for c in user_cards if c.get("deckId", "kenpo") == "kenpo"]
+        all_cards = all_cards + kenpo_user_cards
+    else:
+        # User-created deck - only show user cards for this deck
+        user_cards = _load_user_cards(uid)
+        all_cards = [c for c in user_cards if c.get("deckId") == active_deck_id]
+
     counts = {"active": 0, "unsure": 0, "learned": 0, "deleted": 0, "total": 0}
-    for c in cards:
-        if group and c["group"] != group:
+    for c in all_cards:
+        if group and c.get("group", "") != group:
             continue
         s = card_status(progress, c["id"])
         counts["total"] += 1
@@ -1807,19 +1824,30 @@ def api_cards():
         status_filter = ""
     group = request.args.get("group", "")
     q = (request.args.get("q", "") or "").strip().lower()
+    deck_id = request.args.get("deck_id", "")
 
-    cards, status = load_cards_cached()
-    if status != "ok":
-        return jsonify({"error": status}), 500
-
-    # Merge user-created cards into the deck
-    user_cards = _load_user_cards(uid)
-    all_cards = list(cards) + user_cards
-
+    # Get user's settings to check active deck
     progress = load_progress(uid)
+    settings = progress.get("__settings__", _default_settings())
+    active_deck_id = deck_id or settings.get("activeDeckId", "kenpo")
+    
+    # Load cards based on deck
+    if active_deck_id == "kenpo":
+        # Built-in Kenpo deck
+        cards, status = load_cards_cached()
+        if status != "ok":
+            return jsonify({"error": status}), 500
+        all_cards = list(cards)
+        # Also add any user cards assigned to kenpo deck
+        user_cards = _load_user_cards(uid)
+        kenpo_user_cards = [c for c in user_cards if c.get("deckId", "kenpo") == "kenpo"]
+        all_cards = all_cards + kenpo_user_cards
+    else:
+        # User-created deck - only show user cards for this deck
+        user_cards = _load_user_cards(uid)
+        all_cards = [c for c in user_cards if c.get("deckId") == active_deck_id]
     
     # Get custom set IDs for this user
-    settings = progress.get("__settings__", _default_settings())
     custom_set_ids = set(settings.get("custom_set", []))
     
     out: List[Dict[str, Any]] = []

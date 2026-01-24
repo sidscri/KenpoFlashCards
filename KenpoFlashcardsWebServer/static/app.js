@@ -2501,24 +2501,34 @@ function renderDecksList(){
         <div class="deckCount">${deck.cardCount} cards</div>
       </div>
       <div class="deckActions">
+        ${!isActive ? '<button class="deckSwitchBtn appBtn primary small" title="Switch to this deck">Switch</button>' : '<span class="deckActiveLabel">✓ Active</span>'}
         ${!deck.isBuiltIn ? '<button class="deckEditBtn" title="Edit deck">✏️</button>' : ''}
         ${!deck.isBuiltIn ? '<button class="deckDeleteBtn" title="Delete deck">🗑️</button>' : ''}
       </div>
     `;
     
-    div.addEventListener("click", (e) => {
-      if(e.target.closest(".deckDeleteBtn") || e.target.closest(".deckEditBtn")) return;
-      selectDeck(deck.id);
-    });
+    const switchBtn = div.querySelector(".deckSwitchBtn");
+    if(switchBtn){
+      switchBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        switchToDeck(deck.id);
+      });
+    }
     
     const editBtn = div.querySelector(".deckEditBtn");
     if(editBtn){
-      editBtn.addEventListener("click", () => showEditDeckModal(deck));
+      editBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        showEditDeckModal(deck);
+      });
     }
     
     const deleteBtn = div.querySelector(".deckDeleteBtn");
     if(deleteBtn){
-      deleteBtn.addEventListener("click", () => deleteDeck(deck.id, deck.name));
+      deleteBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        deleteDeck(deck.id, deck.name);
+      });
     }
     
     list.appendChild(div);
@@ -2532,24 +2542,42 @@ function renderDecksList(){
   }
 }
 
-// Select a deck
-async function selectDeck(deckId){
+// Select a deck (visual only - just highlights it)
+function selectDeck(deckId){
+  // Just visual highlight, no actual switch
+  document.querySelectorAll(".deckItem").forEach(item => {
+    item.classList.remove("selected");
+  });
+}
+
+// Actually switch to a deck (loads cards)
+async function switchToDeck(deckId){
+  const deck = currentDecks.find(d => d.id === deckId);
+  const deckName = deck?.name || deckId;
+  
   activeDeckId = deckId;
   renderDecksList();
   
   // Save active deck preference
   try {
     await jpost("/api/settings", { scope: "all", settings: { activeDeckId: deckId } });
-  } catch(e){}
+  } catch(e){
+    console.error("Failed to save deck preference:", e);
+  }
   
-  const deck = currentDecks.find(d => d.id === deckId);
-  showEditDecksStatus(`Switched to "${deck?.name || deckId}"`, "success");
+  showEditDecksStatus(`Switched to "${deckName}"`, "success");
   
-  // Reload cards for the new deck
-  await loadCards();
+  // Reload counts and cards for the new deck
+  await refreshCounts();
+  
+  // Reload study deck
+  await loadDeckForStudy();
   
   // Update AI generator deck display
   updateAiGenDeckName();
+  
+  // Reload user cards list
+  loadUserCards();
 }
 
 // Delete a deck
@@ -3154,11 +3182,46 @@ async function generateCards(params){
     const result = await jpost("/api/ai/generate_deck", params);
     
     if(result.cards && result.cards.length > 0){
-      aiGeneratedCards = result.cards;
-      aiSelectedIndices = new Set(result.cards.map((_, i) => i)); // Select all by default
-      renderAiGenResults();
-      $("aiGenResults")?.classList.remove("hidden");
-      showEditDecksStatus(`Generated ${result.cards.length} cards. Select which to add.`, "success");
+      // Get existing terms to filter out duplicates
+      const existingTerms = new Set();
+      
+      // Add terms from main cards
+      if(window.allCards){
+        window.allCards.forEach(c => {
+          if(c.term) existingTerms.add(c.term.toLowerCase().trim());
+        });
+      }
+      
+      // Add terms from user cards
+      const userCardsData = await jget("/api/user_cards?deck_id=" + activeDeckId).catch(() => []);
+      if(Array.isArray(userCardsData)){
+        userCardsData.forEach(c => {
+          if(c.term) existingTerms.add(c.term.toLowerCase().trim());
+        });
+      }
+      
+      // Filter out cards that already exist
+      const newCards = result.cards.filter(card => {
+        const termLower = card.term.toLowerCase().trim();
+        return !existingTerms.has(termLower);
+      });
+      
+      const filteredCount = result.cards.length - newCards.length;
+      
+      if(newCards.length > 0){
+        aiGeneratedCards = newCards;
+        aiSelectedIndices = new Set(newCards.map((_, i) => i)); // Select all by default
+        renderAiGenResults();
+        $("aiGenResults")?.classList.remove("hidden");
+        
+        let msg = `Generated ${newCards.length} new cards.`;
+        if(filteredCount > 0){
+          msg += ` (${filteredCount} duplicates filtered out)`;
+        }
+        showEditDecksStatus(msg, "success");
+      } else {
+        showEditDecksStatus(`All ${result.cards.length} generated cards already exist in your deck.`, "error");
+      }
     } else {
       showEditDecksStatus("AI could not generate cards. Try different input.", "error");
     }
@@ -3273,8 +3336,9 @@ async function addSelectedAiCards(){
     // Refresh user cards list and main app
     loadUserCards();
     loadDecks();
-    // Also refresh main card list
-    loadCards();
+    // Also refresh counts and study deck
+    await refreshCounts();
+    await loadDeckForStudy();
   } else {
     showEditDecksStatus("Failed to add cards", "error");
   }

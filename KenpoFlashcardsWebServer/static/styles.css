@@ -1461,3 +1461,9 @@ button.danger{background:#321313;border-color:#6e2222}
 }
 .aiGenDeckInfo{color:var(--muted);font-size:13px;margin-bottom:12px;}.aiGenDeckInfo strong{color:var(--accent);}
 .userMenuLogout{color:#f87171;border-top:1px solid var(--border);margin-top:4px;padding-top:8px;}
+
+/* Deck switch button and active label */
+.deckSwitchBtn{padding:4px 12px !important;font-size:12px !important;}
+.deckActiveLabel{color:#22c55e;font-size:12px;font-weight:600;}
+.deckActions{display:flex;gap:8px;align-items:center;}
+
