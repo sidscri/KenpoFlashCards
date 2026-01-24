@@ -15,6 +15,48 @@ The format is simple and practical:
 
 ---
 
+## 7.0.5 (build 38) — 2026-01-24
+
+### Added
+- **🤖 AI Deck Generator**: New tab in Edit Decks to generate flashcards using AI
+  - **Keywords**: Enter topic/keywords to generate cards (e.g., "Basic Spanish Words 3rd grade level")
+  - **Photo**: Upload image of study material, AI extracts vocabulary
+  - **Document**: Upload PDF/TXT/MD files, AI creates flashcards from content
+  - Selection UI: Review generated cards, select which to add
+  - Max cards configurable 1-200
+  - Default keywords: Uses deck name + description if no keywords entered
+- **Edit Deck**: ✏️ button to edit deck name and description
+- **Logout confirmation**: "Are you sure?" prompt before logging out
+- **API endpoints**:
+  - `POST /api/ai/generate_deck` - Generate cards from keywords, photo, or document
+  - `POST /api/decks/:id` - Update deck name/description
+
+### Changed
+- **Logout moved to bottom** of user menu with red styling
+- **AI definitions context-aware**: Uses deck name/description instead of always "Korean martial arts"
+- **AI pronunciation**: Now generic, works for any language
+- **AI group suggestions**: Now generic, not Kenpo-specific
+- **Generate button**: Smaller "🔍 Generate" instead of full text
+- **Max cards**: Increased from 50 to 200
+
+### Fixed
+- **Deck switching**: Now actually reloads cards when switching decks
+- **Cards not appearing**: Added loadCards() refresh after adding AI-generated cards
+- **AI generation errors**: Added detailed server-side logging for debugging
+
+---
+
+## 7.0.4 (build 37) — 2026-01-24
+
+### Added
+- **AI Deck Generator** (initial implementation): Generate flashcards from keywords, photos, or documents
+- **User cards in study deck**: User-created cards now merge with built-in cards
+
+### Fixed
+- **PDF download**: Replaced with "Print User Guide" button (avoids reportlab compatibility issues)
+
+---
+
 ## 7.0.3 (build 36) — 2026-01-24
 
 ### Fixed
@@ -301,20 +343,3 @@ The format is simple and practical:
 3. Tag the release: git tag v5.3.1
 4. Push: git push && git push --tags
 ```
-
-## Automation Options
-- **GitHub Actions**: Auto-generate changelog from commit messages using `conventional-changelog`
-- **Pre-commit hook**: Remind to update changelog if certain files changed
-- **Release script**: Prompt for changelog entry when bumping version
-
-## v5.5.2 (v29) – Login fix
-
-- Fixed login regression for admin users after moving admin usernames to **admin_users.json**.
-- Login is **case-insensitive**.
-- For personal LAN deployments: admin users may log in from the private network with a **blank password** (to avoid lockouts).
-  - Recommended: set an admin password in profiles.json if you want strict security.
-
-### Logs access change
-
-The admin Logs panel no longer requires localhost. It now requires an **authenticated admin session**.
-

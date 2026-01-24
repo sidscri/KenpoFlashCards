@@ -5,7 +5,7 @@
 
 Flask-based web application providing sync API and web UI for Kenpo Flashcards.
 
-**Current Version:** v7.0.3 (build 36)  
+**Current Version:** v7.0.5 (build 38)  
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -17,8 +17,11 @@ Flask-based web application providing sync API and web UI for Kenpo Flashcards.
 - **Breakdown Sync** - Shared term breakdown database
 - **Web UI** - Browser-based flashcard interface
 - **Custom Set** - Starred cards for personalized study (v6.0.0+)
+- **Edit Decks** - Create, edit, and manage custom study decks (v7.0.0+)
+- **AI Deck Generator** - Generate flashcards from keywords, photos, or documents (v7.0.5+)
+- **User Cards** - Add custom cards with AI-assisted definitions/pronunciations
 - **Helper Mapping** - Canonical card IDs for cross-device consistency
-- **AI Integration** - ChatGPT and Gemini API for breakdown autofill
+- **AI Integration** - ChatGPT and Gemini API for breakdown autofill & card generation
 - **Encrypted API Keys** - Secure storage shared between Android and web
 - **Shared API Keys** - All authenticated users can pull API keys (v5.5.2+)
 - **Admin Management** - Centralized admin users Source of Truth
@@ -26,7 +29,7 @@ Flask-based web application providing sync API and web UI for Kenpo Flashcards.
 
 ---
 
-## 📍 Location & Workflows
+## 📁 Location & Workflows
 
 - **Path:** `sidscri-apps/KenpoFlashcardsWebServer/`
 - **CI Workflow:** `.github/workflows/kenpo-webserver-ci.yml`
@@ -52,7 +55,7 @@ Open: `http://localhost:8009`
 
 ---
 
-## 🔌 API Endpoints
+## 📌 API Endpoints
 
 ### Authentication
 | Endpoint | Method | Description |
@@ -69,6 +72,27 @@ Open: `http://localhost:8009`
 | `/api/sync/breakdowns` | GET | Get all breakdowns |
 | `/api/sync/helper` | GET | Canonical ID mapping |
 | `/api/sync/apikeys` | GET | **Get API keys (all users)** ✨ v5.5.2 |
+
+### Decks & Cards (v7.0.0+)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/decks` | GET | List all decks |
+| `/api/decks` | POST | Create new deck |
+| `/api/decks/:id` | POST | **Update deck name/description** ✨ v7.0.5 |
+| `/api/decks/:id` | DELETE | Delete a deck |
+| `/api/user_cards` | GET | Get user-created cards |
+| `/api/user_cards` | POST | Add new user card |
+| `/api/user_cards/:id` | PUT | Update user card |
+| `/api/user_cards/:id` | DELETE | Delete user card |
+
+### AI Generation (v7.0.0+)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/ai/generate_definition` | POST | Generate definition options |
+| `/api/ai/generate_pronunciation` | POST | Generate pronunciation |
+| `/api/ai/generate_group` | POST | Suggest group/category |
+| `/api/ai/generate_deck` | POST | **Generate cards from keywords/photo/doc** ✨ v7.0.5 |
+| `/api/ai/status` | GET | Check AI provider availability |
 
 ### Custom Set (v6.0.0+)
 | Endpoint | Method | Description |
@@ -113,7 +137,7 @@ Open: `http://localhost:8009`
 
 ---
 
-## 🔒 Data & Secrets
+## 🔑 Data & Secrets
 
 **Runtime data is NOT committed to Git (except SoT files):**
 - `data/` - User accounts, progress, breakdowns
@@ -126,14 +150,50 @@ data/
 ├── profiles.json        # User accounts (hashed passwords)
 ├── breakdowns.json      # Shared breakdowns
 ├── helper.json          # Auto-generated ID mapping
+├── decks.json           # User-created decks ✨ v7.0.0
 ├── secret_key.txt       # Flask session key (DO NOT SHARE)
 ├── api_keys.enc         # Encrypted API keys (safe for git)
 ├── admin_users.json     # Admin usernames (Source of Truth)
-└── users/
+├── users/
+│   ├── {user_id}/
+│   │   └── progress.json
+│   └── ...
+└── user_cards/          # User-created cards ✨ v7.0.0
     ├── {user_id}/
-    │   └── progress.json
+    │   └── cards.json
     └── ...
 ```
+
+---
+
+## 🤖 AI Deck Generator (v7.0.5+)
+
+Generate flashcards automatically using AI from three sources:
+
+### Keywords
+Enter a topic like "Basic Spanish Words 3rd grade level" and AI generates vocabulary cards.
+
+### Photo
+Upload an image of:
+- Study materials
+- Textbook pages
+- Existing flashcards
+- Diagrams with labels
+
+AI extracts text and creates flashcards.
+
+### Document
+Upload PDF, TXT, or MD files. AI reads the content and generates flashcards from key terms and concepts.
+
+### How It Works
+1. Go to **Edit Decks → 🤖 AI Generator**
+2. Choose method (Keywords/Photo/Document)
+3. Enter input or upload file
+4. Click **🔍 Generate**
+5. Review generated cards, select which to keep
+6. Cards are added to your current deck
+
+**Default Keywords**: If no keywords entered, uses the deck's name and description automatically.
 
 ---
 
@@ -179,7 +239,7 @@ Admin users are defined in `data/admin_users.json` (Source of Truth):
 
 ---
 
-## 🔑 API Key Sharing (v5.5.2+)
+## 🔒 API Key Sharing (v5.5.2+)
 
 API keys are now shared with ALL authenticated users:
 
@@ -221,7 +281,7 @@ Should return JSON with `version`, `term_to_id`, `cards`
 ```
 http://localhost:8009/api/version
 ```
-Should return `{"version": "6.1.0", "build": 32, ...}`
+Should return `{"version": "7.0.5", "build": 38, ...}`
 
 ### 3. Test Admin Users Endpoint
 ```
@@ -238,6 +298,12 @@ Confirm `data/helper.json` and `data/admin_users.json` exist on disk.
 
 | Version | Build | Key Changes |
 |---------|-------|-------------|
+| **7.0.5** | 38 | AI Deck Generator (keywords/photo/doc), Edit Deck, logout confirmation, context-aware AI |
+| **7.0.4** | 37 | AI Deck Generator initial, user cards in study deck |
+| **7.0.3** | 36 | Health check fix, AI key loading, random toggle persistence |
+| **7.0.2** | 35 | Pick Random N, User Management, password reset |
+| **7.0.1** | 34 | Reshuffle button, search clear, Custom Set randomize |
+| **7.0.0** | 33 | Edit Decks page, deck management, user cards CRUD, AI generation |
 | **6.1.0** | 32 | Settings tabbed navigation, Sync Progress page, star on study cards, sort All list |
 | **6.0.0** | 31 | Custom Set, auto-speak settings, admin dashboard redesign |
 | **5.5.3** | 30 | Progress timestamps, offline pending queue sync |
@@ -277,7 +343,9 @@ KenpoFlashcardsWebServer/
 │       └── security.txt   # Security contact
 ├── data/                  # Runtime data (gitignored except SoT files)
 │   ├── admin_users.json   # Admin usernames (Source of Truth) ✓ git
-│   └── api_keys.enc       # Encrypted API keys (safe for git) ✓ git
+│   ├── api_keys.enc       # Encrypted API keys (safe for git) ✓ git
+│   ├── decks.json         # User-created decks ✨ v7.0.0
+│   └── user_cards/        # User-created cards ✨ v7.0.0
 └── CHANGELOG.md           # Version history
 ```
 
@@ -286,4 +354,3 @@ KenpoFlashcardsWebServer/
 ## 📄 License
 
 Personal/educational use for learning American Kenpo Karate vocabulary.
-

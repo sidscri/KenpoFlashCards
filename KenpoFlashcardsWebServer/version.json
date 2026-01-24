@@ -1,7 +1,7 @@
 {
   "name": "KenpoFlashcardsWebServer",
-  "version": "7.0.3",
-  "build": 36,
+  "version": "7.0.5",
+  "build": 38,
   "released": "2026-01-24",
-  "notes": "Fixed: Health check kenpo JSON detection, AI card generation loading keys from encrypted storage, random toggle persistence on Custom Set, reshuffle button always visible and properly sized."
+  "notes": "Fixed: AI generator now works, deck switching actually changes cards, logout confirmation, AI definitions use deck context not just Kenpo. Max cards 1-200."
 }

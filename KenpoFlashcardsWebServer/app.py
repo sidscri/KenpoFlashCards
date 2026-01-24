@@ -440,10 +440,14 @@ def _call_openai_chat(prompt: str, model: str, api_key: str) -> str:
         raise Exception("OpenAI API key not configured")
     
     url = f"{OPENAI_API_BASE}/v1/chat/completions"
+    
+    # Use higher token limit for card generation (detect from prompt)
+    max_tokens = 4000 if "flashcard" in prompt.lower() or "cards" in prompt.lower() else 500
+    
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 500,
+        "max_tokens": max_tokens,
         "temperature": 0.7
     }
     
@@ -451,7 +455,7 @@ def _call_openai_chat(prompt: str, model: str, api_key: str) -> str:
         url,
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         json=payload,
-        timeout=30
+        timeout=60
     )
     
     if r.status_code != 200:
@@ -474,15 +478,23 @@ def _call_gemini_chat(prompt: str, model: str, api_key: str) -> str:
         raise Exception("Gemini API key not configured")
     
     url = f"{GEMINI_API_BASE}/v1beta/models/{model}:generateContent"
+    
+    # Use higher token limit for card generation
+    max_tokens = 4000 if "flashcard" in prompt.lower() or "cards" in prompt.lower() else 500
+    
     payload = {
-        "contents": [{"role": "user", "parts": [{"text": prompt}]}]
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "maxOutputTokens": max_tokens,
+            "temperature": 0.7
+        }
     }
     
     r = requests.post(
         url,
         headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
         json=payload,
-        timeout=30
+        timeout=60
     )
     
     if r.status_code != 200:
@@ -1800,6 +1812,10 @@ def api_cards():
     if status != "ok":
         return jsonify({"error": status}), 500
 
+    # Merge user-created cards into the deck
+    user_cards = _load_user_cards(uid)
+    all_cards = list(cards) + user_cards
+
     progress = load_progress(uid)
     
     # Get custom set IDs for this user
@@ -1807,8 +1823,8 @@ def api_cards():
     custom_set_ids = set(settings.get("custom_set", []))
     
     out: List[Dict[str, Any]] = []
-    for c in cards:
-        if group and c["group"] != group:
+    for c in all_cards:
+        if group and c.get("group", "") != group:
             continue
 
         s = card_status(progress, c["id"])
@@ -2781,6 +2797,44 @@ def api_create_deck():
     return jsonify(new_deck)
 
 
+@app.post("/api/decks/<deck_id>")
+def api_update_deck(deck_id: str):
+    """Update a user-created deck."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    data = request.get_json() or {}
+    new_name = str(data.get("name", "")).strip()
+    new_desc = str(data.get("description", "")).strip()
+    
+    if not new_name:
+        return jsonify({"error": "Deck name is required"}), 400
+    
+    decks = _load_decks()
+    
+    # Find deck
+    deck_to_update = None
+    for d in decks:
+        if d.get("id") == deck_id:
+            deck_to_update = d
+            break
+    
+    if not deck_to_update:
+        return jsonify({"error": "Deck not found"}), 404
+    
+    if deck_to_update.get("isBuiltIn"):
+        return jsonify({"error": "Cannot edit built-in deck"}), 400
+    
+    # Update fields
+    deck_to_update["name"] = new_name
+    deck_to_update["description"] = new_desc
+    
+    _save_decks(decks)
+    
+    return jsonify(deck_to_update)
+
+
 @app.delete("/api/decks/<deck_id>")
 def api_delete_deck(deck_id: str):
     """Delete a user-created deck."""
@@ -2933,6 +2987,8 @@ def api_ai_generate_definition():
     
     data = request.get_json() or {}
     term = str(data.get("term", "")).strip()
+    deck_name = str(data.get("deckName", "")).strip() or "General vocabulary"
+    deck_desc = str(data.get("deckDescription", "")).strip()
     
     if not term:
         return jsonify({"error": "Term is required"}), 400
@@ -2940,8 +2996,20 @@ def api_ai_generate_definition():
     if not OPENAI_API_KEY and not GEMINI_API_KEY:
         return jsonify({"error": "No AI provider configured"}), 400
     
-    prompt = f"""Generate 3 different definitions for the term "{term}" in the context of Korean martial arts vocabulary.
-Return ONLY a JSON array with 3 strings, no explanation. Example: ["definition 1", "definition 2", "definition 3"]"""
+    # Build context from deck info
+    context = f"{deck_name}"
+    if deck_desc:
+        context += f" ({deck_desc})"
+    
+    prompt = f"""For the vocabulary term "{term}" in the context of {context}:
+
+Provide 3 translation/definition options. Keep them SHORT and LITERAL:
+- For foreign language words: give the English translation (e.g., "Hola" = "Hello")
+- For English words: give a brief definition (1-5 words)
+- For technical terms: give the simple meaning
+
+Return ONLY a JSON array with 3 short strings. Example: ["Hello", "Hi", "Greetings"]
+Do NOT include explanations or full sentences."""
     
     try:
         if OPENAI_API_KEY:
@@ -2977,7 +3045,8 @@ def api_ai_generate_pronunciation():
     if not OPENAI_API_KEY and not GEMINI_API_KEY:
         return jsonify({"error": "No AI provider configured"}), 400
     
-    prompt = f"""Provide the English phonetic pronunciation for the Korean martial arts term "{term}".
+    prompt = f"""Provide the English phonetic pronunciation for the term "{term}".
+Use simple syllables separated by hyphens that an English speaker can read.
 Return ONLY the pronunciation guide, nothing else. Example: tay-kwon-doh"""
     
     try:
@@ -3010,10 +3079,11 @@ def api_ai_generate_group():
         return jsonify({"error": "No AI provider configured"}), 400
     
     groups_str = ", ".join(existing_groups[:20]) if existing_groups else "None yet"
+    meaning_context = f" (meaning: {meaning})" if meaning else ""
     
-    prompt = f"""Suggest 3 category/group names for the Korean martial arts term "{term}" (meaning: {meaning}).
+    prompt = f"""Suggest 3 category/group names for the vocabulary term "{term}"{meaning_context}.
 Existing groups in the deck: {groups_str}
-Prefer existing groups if they fit. Return ONLY a JSON array with 3 strings. Example: ["Stances", "Kicks", "Commands"]"""
+Prefer existing groups if they fit. Return ONLY a JSON array with 3 strings. Example: ["Category1", "Category2", "Category3"]"""
     
     try:
         if OPENAI_API_KEY:
@@ -3030,6 +3100,314 @@ Prefer existing groups if they fit. Return ONLY a JSON array with 3 strings. Exa
             return jsonify({"groups": [result.strip()]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.post("/api/ai/generate_deck")
+def api_ai_generate_deck():
+    """Generate flashcard deck from keywords, photo, or document using AI."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    if not OPENAI_API_KEY and not GEMINI_API_KEY:
+        return jsonify({"error": "No AI provider configured"}), 400
+    
+    data = request.get_json() or {}
+    gen_type = data.get("type", "keywords")
+    max_cards = min(int(data.get("maxCards", 20)), 200)
+    
+    try:
+        if gen_type == "keywords":
+            keywords = str(data.get("keywords", "")).strip()
+            if not keywords:
+                return jsonify({"error": "Keywords required"}), 400
+            print(f"[AI GEN] Generating {max_cards} cards for keywords: {keywords[:100]}")
+            cards = _ai_generate_from_keywords(keywords, max_cards)
+            print(f"[AI GEN] Generated {len(cards)} cards")
+        
+        elif gen_type == "photo":
+            image_data = data.get("imageData", "")
+            if not image_data:
+                return jsonify({"error": "Image data required"}), 400
+            print(f"[AI GEN] Generating from photo, max {max_cards} cards")
+            cards = _ai_generate_from_image(image_data, max_cards)
+            print(f"[AI GEN] Generated {len(cards)} cards from photo")
+        
+        elif gen_type == "document":
+            doc = data.get("document", {})
+            if not doc.get("content"):
+                return jsonify({"error": "Document content required"}), 400
+            print(f"[AI GEN] Generating from document: {doc.get('name', 'unknown')}")
+            cards = _ai_generate_from_document(doc, max_cards)
+            print(f"[AI GEN] Generated {len(cards)} cards from document")
+        
+        else:
+            return jsonify({"error": "Invalid generation type"}), 400
+        
+        return jsonify({"cards": cards})
+    
+    except Exception as e:
+        print(f"[AI GEN ERROR] {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+def _ai_generate_from_keywords(keywords: str, max_cards: int) -> list:
+    """Generate flashcards from search keywords."""
+    prompt = f"""Generate exactly {max_cards} vocabulary flashcards about: {keywords}
+
+IMPORTANT: For foreign language vocabulary, definitions should be SHORT LITERAL TRANSLATIONS.
+Example for Spanish: "Hola" -> definition: "Hello" (NOT a long explanation)
+
+For each card provide:
+- term: the vocabulary word in the target language
+- definition: SHORT English translation or meaning (1-5 words max)
+- pronunciation: phonetic guide (e.g., "oh-lah"), or empty string if obvious
+- group: category (e.g., "Greetings", "Numbers", "Colors")
+
+Respond ONLY with valid JSON, no markdown or explanation:
+{{"cards": [
+    {{"term": "Hola", "definition": "Hello", "pronunciation": "oh-lah", "group": "Greetings"}},
+    {{"term": "Adiós", "definition": "Goodbye", "pronunciation": "ah-dee-ohs", "group": "Greetings"}}
+]}}"""
+    
+    return _parse_ai_cards_response(_call_ai_chat(prompt))
+
+
+def _ai_generate_from_image(image_data: str, max_cards: int) -> list:
+    """Generate flashcards from image using vision API."""
+    # Extract base64 data if it's a data URL
+    if "," in image_data:
+        image_data = image_data.split(",", 1)[1]
+    
+    prompt = f"""Analyze this image and extract educational content to create up to {max_cards} flashcards.
+Look for: vocabulary terms, definitions, concepts, diagrams with labels, or any study material.
+
+For each item found, create a flashcard with:
+- term: the word or concept
+- definition: clear explanation
+- pronunciation: phonetic guide if applicable, or empty string
+- group: category for organization
+
+Respond ONLY with valid JSON, no markdown:
+{{"cards": [
+    {{"term": "Term", "definition": "Definition", "pronunciation": "", "group": "Category"}}
+]}}"""
+    
+    # Use vision-capable model
+    if OPENAI_API_KEY:
+        result = _call_openai_vision(prompt, image_data)
+    elif GEMINI_API_KEY:
+        result = _call_gemini_vision(prompt, image_data)
+    else:
+        return []
+    
+    return _parse_ai_cards_response(result)
+
+
+def _ai_generate_from_document(doc: dict, max_cards: int) -> list:
+    """Generate flashcards from document content."""
+    content = doc.get("content", "")
+    doc_type = doc.get("type", "text/plain")
+    
+    # For PDF base64, we need vision API
+    if doc_type == "application/pdf" and content.startswith("data:"):
+        if "," in content:
+            content = content.split(",", 1)[1]
+        
+        prompt = f"""Analyze this PDF document and extract educational content to create up to {max_cards} flashcards.
+Extract key terms, definitions, concepts, and important facts.
+
+For each item, create a flashcard with:
+- term: the word or concept  
+- definition: clear explanation
+- pronunciation: phonetic guide if applicable, or empty string
+- group: category for organization
+
+Respond ONLY with valid JSON:
+{{"cards": [{{"term": "Term", "definition": "Definition", "pronunciation": "", "group": "Category"}}]}}"""
+        
+        if OPENAI_API_KEY:
+            result = _call_openai_vision(prompt, content, "application/pdf")
+        elif GEMINI_API_KEY:
+            result = _call_gemini_vision(prompt, content, "application/pdf")
+        else:
+            return []
+        
+        return _parse_ai_cards_response(result)
+    
+    # For text content, use regular chat
+    # Truncate if too long
+    if len(content) > 15000:
+        content = content[:15000] + "...[truncated]"
+    
+    prompt = f"""Analyze this document and create up to {max_cards} educational flashcards from its content:
+
+---DOCUMENT START---
+{content}
+---DOCUMENT END---
+
+For each key term/concept found, create a flashcard with:
+- term: the word or concept
+- definition: clear explanation based on the document
+- pronunciation: phonetic guide if applicable, or empty string
+- group: category for organization
+
+Respond ONLY with valid JSON:
+{{"cards": [{{"term": "Term", "definition": "Definition", "pronunciation": "", "group": "Category"}}]}}"""
+    
+    return _parse_ai_cards_response(_call_ai_chat(prompt))
+
+
+def _call_ai_chat(prompt: str) -> str:
+    """Call the configured AI chat API."""
+    if OPENAI_API_KEY:
+        return _call_openai_chat(prompt, OPENAI_MODEL, OPENAI_API_KEY)
+    elif GEMINI_API_KEY:
+        return _call_gemini_chat(prompt, GEMINI_MODEL, GEMINI_API_KEY)
+    else:
+        raise Exception("No AI provider configured")
+
+
+def _call_openai_vision(prompt: str, image_data: str, media_type: str = "image/jpeg") -> str:
+    """Call OpenAI with vision capability."""
+    url = f"{OPENAI_API_BASE}/v1/chat/completions"
+    
+    # Determine the correct media type prefix
+    if media_type == "application/pdf":
+        data_url = f"data:application/pdf;base64,{image_data}"
+    else:
+        data_url = f"data:image/jpeg;base64,{image_data}"
+    
+    payload = {
+        "model": "gpt-4o",  # Use vision-capable model
+        "messages": [{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": data_url}}
+            ]
+        }],
+        "max_tokens": 4000,
+        "temperature": 0.7
+    }
+    
+    r = requests.post(
+        url,
+        headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+        json=payload,
+        timeout=60
+    )
+    
+    if r.status_code != 200:
+        raise Exception(f"OpenAI error: {r.status_code}")
+    
+    data = r.json()
+    return data.get("choices", [{}])[0].get("message", {}).get("content", "")
+
+
+def _call_gemini_vision(prompt: str, image_data: str, media_type: str = "image/jpeg") -> str:
+    """Call Gemini with vision capability."""
+    # Use gemini-1.5-flash or gemini-1.5-pro for vision
+    model = "gemini-1.5-flash"
+    url = f"{GEMINI_API_BASE}/v1beta/models/{model}:generateContent"
+    
+    payload = {
+        "contents": [{
+            "parts": [
+                {"text": prompt},
+                {"inline_data": {"mime_type": media_type, "data": image_data}}
+            ]
+        }],
+        "generationConfig": {
+            "temperature": 0.7,
+            "maxOutputTokens": 4000
+        }
+    }
+    
+    r = requests.post(
+        url,
+        headers={"Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY},
+        json=payload,
+        timeout=60
+    )
+    
+    if r.status_code != 200:
+        raise Exception(f"Gemini error: {r.status_code}")
+    
+    data = r.json()
+    try:
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+    except:
+        return ""
+
+
+def _parse_ai_cards_response(response: str) -> list:
+    """Parse AI response to extract cards array."""
+    import re
+    
+    if not response:
+        print("[AI PARSE] Empty response")
+        return []
+    
+    print(f"[AI PARSE] Response length: {len(response)}, first 200 chars: {response[:200]}")
+    
+    # Try to find JSON object in response
+    response = response.strip()
+    
+    # Remove markdown code blocks if present
+    response = re.sub(r'^```json\s*', '', response)
+    response = re.sub(r'^```\s*', '', response)
+    response = re.sub(r'\s*```$', '', response)
+    response = response.strip()
+    
+    cards = []
+    
+    try:
+        # Try parsing as complete JSON
+        data = json.loads(response)
+        cards = data.get("cards", [])
+        print(f"[AI PARSE] Parsed JSON directly, found {len(cards)} cards")
+    except Exception as e:
+        print(f"[AI PARSE] Direct JSON parse failed: {e}")
+        # Try to find cards array in response
+        match = re.search(r'"cards"\s*:\s*\[', response)
+        if match:
+            # Find matching closing bracket
+            start = match.end() - 1
+            bracket_count = 0
+            end = start
+            for i, c in enumerate(response[start:]):
+                if c == '[':
+                    bracket_count += 1
+                elif c == ']':
+                    bracket_count -= 1
+                    if bracket_count == 0:
+                        end = start + i + 1
+                        break
+            try:
+                cards = json.loads(response[start:end])
+                print(f"[AI PARSE] Extracted cards array, found {len(cards)} cards")
+            except Exception as e2:
+                print(f"[AI PARSE] Cards array parse failed: {e2}")
+                cards = []
+        else:
+            print("[AI PARSE] No 'cards' key found in response")
+            cards = []
+    
+    # Validate and normalize cards
+    valid_cards = []
+    for card in cards:
+        if isinstance(card, dict) and card.get("term") and card.get("definition"):
+            valid_cards.append({
+                "term": str(card.get("term", "")).strip(),
+                "definition": str(card.get("definition", "")).strip(),
+                "pronunciation": str(card.get("pronunciation", "")).strip(),
+                "group": str(card.get("group", "General")).strip() or "General"
+            })
+    
+    return valid_cards
 
 
 # --- Common public files (avoid 404 noise) ---

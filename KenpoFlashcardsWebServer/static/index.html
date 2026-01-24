@@ -15,11 +15,12 @@
         <div class="mini userBtn" id="userLine" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false"></div>
 <div class="userMenu hidden" id="userMenu" role="menu" aria-label="User menu">
   <div class="userMenuRow"><span class="mutedSmall" id="userMenuVersion">Version: …</span></div>
-  <div class="userMenuRow userMenuAction" id="userMenuLogout">🚪 Logout</div>
   <div class="userMenuDivider"></div>
   <div class="userMenuRow"><a class="userMenuLink" href="/admin" id="userMenuAdmin">⚙️ Admin</a></div>
   <div class="userMenuRow"><a class="userMenuLink" href="/about">ℹ️ About</a></div>
   <div class="userMenuRow"><a class="userMenuLink" href="/user-guide">📖 User Guide</a></div>
+  <div class="userMenuDivider"></div>
+  <div class="userMenuRow userMenuAction userMenuLogout" id="userMenuLogout">🚪 Logout</div>
 </div>
 
       </div>
@@ -513,6 +514,7 @@
           <div class="editDecksTabs">
             <button class="editDecksTab active" data-tab="switch">🔄 Switch</button>
             <button class="editDecksTab" data-tab="add">➕ Add Cards</button>
+            <button class="editDecksTab" data-tab="generate">🤖 AI Generator</button>
             <button class="editDecksTab" data-tab="deleted">🗑️ Deleted</button>
           </div>
 
@@ -623,6 +625,109 @@
             </div>
           </div>
 
+          <!-- AI GENERATOR TAB -->
+          <div class="editDecksSection" id="editDecksGenerateTab" data-section="generate">
+            <div class="settingsCard">
+              <div class="settingsCardHeader">🤖 AI Deck Generator</div>
+              <p class="settingDesc">Generate flashcards using AI from keywords, photos, or documents</p>
+
+              <!-- Generation Method Tabs -->
+              <div class="genMethodTabs">
+                <button class="genMethodTab active" data-method="keywords">📝 Keywords</button>
+                <button class="genMethodTab" data-method="photo">📷 Photo</button>
+                <button class="genMethodTab" data-method="document">📄 Document</button>
+              </div>
+
+              <!-- Keywords Method -->
+              <div class="genMethodSection active" id="genKeywordsSection" data-method="keywords">
+                <label class="field">
+                  <span>Search Keywords / Topic</span>
+                  <input id="aiGenKeywords" placeholder="e.g., Japanese martial arts terminology, Korean numbers 1-10" />
+                </label>
+                <label class="field">
+                  <span>Max Cards to Generate</span>
+                  <input id="aiGenMaxCards" type="number" value="20" min="1" max="200" style="width: 100px;" />
+                </label>
+                <button id="aiGenSearchBtn" class="appBtn primary small">🔍 Generate</button>
+              </div>
+
+              <!-- Photo Method -->
+              <div class="genMethodSection hidden" id="genPhotoSection" data-method="photo">
+                <p class="settingDesc">Upload a photo of text, flashcards, or study material to extract terms</p>
+                <div class="uploadZone" id="photoUploadZone">
+                  <div class="uploadIcon">📷</div>
+                  <div class="uploadText">Click or drag image here</div>
+                  <input type="file" id="photoFileInput" accept="image/*" hidden />
+                </div>
+                <div class="uploadPreview hidden" id="photoPreview">
+                  <img id="photoPreviewImg" />
+                  <button class="appBtn secondary small" id="clearPhotoBtn">✕ Clear</button>
+                </div>
+                <label class="field">
+                  <span>Max Cards to Generate</span>
+                  <input id="aiGenPhotoMaxCards" type="number" value="20" min="1" max="200" style="width: 100px;" />
+                </label>
+                <button id="aiGenPhotoBtn" class="appBtn primary" disabled>🔍 Extract</button>
+              </div>
+
+              <!-- Document Method -->
+              <div class="genMethodSection hidden" id="genDocSection" data-method="document">
+                <p class="settingDesc">Upload a PDF or text document to extract vocabulary</p>
+                <div class="uploadZone" id="docUploadZone">
+                  <div class="uploadIcon">📄</div>
+                  <div class="uploadText">Click or drag document here</div>
+                  <div class="uploadSubtext">Supports: PDF, TXT, MD</div>
+                  <input type="file" id="docFileInput" accept=".pdf,.txt,.md,.text" hidden />
+                </div>
+                <div class="uploadPreview hidden" id="docPreview">
+                  <div class="docFileName" id="docFileName"></div>
+                  <button class="appBtn secondary small" id="clearDocBtn">✕ Clear</button>
+                </div>
+                <label class="field">
+                  <span>Max Cards to Generate</span>
+                  <input id="aiGenDocMaxCards" type="number" value="20" min="1" max="200" style="width: 100px;" />
+                </label>
+                <button id="aiGenDocBtn" class="appBtn primary" disabled>🔍 Extract</button>
+              </div>
+
+              <!-- Loading State -->
+              <div class="aiGenLoading hidden" id="aiGenLoading">
+                <div class="spinner"></div>
+                <span>Generating cards with AI...</span>
+              </div>
+
+              <!-- AI Not Configured Warning -->
+              <div class="aiWarning hidden" id="aiGenWarning">
+                <span>⚠️</span>
+                <span>AI not configured. <a href="/ai-access.html">Configure API keys</a> first.</span>
+              </div>
+
+              <!-- Results Section -->
+              <div class="aiGenResults hidden" id="aiGenResults">
+                <div class="settingsSectionTitle">
+                  Generated Cards
+                  <span class="aiGenResultsCount" id="aiGenResultsCount">(0 selected)</span>
+                </div>
+                
+                <div class="aiGenSelectActions">
+                  <button class="appBtn secondary small" id="aiGenSelectAll">Select All</button>
+                  <button class="appBtn secondary small" id="aiGenSelectNone">Clear Selection</button>
+                </div>
+
+                <div class="aiGenResultsList" id="aiGenResultsList">
+                  <!-- Populated by JS -->
+                </div>
+
+                <div class="aiGenAddSection">
+                  <div class="aiGenDeckInfo">
+                    Adding to: <strong id="aiGenCurrentDeckName">Kenpo Vocabulary</strong>
+                  </div>
+                  <button id="aiGenAddSelectedBtn" class="appBtn success">➕ Add Selected Cards to Deck</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- DELETED TAB -->
           <div class="editDecksSection" id="editDecksDeletedTab" data-section="deleted">
             <div class="settingsCard">
@@ -698,6 +803,28 @@
       </div>
 
       <div id="breakdownsList" class="breakdownsList"></div>
+    </div>
+  </div>
+
+  <!-- Edit Deck Modal -->
+  <div class="modalOverlay hidden" id="editDeckModal">
+    <div class="modalCard">
+      <h2 class="modalTitle">Edit Deck</h2>
+      <input type="hidden" id="editDeckId" />
+      <div class="modalForm">
+        <label class="field">
+          <span>Deck Name *</span>
+          <input id="editDeckName" placeholder="e.g., Spanish Vocabulary" />
+        </label>
+        <label class="field">
+          <span>Description</span>
+          <input id="editDeckDescription" placeholder="Brief description of the deck subject..." />
+        </label>
+      </div>
+      <div class="modalBtns">
+        <button class="secondary" onclick="closeEditDeckModal()">Cancel</button>
+        <button class="good" onclick="saveEditDeck()">Save Changes</button>
+      </div>
     </div>
   </div>
 

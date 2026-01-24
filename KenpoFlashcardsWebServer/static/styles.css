@@ -1241,3 +1241,223 @@ button.danger{background:#321313;border-color:#6e2222}
 .searchClearBtn.hidden{
   display: none;
 }
+
+/* AI Generator Styles */
+.genMethodTabs{
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.genMethodTab{
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+.genMethodTab:hover{
+  background: rgba(255,255,255,0.05);
+  color: var(--text);
+}
+.genMethodTab.active{
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.genMethodSection{
+  padding: 16px 0;
+}
+.genMethodSection.hidden{
+  display: none;
+}
+.uploadZone{
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 16px;
+}
+.uploadZone:hover{
+  border-color: var(--accent);
+  background: rgba(31, 111, 235, 0.05);
+}
+.uploadZone.dragover{
+  border-color: var(--accent);
+  background: rgba(31, 111, 235, 0.1);
+}
+.uploadIcon{
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+.uploadText{
+  color: var(--text);
+  font-size: 14px;
+}
+.uploadSubtext{
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+.uploadPreview{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+.uploadPreview.hidden{
+  display: none;
+}
+.uploadPreview img{
+  max-width: 100px;
+  max-height: 80px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+.docFileName{
+  color: var(--text);
+  font-size: 14px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aiGenLoading{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  justify-content: center;
+  color: var(--muted);
+}
+.aiGenLoading.hidden{
+  display: none;
+}
+.aiGenLoading .spinner{
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin{
+  to{ transform: rotate(360deg); }
+}
+.aiWarning{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  border-radius: 8px;
+  color: #fbbf24;
+  font-size: 13px;
+  margin: 12px 0;
+}
+.aiWarning.hidden{
+  display: none;
+}
+.aiWarning a{
+  color: #5ca5ff;
+}
+.aiGenResults{
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.aiGenResults.hidden{
+  display: none;
+}
+.aiGenResultsCount{
+  font-weight: normal;
+  color: var(--muted);
+  font-size: 13px;
+}
+.aiGenSelectActions{
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.aiGenResultsList{
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+}
+.aiGenResultItem{
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+.aiGenResultItem:hover{
+  background: rgba(0,0,0,0.3);
+}
+.aiGenResultItem.selected{
+  background: rgba(31, 111, 235, 0.15);
+  border-color: var(--accent);
+}
+.aiGenResultItem input[type="checkbox"]{
+  margin-top: 4px;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+.aiGenResultInfo{
+  flex: 1;
+  min-width: 0;
+}
+.aiGenResultTerm{
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.aiGenResultDef{
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.aiGenResultMeta{
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.aiGenResultGroup{
+  font-size: 11px;
+  padding: 2px 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  color: var(--muted);
+}
+.aiGenResultPron{
+  font-size: 11px;
+  color: var(--muted);
+  font-style: italic;
+}
+.aiGenAddSection{
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.aiGenAddSection .field{
+  flex: 1;
+  min-width: 200px;
+}
+.aiGenDeckInfo{color:var(--muted);font-size:13px;margin-bottom:12px;}.aiGenDeckInfo strong{color:var(--accent);}
+.userMenuLogout{color:#f87171;border-top:1px solid var(--border);margin-top:4px;padding-top:8px;}
