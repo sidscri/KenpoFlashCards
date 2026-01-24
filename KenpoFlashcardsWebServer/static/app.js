@@ -509,6 +509,9 @@ function getStudyRandomizeFlag(settings){
   if(activeTab === "learned" && learnedViewMode === "study"){
     return (settings && typeof settings.randomize_learned_study === "boolean") ? settings.randomize_learned_study : base;
   }
+  if(activeTab === "custom"){
+    return (settings && typeof settings.randomize_custom_set === "boolean") ? settings.randomize_custom_set : base;
+  }
   return base;
 }
 
@@ -516,7 +519,10 @@ async function setStudyRandomizeFlag(value){
   const settings = await getScopeSettings();
   const link = (settings && settings.link_randomize_study_tabs !== false);
   const patch = {};
-  if(link){
+  if(activeTab === "custom"){
+    // Custom set has its own flag, not linked
+    patch.randomize_custom_set = !!value;
+  } else if(link){
     patch.randomize_unlearned = !!value;
     patch.randomize_unsure = !!value;
     patch.randomize_learned_study = !!value;
@@ -536,8 +542,8 @@ function updateRandomStudyUI(){
     const chk = $("randomStudyChk");
     const btn = $("randomRefreshBtn");
     if(!chk || !btn) return;
-    const on = !!chk.checked;
-    btn.style.display = on ? "inline-flex" : "none";
+    // Always show reshuffle button so users can manually shuffle anytime
+    btn.style.display = "inline-flex";
   } catch(e){}
 }
 

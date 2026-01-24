@@ -15,6 +15,19 @@ The format is simple and practical:
 
 ---
 
+## 7.0.3 (build 36) — 2026-01-24
+
+### Fixed
+- **Health check**: Now correctly reports Kenpo JSON file status (was always showing Missing)
+- **AI card generation**: API keys now loaded from encrypted storage at startup (was only reading from environment variables)
+- **Custom Set random toggle**: Now properly persists when toggled (was not saving to settings)
+- **Reshuffle button**: Always visible and properly sized (smaller, inline with toggle)
+
+### Changed
+- Reshuffle button now works anytime (not just when random is enabled)
+
+---
+
 ## 7.0.2 (build 35) — 2026-01-23
 
 ### Added

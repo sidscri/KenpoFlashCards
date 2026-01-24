@@ -5,7 +5,7 @@
 
 Flask-based web application providing sync API and web UI for Kenpo Flashcards.
 
-**Current Version:** v7.0.2 (build 35)  
+**Current Version:** v7.0.3 (build 36)  
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---

@@ -79,6 +79,30 @@ GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
 GEMINI_MODEL = (os.environ.get("GEMINI_MODEL") or "gemini-1.5-flash").strip()
 GEMINI_API_BASE = (os.environ.get("GEMINI_API_BASE") or "https://generativelanguage.googleapis.com").rstrip("/")
 
+def _init_api_keys_from_encrypted():
+    """Load API keys from encrypted file if not set via environment."""
+    global OPENAI_API_KEY, OPENAI_MODEL, GEMINI_API_KEY, GEMINI_MODEL
+    
+    # Only load from encrypted if not already set via environment
+    if OPENAI_API_KEY and GEMINI_API_KEY:
+        return
+    
+    try:
+        keys = _load_encrypted_api_keys()
+        if keys:
+            if not OPENAI_API_KEY and keys.get("chatGptKey"):
+                OPENAI_API_KEY = keys["chatGptKey"]
+                print("[INIT] Loaded OpenAI API key from encrypted storage")
+            if keys.get("chatGptModel"):
+                OPENAI_MODEL = keys["chatGptModel"]
+            if not GEMINI_API_KEY and keys.get("geminiKey"):
+                GEMINI_API_KEY = keys["geminiKey"]
+                print("[INIT] Loaded Gemini API key from encrypted storage")
+            if keys.get("geminiModel"):
+                GEMINI_MODEL = keys["geminiModel"]
+    except Exception as e:
+        print(f"[INIT] Could not load encrypted API keys: {e}")
+
 # -------- Shared Breakdowns (global across all user profiles) --------
 def _load_breakdowns() -> Dict[str, Any]:
     """
@@ -525,6 +549,8 @@ def _is_admin_user(username: str) -> bool:
     """Check if username is an admin."""
     return username.lower() in {u.lower() for u in ADMIN_USERNAMES}
 
+# Initialize API keys from encrypted storage at startup
+_init_api_keys_from_encrypted()
 
 app.secret_key = os.environ.get("KENPO_SECRET_KEY", "") or _load_or_create_secret()
 # ----------------------------
@@ -1116,7 +1142,16 @@ def api_logout():
 def health():
     cards, status = load_cards_cached()
     v = get_version()
-    return jsonify({"status": status, "cards_loaded": len(cards), "server_time": _now(), "version": v.get("version"), "build": v.get("build")})
+    kenpo_exists = os.path.exists(KENPO_JSON_PATH)
+    return jsonify({
+        "status": status, 
+        "cards_loaded": len(cards), 
+        "server_time": _now(), 
+        "version": v.get("version"), 
+        "build": v.get("build"),
+        "kenpo_json_exists": kenpo_exists,
+        "kenpo_json_path": KENPO_JSON_PATH
+    })
 
 
 @app.get("/api/version")

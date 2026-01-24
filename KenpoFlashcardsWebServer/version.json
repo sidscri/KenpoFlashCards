@@ -1,7 +1,7 @@
 {
   "name": "KenpoFlashcardsWebServer",
-  "version": "7.0.2",
-  "build": 35,
-  "released": "2026-01-23",
-  "notes": "Fixed: Edit Decks page, PDF download, Admin quick actions highlight. Added: User management modal, password reset, pick random N for Custom Set. Improved: User Guide page, Admin dashboard."
+  "version": "7.0.3",
+  "build": 36,
+  "released": "2026-01-24",
+  "notes": "Fixed: Health check kenpo JSON detection, AI card generation loading keys from encrypted storage, random toggle persistence on Custom Set, reshuffle button always visible and properly sized."
 }
