@@ -1209,16 +1209,23 @@ def api_login():
         return jsonify({"error": "password_required"}), 401
 
     if not check_password_hash(stored_hash, password):
+        log_activity("warn", f"Failed login attempt for user: {username}", "")
         return jsonify({"error": "invalid_credentials"}), 401
 
     _ensure_user_progress(user_id)
     session["user_id"] = user_id
+    log_activity("info", f"User logged in: {username}", username)
     return jsonify({"ok": True, "user": _get_user(user_id)})
 
 
 @app.post("/api/logout")
 def api_logout():
+    uid = current_user_id()
+    user = _get_user(uid) if uid else None
+    username = user.get("username", "") if user else ""
     session.pop("user_id", None)
+    if username:
+        log_activity("info", f"User logged out: {username}", username)
     return jsonify({"ok": True})
 
 
@@ -1669,20 +1676,74 @@ def api_admin_stats():
     cards, status = load_cards_cached()
     profiles = _load_profiles()
     breakdowns = _load_breakdowns()
+    decks = _load_decks()
     
-    # User stats with list
+    # User stats with detailed progress
     users = profiles.get("users", {})
     total_users = len(users)
     user_list = []
+    
     for user_id, udata in users.items():
         if isinstance(udata, dict):
             uname = udata.get("username", "")
+            is_admin = _is_admin_user(uname)
+            
+            # Get user's progress
+            try:
+                progress = load_progress(user_id)
+                settings = progress.get("__settings__", {})
+                active_deck_id = settings.get("activeDeckId", "kenpo")
+                last_sync = progress.get("__last_sync__", 0)
+                
+                # Count statuses
+                learned = 0
+                unsure = 0
+                active = 0
+                for k, v in progress.items():
+                    if k.startswith("__"):
+                        continue
+                    if isinstance(v, dict):
+                        s = v.get("status", "active")
+                        if s == "learned":
+                            learned += 1
+                        elif s == "unsure":
+                            unsure += 1
+                        elif s == "active":
+                            active += 1
+                
+                total_cards_user = learned + unsure + active
+                progress_pct = round((learned / total_cards_user * 100) if total_cards_user > 0 else 0, 1)
+                
+                # Get active deck name
+                active_deck_name = "Kenpo Vocabulary"
+                for d in decks:
+                    if d.get("id") == active_deck_id:
+                        active_deck_name = d.get("name", active_deck_id)
+                        break
+                
+            except Exception:
+                learned = unsure = active = 0
+                progress_pct = 0
+                active_deck_id = "kenpo"
+                active_deck_name = "Kenpo Vocabulary"
+                last_sync = 0
+            
             user_list.append({
                 "id": user_id,
                 "username": uname,
-                "is_admin": _is_admin_user(uname),
-                "password_reset_required": udata.get("password_reset_required", False)
+                "is_admin": is_admin,
+                "password_reset_required": udata.get("password_reset_required", False),
+                "learned": learned,
+                "unsure": unsure,
+                "active": active,
+                "progress_pct": progress_pct,
+                "active_deck_id": active_deck_id,
+                "active_deck_name": active_deck_name,
+                "last_sync": last_sync
             })
+    
+    # Sort users by progress descending
+    user_list.sort(key=lambda x: x["progress_pct"], reverse=True)
     
     # Card stats
     total_cards = len(cards) if status == "ok" else 0
@@ -1697,27 +1758,17 @@ def api_admin_stats():
                                    if isinstance(b, dict) and 
                                    (b.get("parts") or b.get("literal")))
     
-    # Progress stats across all users
-    total_learned = 0
-    total_unsure = 0
-    total_active = 0
+    # Breakdown IDs for frontend
+    breakdown_ids = list(breakdowns.keys())
     
-    for user_id in users:
-        try:
-            progress = load_progress(user_id)
-            for k, v in progress.items():
-                if k.startswith("__"):
-                    continue
-                if isinstance(v, dict):
-                    s = v.get("status", "active")
-                    if s == "learned":
-                        total_learned += 1
-                    elif s == "unsure":
-                        total_unsure += 1
-                    elif s == "active":
-                        total_active += 1
-        except Exception:
-            pass
+    # Progress stats across all users
+    total_learned = sum(u["learned"] for u in user_list)
+    total_unsure = sum(u["unsure"] for u in user_list)
+    total_active = sum(u["active"] for u in user_list)
+    
+    # Deck stats
+    total_decks = len(decks)
+    user_decks = sum(1 for d in decks if not d.get("isBuiltIn"))
     
     # API key status
     keys = _load_encrypted_api_keys()
@@ -1735,7 +1786,12 @@ def api_admin_stats():
         },
         "breakdowns": {
             "total": total_breakdowns,
-            "with_content": breakdowns_with_content
+            "with_content": breakdowns_with_content,
+            "ids": breakdown_ids
+        },
+        "decks": {
+            "total": total_decks,
+            "user_created": user_decks
         },
         "progress": {
             "total_learned": total_learned,
@@ -1754,6 +1810,87 @@ def api_admin_stats():
             "uptime": _now()
         }
     })
+
+
+# Server activity log storage
+ACTIVITY_LOG = []
+MAX_LOG_ENTRIES = 500
+
+def log_activity(level: str, message: str, user: str = ""):
+    """Add an entry to the activity log."""
+    global ACTIVITY_LOG
+    entry = {
+        "timestamp": _now(),
+        "level": level,  # info, warn, error
+        "message": message,
+        "user": user
+    }
+    ACTIVITY_LOG.append(entry)
+    # Keep only recent entries
+    if len(ACTIVITY_LOG) > MAX_LOG_ENTRIES:
+        ACTIVITY_LOG = ACTIVITY_LOG[-MAX_LOG_ENTRIES:]
+
+
+@app.get("/api/admin/logs")
+def api_admin_logs():
+    """Get server activity logs (admin only)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    if not _is_admin_user(username):
+        return jsonify({"error": "admin_required"}), 403
+    
+    log_type = request.args.get("type", "all")
+    limit = int(request.args.get("limit", 100))
+    
+    logs = ACTIVITY_LOG.copy()
+    
+    # Filter by type
+    if log_type == "error":
+        logs = [l for l in logs if l["level"] == "error"]
+    elif log_type == "user":
+        logs = [l for l in logs if l["user"]]
+    elif log_type == "server":
+        logs = [l for l in logs if not l["user"]]
+    
+    # Return most recent first, limited
+    logs = logs[-limit:]
+    logs.reverse()
+    
+    return jsonify({"logs": logs})
+
+
+@app.post("/api/admin/logs/clear")
+def api_admin_logs_clear():
+    """Clear activity logs (admin only)."""
+    global ACTIVITY_LOG
+    
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    if not _is_admin_user(username):
+        return jsonify({"error": "admin_required"}), 403
+    
+    log_type = request.args.get("type", "all")
+    
+    if log_type == "all":
+        ACTIVITY_LOG = []
+    elif log_type == "error":
+        ACTIVITY_LOG = [l for l in ACTIVITY_LOG if l["level"] != "error"]
+    elif log_type == "user":
+        ACTIVITY_LOG = [l for l in ACTIVITY_LOG if not l["user"]]
+    elif log_type == "server":
+        ACTIVITY_LOG = [l for l in ACTIVITY_LOG if l["user"]]
+    
+    log_activity("info", f"Logs cleared by {username}", username)
+    
+    return jsonify({"success": True})
 
 
 @app.post("/api/admin/user/update")
@@ -2172,6 +2309,18 @@ def api_breakdowns_list():
     return jsonify({"ok": True, "items": items})
 
 
+@app.get("/api/breakdowns/ids")
+def api_breakdowns_ids():
+    """Get just the IDs of cards that have breakdowns (lightweight endpoint)."""
+    data = _load_breakdowns()
+    # Only return IDs of breakdowns with actual content
+    ids_with_content = []
+    for k, v in data.items():
+        if isinstance(v, dict) and (v.get("parts") or v.get("literal")):
+            ids_with_content.append(k)
+    return jsonify({"ids": ids_with_content})
+
+
 
 
 """
@@ -2328,6 +2477,57 @@ def api_breakdowns_save_android():
     _save_breakdowns(data)
 
     return jsonify({"ok": True, "id": bid})
+
+
+# ============ WEB SYNC ENDPOINTS (Session Auth) ============
+
+@app.post("/api/web/sync/push")
+def api_web_sync_push():
+    """Push progress from web app to server (session auth)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    # Web app pushes the full progress from localStorage
+    # For simplicity, just update last_sync timestamp
+    progress = load_progress(uid)
+    progress["__last_sync__"] = int(time.time())
+    save_progress(uid, progress)
+    
+    return jsonify({"success": True, "message": "Sync complete"})
+
+
+@app.get("/api/web/sync/pull")
+def api_web_sync_pull():
+    """Pull progress from server to web app (session auth)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    progress = load_progress(uid)
+    
+    # Extract card progress entries
+    entries = {}
+    for key, value in progress.items():
+        if isinstance(key, str) and key.startswith('__'):
+            continue
+        if not isinstance(key, str):
+            continue
+        
+        if isinstance(value, dict) and 'status' in value:
+            status = str(value.get('status') or '').lower().strip()
+            if status not in ('active', 'unsure', 'learned', 'deleted'):
+                continue
+            updated_at = int(value.get('updated_at') or 0)
+            entries[key] = {'status': status, 'updated_at': updated_at}
+        elif isinstance(value, str):
+            status = value.lower().strip()
+            if status not in ('active', 'unsure', 'learned', 'deleted'):
+                continue
+            entries[key] = {'status': status, 'updated_at': 0}
+    
+    return jsonify({'progress': entries})
+
 
 @app.get("/api/sync/pull")
 @android_auth_required

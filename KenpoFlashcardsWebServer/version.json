@@ -1,7 +1,7 @@
 {
   "name": "Study Flashcards",
-  "version": "7.0.7",
-  "build": 40,
-  "released": "2026-01-24",
-  "notes": "Added Android sync API endpoints: /api/vocabulary, /api/sync/decks, /api/sync/user_cards. kenpo_words.json now canonical in web server."
+  "version": "7.2.0",
+  "build": 42,
+  "released": "2026-01-25",
+  "notes": "Custom Set management modal with bulk edit/save sets, server activity logs in admin, settings save prompt, improved breakdown indicator."
 }

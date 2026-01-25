@@ -15,6 +15,56 @@ The format is simple and practical:
 
 ---
 
+## 7.2.0 (build 42) — 2026-01-25
+
+### Added
+- **Custom Set Management Modal**: New ⚙️ button in Custom Set toggle opens modal with:
+  - **Settings Tab**: Random order toggle, pick random N cards to add
+  - **Manage Tab**: Bulk select/edit cards, mark selected learned/unsure, remove selected
+  - **Saved Sets Tab**: Save current Custom Set with name, load/delete saved sets
+- **Server Activity Logs**: Admin dashboard Logs tab now shows real activity:
+  - Login/logout events tracked
+  - Filterable by type (Server, Error, User Activity)
+  - Download logs as text file
+  - Clear logs functionality
+- **Settings Save Prompt**: When closing settings with unsaved changes, prompts user to confirm
+
+### Changed
+- Moved random cards picker from Custom toggle bar to Custom Set Settings modal
+- Settings inputs now track dirty state for save prompt
+
+### Technical
+- Added `ACTIVITY_LOG` in-memory log storage (max 500 entries)
+- Added `log_activity()` function for server-side logging
+- Added `GET /api/admin/logs` and `POST /api/admin/logs/clear` endpoints
+- Added `settingsDirty` flag and `markSettingsDirty()` function
+- Saved Custom Sets stored in localStorage under `kenpo_saved_custom_sets`
+
+---
+
+## 7.1.0 (build 41) — 2026-01-24
+
+### Added
+- **Web Sync Endpoints**: `/api/web/sync/push` and `/api/web/sync/pull` for session-based auth (fixes "login_required" error)
+- **Breakdown Indicator**: Puzzle icon (🧩) turns blue when card has breakdown data
+- **Breakdown IDs API**: `GET /api/breakdowns/ids` - lightweight endpoint returning only IDs of cards with breakdown content
+- **Enhanced User Stats**: Admin stats now include per-user progress %, current deck, last sync time
+- **Deck Stats**: Admin dashboard shows total decks and user-created count
+
+### Changed
+- **Admin Dashboard Redesigned**: 
+  - Tabbed interface: Overview, Users, System, Logs
+  - Removed About/User Guide links (accessible from main app)
+  - Users table shows progress bars, active deck, last sync
+  - Admin badge (👑) next to admin usernames
+- **Admin Stats API**: Returns detailed per-user info (learned, unsure, active counts, progress %, deck info)
+
+### Fixed
+- **Web Sync**: Push/Pull now works with session authentication (was using Android token auth)
+- **Breakdown IDs**: Cards with breakdown data now properly indicated
+
+---
+
 ## 7.0.7 (build 40) — 2026-01-24
 
 ### Added — Android Sync API

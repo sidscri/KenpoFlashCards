@@ -1,11 +1,11 @@
-# 🌐 KenpoFlashcardsWebServer (Web App Server)
+# 🌐 Study Flashcards Web Server (formerly KenpoFlashcardsWebServer)
 
 > This is the **web server** project inside the `sidscri-apps` monorepo.  
 > Repo root: `../README.md`
 
-Flask-based web application providing sync API and web UI for Kenpo Flashcards.
+Flask-based web application providing sync API and web UI for Study Flashcards.
 
-**Current Version:** v7.0.5 (build 38)  
+**Current Version:** v7.2.0 (build 42)  
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -26,6 +26,8 @@ Flask-based web application providing sync API and web UI for Kenpo Flashcards.
 - **Shared API Keys** - All authenticated users can pull API keys (v5.5.2+)
 - **Admin Management** - Centralized admin users Source of Truth
 - **Auto-speak** - Voice settings for auto-speak on card change and flip (v6.0.0+)
+- **Breakdown Indicator** - Visual puzzle icon when card has breakdown data (v7.1.0+)
+- **Android Sync API** - Full deck and user card sync with Android app (v7.0.7+)
 
 ---
 
@@ -324,6 +326,10 @@ Interactive page with tabbed sections:
 
 | Version | Build | Key Changes |
 |---------|-------|-------------|
+| **7.2.0** | 42 | Custom set management modal, server activity logs, manage tab, settings save prompt |
+|| **7.1.0** | 41 | Admin dashboard redesign (tabbed), breakdown indicator on cards, web sync fix, enhanced user stats |
+| **7.0.7** | 40 | Android sync API (/api/vocabulary, /api/sync/decks, /api/sync/user_cards) |
+| **7.0.6** | 39 | Rebranded to "Study Flashcards", header shows deck name, Set Default deck, groups filter fix |
 | **7.0.5** | 38 | AI Deck Generator, Edit Deck, deck switching fix, comprehensive User Guide, interactive About page |
 | **7.0.4** | 37 | AI Deck Generator initial, user cards in study deck |
 | **7.0.3** | 36 | Health check fix, AI key loading, random toggle persistence |
