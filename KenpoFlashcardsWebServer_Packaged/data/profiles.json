@@ -29,6 +29,12 @@
       "password_hash": "scrypt:32768:8:1$KtbXVE6zDchS07UV$c9252d26c968dccdc9b2377252d9e4316ce6539aac6c9419fb7dab263d72e6a1adeddcdb27b0a23b12655d99d7a08b69a31194c87b7f303268e22ac9ea0b5fab",
       "display_name": "Hudson Doran",
       "created_at": "2026-01-09 10:42:18"
+    },
+    "f6d6ac67ac9d": {
+      "username": "Test",
+      "password_hash": "pbkdf2:sha256:600000$O00as3HTAFZZCQ0R$f50f55db0c238baffcd2f01219d72007c5f2524eaa386c4b781d4cafc060cde1",
+      "display_name": "test",
+      "created_at": "2026-01-25 23:46:51"
     }
   }
 }
