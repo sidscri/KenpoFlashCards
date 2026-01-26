@@ -16,7 +16,7 @@ if exist "output" (
 )
 mkdir "output" 2>nul
 
-if not exist "..\dist\AdvancedStudyFlashcards\AdvancedStudyFlashcards.exe" (
+if not exist "..\dist\AdvancedFlashcardsWebAppServer\AdvancedFlashcardsWebAppServer.exe" (
   echo [ERROR] Build the EXE first: packaging\build_exe.bat
   pause
   exit /b 1
@@ -33,7 +33,7 @@ echo [INFO] Running Inno Setup compiler...
 REM Pull app version from version.json
 for /f "usebackq tokens=* delims=" %%V in (`powershell -NoProfile -Command "(Get-Content ..\version.json | ConvertFrom-Json).version"`) do set "APPVER=%%V"
 
-%ISCC% /DMyAppVersion=%APPVER% /DMyAppName="Study Flashcards" /DMyAppExeName="AdvancedStudyFlashcards.exe" "installer_inno.iss"
+%ISCC% /DMyAppVersion=%APPVER% /DMyAppName="Study Flashcards" /DMyAppExeName="AdvancedFlashcardsWebAppServer.exe" "installer_inno.iss"
 if errorlevel 1 (
   echo [ERROR] Inno Setup build failed.
   pause

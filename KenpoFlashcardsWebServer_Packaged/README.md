@@ -1,14 +1,14 @@
-# Study Flashcards Web Server (Packaged)
+# Advanced Flashcards WebApp Server Web Server (Packaged)
 
-A Windows **installer** build of the Study Flashcards Web Server + Tray Launcher.
+A Windows **installer** build of the Advanced Flashcards WebApp Server Web Server + Tray Launcher.
 
-- **Packaged Version:** **v3.1.0.1 (build 11)**
+- **Packaged Version:** **v3.1.0.4 (build 11)**
 - **Bundled Web Server:** **v7.2.0 (build 42)**
 
 ## What you get
 
 - **Windows installer (Inno Setup)** that installs to **Program Files** and adds Start Menu shortcuts.
-- **Tray Launcher** (`AdvancedStudyFlashcards.exe`) so you can start/stop the server from the system tray.
+- **Tray Launcher** (`AdvancedFlashcardsWebAppServer.exe`) so you can start/stop the server from the system tray.
 - **Local web UI** (Flashcards + Admin tools) accessible from your browser.
 - **Configurable network binding** - access from localhost, LAN, or Tailscale.
 - **Upgrade Tool** to safely sync future web server updates without damaging packaging files.
@@ -26,7 +26,7 @@ A Windows **installer** build of the Study Flashcards Web Server + Tray Launcher
   - **Breakdown IDs API** — lightweight endpoint returning only IDs of cards with breakdown content
   - **Enhanced User Stats** — user progress %, current deck, last sync time
   - **Deck Stats** — created count
-  - **Rebranded to "Study Flashcards"**
+  - **Rebranded to "Advanced Flashcards WebApp Server"**
   - **Header shows active deck**
   - **Set Default Deck**
   - **API endpoint** — Sets a deck as default
@@ -90,7 +90,7 @@ A Windows **installer** build of the Study Flashcards Web Server + Tray Launcher
 On first run, a config file is created at:
 
 ```
-%LOCALAPPDATA%\Study Flashcards\server_config.json
+%LOCALAPPDATA%\Advanced Flashcards WebApp Server\server_config.json
 ```
 
 Edit this file to configure your server (or right-click the tray icon → "Edit Settings"):
@@ -161,7 +161,7 @@ The tool creates automatic backups in `.sync_backups/` before making changes.
 
 ## What's new in v1.1.0 (build 5)
 
-- **Fixed bundled data not loading** — On first run, the app now copies profiles, progress, API keys, breakdowns, and helper data from the bundled `_internal\data` folder to `%LOCALAPPDATA%\Study Flashcards\data\`. This ensures user accounts and progress from the dev build are available in the installed app.
+- **Fixed bundled data not loading** — On first run, the app now copies profiles, progress, API keys, breakdowns, and helper data from the bundled `_internal\data` folder to `%LOCALAPPDATA%\Advanced Flashcards WebApp Server\data\`. This ensures user accounts and progress from the dev build are available in the installed app.
 
 ## What's new in v1.0.1 (build 4)
 
@@ -177,7 +177,7 @@ The tool creates automatic backups in `.sync_backups/` before making changes.
 2. If Windows SmartScreen prompts:
    - Click **More info** → **Run anyway** (expected for unsigned installers).
 3. After install, use:
-   - **Start Menu → Study Flashcards** → **Study Flashcards** (Tray Launcher)
+   - **Start Menu → Advanced Flashcards WebApp Server** → **Advanced Flashcards WebApp Server** (Tray Launcher)
 
 ## Run / Use
 
@@ -189,10 +189,10 @@ The tool creates automatic backups in `.sync_backups/` before making changes.
 The web server stores user data (accounts, progress, breakdowns) in:
 
 ```
-%LOCALAPPDATA%\Study Flashcards\data\
+%LOCALAPPDATA%\Advanced Flashcards WebApp Server\data\
 ```
 
-This is typically `C:\Users\<YourName>\AppData\Local\Study Flashcards\data\`.
+This is typically `C:\Users\<YourName>\AppData\Local\Advanced Flashcards WebApp Server\data\`.
 
 The bundled data in `Program Files` serves as the initial/default data on first run.
 
@@ -243,6 +243,6 @@ Copied data goes to `build_data\` folder, which the build process uses if presen
 
 Use:
 
-- **Windows Settings → Apps → Installed apps → Study Flashcards → Uninstall**
+- **Windows Settings → Apps → Installed apps → Advanced Flashcards WebApp Server → Uninstall**
 
-(If you want to preserve your progress, back up the `%LOCALAPPDATA%\Study Flashcards\data\` folder before uninstalling.)
+(If you want to preserve your progress, back up the `%LOCALAPPDATA%\Advanced Flashcards WebApp Server\data\` folder before uninstalling.)

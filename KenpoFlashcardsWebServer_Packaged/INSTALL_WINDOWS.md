@@ -42,7 +42,7 @@ You will build a tray EXE first (PyInstaller), then package it into a Setup EXE 
 
 Unzip the project folder, for example:
 
-`M:\KenpoFlashcardsWebServer_Packaged\`
+`M:\AdvancedFlashcardsWebAppServer_Packaged\`
 
 You should see:
 - `app.py`
@@ -81,7 +81,7 @@ packaging\build_exe.bat
 ```
 
 Expected output:
-- `dist\KenpoFlashcardsTray\AdvancedStudyFlashcards.exe`
+- `dist\KenpoFlashcardsTray\AdvancedFlashcardsWebAppServer.exe`
 
 **Console should show:**
 ```
@@ -140,10 +140,10 @@ Expected output:
 User data (accounts, progress, breakdowns) is stored in:
 
 ```
-%LOCALAPPDATA%\Study Flashcards\data\
+%LOCALAPPDATA%\Advanced Flashcards WebApp Server\data\
 ```
 
-This is typically `C:\Users\<YourName>\AppData\Local\Study Flashcards\data\`.
+This is typically `C:\Users\<YourName>\AppData\Local\Advanced Flashcards WebApp Server\data\`.
 
 The bundled data in Program Files serves as initial/default data.
 

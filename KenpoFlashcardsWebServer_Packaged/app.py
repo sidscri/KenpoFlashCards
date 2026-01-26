@@ -14,7 +14,7 @@ from flask import Flask, jsonify, request, send_from_directory, session, send_fi
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # =========================================================
-# Study Flashcards Web (Multi-user with Username/Password Auth)
+# Advanced Flashcards WebApp Server Web (Multi-user with Username/Password Auth)
 # - Users create a profile with username/password
 # - Progress + settings are stored per user on the server
 # - Login from any device with the same credentials
@@ -58,11 +58,11 @@ KENPO_JSON_PATH = _resolve_kenpo_json_path()
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ---------------------------------------------------------------------------
-# Study Flashcards — Per-user data directory
+# Advanced Flashcards WebApp Server — Per-user data directory
 #   Seed data is bundled alongside the app in APP_DIR\data.
-#   Runtime data lives in: %LOCALAPPDATA%\Study Flashcards\data
+#   Runtime data lives in: %LOCALAPPDATA%\Advanced Flashcards WebApp Server\data
 # ---------------------------------------------------------------------------
-APP_DISPLAY_NAME = "Study Flashcards"
+APP_DISPLAY_NAME = "Advanced Flashcards WebApp Server"
 
 def _get_user_data_dir() -> str:
     base = (os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA") or os.path.expanduser("~"))
@@ -1356,7 +1356,7 @@ def user_guide_pdf():
 
     try:
         v = get_version()
-        title = f"Study Flashcards (Web) — User Guide  (v{v.get('version','')}, build {v.get('build','')})"
+        title = f"Advanced Flashcards WebApp Server (Web) — User Guide  (v{v.get('version','')}, build {v.get('build','')})"
         lines = [
             "Created by Sidney Shelton (Sidscri@yahoo.com)",
             "",
@@ -1392,7 +1392,7 @@ def user_guide_pdf():
 
         x = 0.8 * inch
         y = height - 1.0 * inch
-        c.setTitle("Study Flashcards User Guide")
+        c.setTitle("Advanced Flashcards WebApp Server User Guide")
         c.setFont("Helvetica-Bold", 14)
         c.drawString(x, y, title)
         y -= 0.4 * inch

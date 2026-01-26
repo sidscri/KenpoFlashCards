@@ -1,0 +1,1 @@
+[Mon 01/26/2026  0:16:30.15] PC=SIDSCRI-GRAB USER=Sidscri VERSION=3.1.0.3 - Start build_exe MODE=install DATA_DIR=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\packaging\..\data

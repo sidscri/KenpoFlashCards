@@ -1,14 +1,23 @@
-# Changelog — Study Flashcards Web Server (Packaged)
+# Changelog — Advanced Flashcards WebApp Server Web Server (Packaged)
 
 All notable changes to the Windows packaged/installer distribution are documented here.
 
 
-## v3.1.0.1 (build 11) — 2026-01-25
+## v3.1.0.4 (build 11) — 2026-01-25
+
+### Packaging: data staging + logging
+- `packaging\1. pre_build.bat`: if local user data exists at `%LOCALAPPDATA%\Advanced Flashcards WebApp Server\data`, stage it into `packaging\build_data`, back up `root\data` to `..\DataBackups\WebServer_Packaged_Data_<timestamp>\data.zip`, then replace `root\data` with the staged data.
+- `packaging\2. build_exe.bat`: prefers `packaging\build_data` when present and newer than `root\data`; otherwise falls back to `root\data`.
+- Added build logs:
+  - Repo: `..\logs\Install\(updates|installs)\pre_build_*.log` and `build_exe_*.log`
+  - Local: `%LOCALAPPDATA%\Advanced Flashcards WebApp Server\data\logs\log.txt`
+
+## v3.1.0.2 (build 11) — 2026-01-25
 
 ### Changed
-- Rebranded the packaged app and installer from **Study Flashcards** to **Study Flashcards**.
-- Moved runtime data out of Program Files; the app now uses **%LOCALAPPDATA%\Study Flashcards\data** (seeded from bundled data on first run).
-- Renamed tray executable to **AdvancedStudyFlashcards.exe** and installer output to **AdvancedStudyFlashcards-3.1.0.1.exe**.
+- Rebranded the packaged app and installer from **Advanced Flashcards WebApp Server** to **Advanced Flashcards WebApp Server**.
+- Moved runtime data out of Program Files; the app now uses **%LOCALAPPDATA%\Advanced Flashcards WebApp Server\data** (seeded from bundled data on first run).
+- Renamed tray executable to **AdvancedFlashcardsWebAppServer.exe** and installer output to **AdvancedFlashcardsWebAppServer-3.1.0.2.exe**.
 
 ## v3.0.0 (build 10) — 2026-01-25
 
@@ -31,7 +40,7 @@ All notable changes to the Windows packaged/installer distribution are documente
   - Removed About/User Guide links (accessible from main app)
   - Android app can now sync decks and user cards with web server
   - Full cross-platform deck and card sharing
-  - **Rebranded to "Study Flashcards"**
+  - **Rebranded to "Advanced Flashcards WebApp Server"**
   - **Header shows active deck**
   - **Set Default Deck**
   - **API endpoint**
@@ -109,8 +118,8 @@ All notable changes to the Windows packaged/installer distribution are documente
 - **System tray menu additions**:
   - "Server Info" - Shows current host, port, and config file location
   - "Edit Settings" - Opens `server_config.json` in your default editor
-  - "Open Data Folder" - Opens the Study Flashcards data folder
-- Config file is auto-created in `%LOCALAPPDATA%\Study Flashcards\server_config.json` on first run
+  - "Open Data Folder" - Opens the Advanced Flashcards WebApp Server data folder
+- Config file is auto-created in `%LOCALAPPDATA%\Advanced Flashcards WebApp Server\server_config.json` on first run
 
 ### Changed
 - Default host binding changed from `127.0.0.1` to `0.0.0.0` for easier LAN/Tailscale access
@@ -120,7 +129,7 @@ All notable changes to the Windows packaged/installer distribution are documente
 ## v1.1.0 (build 5) — 2026-01-22
 
 ### Fixed
-- **Bundled data not loading** — Added initial data seeding that copies profiles, progress, API keys, breakdowns, and helper data from the bundled `_internal\data` folder to `%LOCALAPPDATA%\Study Flashcards\data\` on first run. This ensures user accounts and progress from the dev build are available in the installed app.
+- **Bundled data not loading** — Added initial data seeding that copies profiles, progress, API keys, breakdowns, and helper data from the bundled `_internal\data` folder to `%LOCALAPPDATA%\Advanced Flashcards WebApp Server\data\` on first run. This ensures user accounts and progress from the dev build are available in the installed app.
 
 ## v1.0.1 (build 4) — 2026-01-22
 

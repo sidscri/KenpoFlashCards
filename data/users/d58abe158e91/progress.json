@@ -1,0 +1,315 @@
+{
+  "__settings__": {
+    "all": {
+      "randomize": false,
+      "show_group_label": true,
+      "show_subgroup_label": false,
+      "reverse_faces": false,
+      "show_definitions_all_list": true,
+      "show_definitions_learned_list": true,
+      "all_list_show_unlearned_unsure_buttons": true,
+      "learned_list_show_relearn_unsure_buttons": true,
+      "learned_list_show_group_label": true,
+      "all_mode": "flat",
+      "group_order": "alpha",
+      "card_order": "json"
+    },
+    "groups": {}
+  },
+  "22734091653ce983": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:13:53"
+  },
+  "8364d85be4935424": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:17:48"
+  },
+  "1689ee4b783e3048": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:18:07"
+  },
+  "4f2a53f8e2547344": {
+    "status": "unsure",
+    "updated_at": "2026-01-06 19:18:51"
+  },
+  "ef60a03c0da7417b": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:19:23"
+  },
+  "6b0cc9bcd7d876f1": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:19:38"
+  },
+  "ac53458765001d4b": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:19:47"
+  },
+  "534850042b25321f": {
+    "status": "unsure",
+    "updated_at": "2026-01-06 19:20:23"
+  },
+  "f434be51c15b93f0": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:20:31"
+  },
+  "f56fca7803410eec": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:20:34"
+  },
+  "1bde053fd73a559a": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:20:55"
+  },
+  "de85f8d53f98c66c": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:21:04"
+  },
+  "8ac07750b48b0f35": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:21:23"
+  },
+  "71ced82e5e2bd602": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:21:28"
+  },
+  "5ec648c26d3ab19f": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:21:32"
+  },
+  "1ac2bf8de9f168a5": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:21:37"
+  },
+  "c721cb154098accd": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:21:40"
+  },
+  "76872f1fb094932d": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:21:41"
+  },
+  "1750eca8e16561dc": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:21:48"
+  },
+  "f5f0f42525e9542d": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:22:00"
+  },
+  "b6405a8bc23691ae": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:22:08"
+  },
+  "6c13eb65950715e0": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:22:13"
+  },
+  "db4fca1ad62f88e1": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:22:21"
+  },
+  "51c709993587ad78": {
+    "status": "unsure",
+    "updated_at": "2026-01-06 19:23:02"
+  },
+  "6ca7648b8fbe21b0": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:23:13"
+  },
+  "65d2d928917024ba": {
+    "status": "unsure",
+    "updated_at": "2026-01-06 19:27:05"
+  },
+  "b71af08fdb894ff7": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:27:09"
+  },
+  "9d99e6f116132df2": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:27:11"
+  },
+  "2153fd80eb8d4b8d": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:27:14"
+  },
+  "fe2fb19efc31fbf3": {
+    "status": "unsure",
+    "updated_at": "2026-01-06 19:27:30"
+  },
+  "12133d4687b44f14": {
+    "status": "unsure",
+    "updated_at": "2026-01-06 19:27:39"
+  },
+  "1f54b232485bd93a": {
+    "status": "unsure",
+    "updated_at": "2026-01-06 19:27:55"
+  },
+  "3267dcc5989a38c0": {
+    "status": "unsure",
+    "updated_at": "2026-01-06 19:28:04"
+  },
+  "214cae0d7725160a": {
+    "status": "unsure",
+    "updated_at": "2026-01-06 19:28:15"
+  },
+  "a2eaa61beda7618e": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:28:20"
+  },
+  "ab0def62f1807bcd": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:28:25"
+  },
+  "941bf9c41663b266": {
+    "status": "unsure",
+    "updated_at": "2026-01-06 19:28:34"
+  },
+  "db327b3b177e7a70": {
+    "status": "unsure",
+    "updated_at": "2026-01-06 19:28:43"
+  },
+  "a5b849774d7f4459": {
+    "status": "unsure",
+    "updated_at": "2026-01-06 19:28:48"
+  },
+  "e8d97cbafd0c1fde": {
+    "status": "unsure",
+    "updated_at": "2026-01-06 19:29:14"
+  },
+  "9cc94a39c2dddfcd": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:29:32"
+  },
+  "c38ebd59d00a1e63": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:29:37"
+  },
+  "88419a9e69042c12": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:30:23"
+  },
+  "935027a8797ce67e": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:30:24"
+  },
+  "7497a956b781b67d": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:30:24"
+  },
+  "3a788934c669e816": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:30:24"
+  },
+  "1c324435d2713154": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:30:24"
+  },
+  "277e21bb5f4b311a": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:30:25"
+  },
+  "225293b8e0ff790a": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:30:25"
+  },
+  "b8771015ea1fbfcc": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:30:25"
+  },
+  "ed7a86038084ef85": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:30:25"
+  },
+  "1101ec7e78c78247": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:30:27"
+  },
+  "bfd7d02a12e4e6d4": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:31:04"
+  },
+  "3f494924f2a38706": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:31:11"
+  },
+  "36b0c1f785ce7f65": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:31:14"
+  },
+  "1278c0a21310e9f6": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:31:21"
+  },
+  "adb3772e8a210866": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:31:23"
+  },
+  "5fa98671708a49c5": {
+    "status": "unsure",
+    "updated_at": "2026-01-06 19:31:34"
+  },
+  "4bb13345ea9f5a15": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:31:48"
+  },
+  "78655682e96f0bf2": {
+    "status": "unsure",
+    "updated_at": "2026-01-06 19:32:15"
+  },
+  "884fae3e24ea2697": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:32:19"
+  },
+  "de456f6c2e5ea8bc": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:32:21"
+  },
+  "776b54380d2d5eb3": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:32:57"
+  },
+  "1625a8cd030fc0dd": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:33:44"
+  },
+  "3de707f53b16f6d0": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:34:14"
+  },
+  "49d89b0f0183ff86": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:34:17"
+  },
+  "1a123cb6e31d01f1": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:34:51"
+  },
+  "524eac384d3bb313": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:35:02"
+  },
+  "f126b44a16512d2a": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:35:21"
+  },
+  "e692a17cc02eb164": {
+    "status": "unsure",
+    "updated_at": "2026-01-06 19:36:15"
+  },
+  "f012b3c54c8b8bc6": {
+    "status": "unsure",
+    "updated_at": "2026-01-06 19:36:24"
+  },
+  "c9044ca5e03d9766": {
+    "status": "learned",
+    "updated_at": "2026-01-06 19:37:07"
+  },
+  "b5177cca709356bb": {
+    "status": "unsure",
+    "updated_at": "2026-01-06 19:37:15"
+  },
+  "20db345db2f64722": {
+    "status": "unsure",
+    "updated_at": "2026-01-06 19:37:24"
+  }
+}

@@ -96,7 +96,7 @@ mkdir "%STAGE%\%PROJ%" >>"%LOG%" 2>&1
 
 REM Copy project to stage while excluding directories by NAME (recursive)
 REM robocopy exit codes 0-7 = OK, >=8 = failure
-robocopy "%SRC%" "%STAGE%\%PROJ%" /E /R:1 /W:1 /NFL /NDL /NP /NJH /NJS /XD ".venv" "__pycache__" "%SRC%\build" "%SRC%\dist" "%SRC%\packaging\output" >>"%LOG%" 2>&1 "build_data" "%SRC%\packaging\build_data"
+robocopy "%SRC%" "%STAGE%\%PROJ%" /E /R:1 /W:1 /NFL /NDL /NP /NJH /NJS /XD ".venv" "__pycache__" "%SRC%\build" "%SRC%\dist" "%SRC%\packaging\output" >>"%LOG%" 2>&1
 set "RC=%ERRORLEVEL%"
 >>"%LOG%" echo ROBOCOPY_EXIT_CODE=%RC%
 if %RC% GEQ 8 (
@@ -149,14 +149,6 @@ if "%ERRORLEVEL%"=="0" (
   >>"%LOG%" echo WARNING: packaging/output/ paths detected in zip listing
 ) else (
   >>"%LOG%" echo Verified: no packaging/output/ paths detected
-
-REM Verify build_data is excluded (log only)
-"%SEVENZIP%" l "%ZIPPATH%" | findstr /i "packaging/build_data/" >nul 2>&1
-if "%ERRORLEVEL%"=="0" (
-  >>"%LOG%" echo WARNING: packaging/build_data/ paths detected in zip listing
-) else (
-  >>"%LOG%" echo Verified: no packaging/build_data/ paths detected
-)
 )
 
 REM Cleanup stage
