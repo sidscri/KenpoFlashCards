@@ -3,23 +3,24 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Kenpo Flashcards (Web)</title>
+  <title>Study Flashcards</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
   <div class="wrap">
     <header class="top">
       <div class="titleRow">
-        <h1>Kenpo Flashcards</h1>
+        <h1><span class="appTitle">Study Flashcards</span> <span class="deckTitle" id="headerDeckName"></span></h1>
         <div class="mini" id="healthLine"></div>
         <div class="mini userBtn" id="userLine" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false"></div>
 <div class="userMenu hidden" id="userMenu" role="menu" aria-label="User menu">
   <div class="userMenuRow"><span class="mutedSmall" id="userMenuVersion">Version: …</span></div>
-  <div class="userMenuRow userMenuAction" id="userMenuLogout">🚪 Logout</div>
   <div class="userMenuDivider"></div>
   <div class="userMenuRow"><a class="userMenuLink" href="/admin" id="userMenuAdmin">⚙️ Admin</a></div>
   <div class="userMenuRow"><a class="userMenuLink" href="/about">ℹ️ About</a></div>
   <div class="userMenuRow"><a class="userMenuLink" href="/user-guide">📖 User Guide</a></div>
+  <div class="userMenuDivider"></div>
+  <div class="userMenuRow userMenuAction userMenuLogout" id="userMenuLogout">🚪 Logout</div>
 </div>
 
       </div>
@@ -42,7 +43,7 @@
           <button class="tab tiny active" id="customViewAllBtn" title="All Custom">All</button>
           <button class="tab tiny" id="customViewUnsureBtn" title="Unsure in Custom">Unsure</button>
           <button class="tab tiny" id="customViewLearnedBtn" title="Learned in Custom">Learned</button>
-          <button class="tab tiny" id="customRandomPickBtn" title="Pick random N cards">🎲</button>
+          <button class="tab tiny" id="customSetSettingsBtn" title="Custom Set Settings">⚙️</button>
         </div>
       </div>
 
@@ -114,7 +115,7 @@
           <button id="speakBtn" class="good">🔊 Speak</button>
           <button id="starStudyBtn" class="secondary starBtn" title="Add to Custom Set">☆</button>
           <button id="nextBtn" class="secondary">Next ▶</button>
-          <button id="breakdownBtn" class="secondary iconOnly" title="Breakdown" aria-label="Breakdown">🧩</button>
+          <button id="breakdownBtn" class="secondary iconOnly breakdownIndicator" title="No breakdown data" aria-label="Breakdown" data-indicator="true">🧩</button>
         </div>
 
         <div class="actionsRow">
@@ -217,6 +218,14 @@
                 <span class="switch small"><input type="checkbox" id="setRandomizeCustomSet" /><span class="slider"></span></span>
                 <div class="settingText">
                   <div class="settingTitle">Custom Set: Random order</div>
+                </div>
+              </label>
+
+              <label class="settingRow">
+                <span class="switch small"><input type="checkbox" id="setReflectStatusInMain" /><span class="slider"></span></span>
+                <div class="settingText">
+                  <div class="settingTitle">Reflect status in Main Decks</div>
+                  <div class="settingDesc">When ON, marking cards as Learned/Unsure in Custom will also update their status in main decks.</div>
                 </div>
               </label>
 
@@ -513,6 +522,7 @@
           <div class="editDecksTabs">
             <button class="editDecksTab active" data-tab="switch">🔄 Switch</button>
             <button class="editDecksTab" data-tab="add">➕ Add Cards</button>
+            <button class="editDecksTab" data-tab="generate">🤖 AI Generator</button>
             <button class="editDecksTab" data-tab="deleted">🗑️ Deleted</button>
           </div>
 
@@ -623,6 +633,109 @@
             </div>
           </div>
 
+          <!-- AI GENERATOR TAB -->
+          <div class="editDecksSection" id="editDecksGenerateTab" data-section="generate">
+            <div class="settingsCard">
+              <div class="settingsCardHeader">🤖 AI Deck Generator</div>
+              <p class="settingDesc">Generate flashcards using AI from keywords, photos, or documents</p>
+
+              <!-- Generation Method Tabs -->
+              <div class="genMethodTabs">
+                <button class="genMethodTab active" data-method="keywords">📝 Keywords</button>
+                <button class="genMethodTab" data-method="photo">📷 Photo</button>
+                <button class="genMethodTab" data-method="document">📄 Document</button>
+              </div>
+
+              <!-- Keywords Method -->
+              <div class="genMethodSection active" id="genKeywordsSection" data-method="keywords">
+                <label class="field">
+                  <span>Search Keywords / Topic</span>
+                  <input id="aiGenKeywords" placeholder="e.g., Japanese martial arts terminology, Korean numbers 1-10" />
+                </label>
+                <label class="field">
+                  <span>Max Cards to Generate</span>
+                  <input id="aiGenMaxCards" type="number" value="20" min="1" max="200" style="width: 100px;" />
+                </label>
+                <button id="aiGenSearchBtn" class="appBtn primary small">🔍 Generate</button>
+              </div>
+
+              <!-- Photo Method -->
+              <div class="genMethodSection hidden" id="genPhotoSection" data-method="photo">
+                <p class="settingDesc">Upload a photo of text, flashcards, or study material to extract terms</p>
+                <div class="uploadZone" id="photoUploadZone">
+                  <div class="uploadIcon">📷</div>
+                  <div class="uploadText">Click or drag image here</div>
+                  <input type="file" id="photoFileInput" accept="image/*" hidden />
+                </div>
+                <div class="uploadPreview hidden" id="photoPreview">
+                  <img id="photoPreviewImg" />
+                  <button class="appBtn secondary small" id="clearPhotoBtn">✕ Clear</button>
+                </div>
+                <label class="field">
+                  <span>Max Cards to Generate</span>
+                  <input id="aiGenPhotoMaxCards" type="number" value="20" min="1" max="200" style="width: 100px;" />
+                </label>
+                <button id="aiGenPhotoBtn" class="appBtn primary" disabled>🔍 Extract</button>
+              </div>
+
+              <!-- Document Method -->
+              <div class="genMethodSection hidden" id="genDocSection" data-method="document">
+                <p class="settingDesc">Upload a PDF or text document to extract vocabulary</p>
+                <div class="uploadZone" id="docUploadZone">
+                  <div class="uploadIcon">📄</div>
+                  <div class="uploadText">Click or drag document here</div>
+                  <div class="uploadSubtext">Supports: PDF, TXT, MD</div>
+                  <input type="file" id="docFileInput" accept=".pdf,.txt,.md,.text" hidden />
+                </div>
+                <div class="uploadPreview hidden" id="docPreview">
+                  <div class="docFileName" id="docFileName"></div>
+                  <button class="appBtn secondary small" id="clearDocBtn">✕ Clear</button>
+                </div>
+                <label class="field">
+                  <span>Max Cards to Generate</span>
+                  <input id="aiGenDocMaxCards" type="number" value="20" min="1" max="200" style="width: 100px;" />
+                </label>
+                <button id="aiGenDocBtn" class="appBtn primary" disabled>🔍 Extract</button>
+              </div>
+
+              <!-- Loading State -->
+              <div class="aiGenLoading hidden" id="aiGenLoading">
+                <div class="spinner"></div>
+                <span>Generating cards with AI...</span>
+              </div>
+
+              <!-- AI Not Configured Warning -->
+              <div class="aiWarning hidden" id="aiGenWarning">
+                <span>⚠️</span>
+                <span>AI not configured. <a href="/ai-access.html">Configure API keys</a> first.</span>
+              </div>
+
+              <!-- Results Section -->
+              <div class="aiGenResults hidden" id="aiGenResults">
+                <div class="settingsSectionTitle">
+                  Generated Cards
+                  <span class="aiGenResultsCount" id="aiGenResultsCount">(0 selected)</span>
+                </div>
+                
+                <div class="aiGenSelectActions">
+                  <button class="appBtn secondary small" id="aiGenSelectAll">Select All</button>
+                  <button class="appBtn secondary small" id="aiGenSelectNone">Clear Selection</button>
+                </div>
+
+                <div class="aiGenResultsList" id="aiGenResultsList">
+                  <!-- Populated by JS -->
+                </div>
+
+                <div class="aiGenAddSection">
+                  <div class="aiGenDeckInfo">
+                    Adding to: <strong id="aiGenCurrentDeckName">Kenpo Vocabulary</strong>
+                  </div>
+                  <button id="aiGenAddSelectedBtn" class="appBtn success">➕ Add Selected Cards to Deck</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- DELETED TAB -->
           <div class="editDecksSection" id="editDecksDeletedTab" data-section="deleted">
             <div class="settingsCard">
@@ -701,10 +814,122 @@
     </div>
   </div>
 
+  <!-- Edit Deck Modal -->
+  <div class="modalOverlay hidden" id="editDeckModal">
+    <div class="modalCard">
+      <h2 class="modalTitle">Edit Deck</h2>
+      <input type="hidden" id="editDeckId" />
+      <div class="modalForm">
+        <label class="field">
+          <span>Deck Name *</span>
+          <input id="editDeckName" placeholder="e.g., Spanish Vocabulary" />
+        </label>
+        <label class="field">
+          <span>Description</span>
+          <input id="editDeckDescription" placeholder="Brief description of the deck subject..." />
+        </label>
+      </div>
+      <div class="modalBtns">
+        <button class="secondary" onclick="closeEditDeckModal()">Cancel</button>
+        <button class="good" onclick="saveEditDeck()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Set Settings Modal -->
+  <div class="modalOverlay hidden" id="customSetModal">
+    <div class="modalCard modalCardWide">
+      <div class="modalHeaderRow">
+        <h2 class="modalTitle">⭐ Custom Set Settings</h2>
+        <button class="closeBtn" onclick="closeCustomSetModal()">✕</button>
+      </div>
+      
+      <div class="customSetTabs">
+        <button class="csTab active" data-cstab="settings">Settings</button>
+        <button class="csTab" data-cstab="manage">Manage Cards</button>
+        <button class="csTab" data-cstab="saved">Saved Sets</button>
+      </div>
+      
+      <!-- Settings Tab -->
+      <div class="csTabContent active" id="csTab-settings">
+        <div class="settingsCard" style="margin-bottom:16px;">
+          <div class="settingsCardHeader">🎲 Randomization</div>
+          <label class="settingRow">
+            <span class="switch small"><input type="checkbox" id="csRandomOrder" /><span class="slider"></span></span>
+            <div class="settingText">
+              <div class="settingTitle">Random order</div>
+              <div class="settingDesc">Shuffle cards when studying Custom Set.</div>
+            </div>
+          </label>
+          <div class="settingRow" style="flex-direction:column;align-items:flex-start;gap:8px;">
+            <div class="settingTitle">Pick random cards to add</div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="number" id="csRandomPickCount" min="1" max="50" value="10" style="width:80px;" />
+              <button class="appBtn secondary small" onclick="pickRandomCardsToCustom()">🎲 Add Random</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="settingsCard">
+          <div class="settingsCardHeader">🔄 Status Sync</div>
+          <label class="settingRow">
+            <span class="switch small"><input type="checkbox" id="csReflectStatus" /><span class="slider"></span></span>
+            <div class="settingText">
+              <div class="settingTitle">Reflect status in Main Decks</div>
+              <div class="settingDesc">When ON, marking cards as Learned/Unsure in Custom will also update their status in main decks.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Manage Cards Tab -->
+      <div class="csTabContent hidden" id="csTab-manage">
+        <div class="csManageHeader">
+          <span id="csCardCount">0 cards in Custom Set</span>
+          <div class="csManageActions">
+            <button class="appBtn secondary small" onclick="selectAllCustomCards()">Select All</button>
+            <button class="appBtn secondary small" onclick="deselectAllCustomCards()">Deselect All</button>
+            <button class="appBtn danger small" onclick="removeSelectedFromCustom()">Remove Selected</button>
+          </div>
+        </div>
+        <div class="csCardList" id="csCardList">
+          <div class="csEmptyState">Loading cards...</div>
+        </div>
+        <div class="csBulkActions">
+          <button class="appBtn secondary" onclick="bulkMarkLearned()">Mark Selected Learned</button>
+          <button class="appBtn secondary" onclick="bulkMarkUnsure()">Mark Selected Unsure</button>
+          <button class="appBtn danger" onclick="clearCustomSet()">🗑️ Clear All</button>
+        </div>
+      </div>
+      
+      <!-- Saved Sets Tab -->
+      <div class="csTabContent hidden" id="csTab-saved">
+        <div class="settingsCard" style="margin-bottom:16px;">
+          <div class="settingsCardHeader">💾 Save Current Set</div>
+          <div style="display:flex;gap:8px;margin-top:12px;">
+            <input type="text" id="csSaveSetName" placeholder="Set name (e.g., 'Numbers Practice')" style="flex:1;" />
+            <button class="appBtn primary" onclick="saveCurrentCustomSet()">Save</button>
+          </div>
+        </div>
+        
+        <div class="settingsCard">
+          <div class="settingsCardHeader">📁 Saved Custom Sets</div>
+          <div id="csSavedSetsList" class="csSavedList">
+            <div class="csEmptyState">No saved sets yet. Save your current Custom Set above.</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="modalBtns" style="margin-top:16px;">
+        <button class="appBtn secondary" onclick="closeCustomSetModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Auth modal (Login/Register) -->
   <div class="modalOverlay hidden" id="authOverlay">
     <div class="modalCard">
-      <h2 class="modalTitle">Kenpo Flashcards</h2>
+      <h2 class="modalTitle">Study Flashcards</h2>
       <div class="modalText" id="authMessage">Loading…</div>
 
       <!-- Login Form -->

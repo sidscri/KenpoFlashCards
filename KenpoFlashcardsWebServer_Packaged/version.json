@@ -1,10 +1,10 @@
 {
-  "app_name": "KenpoFlashcardsWebServer_Packaged",
-  "version": "2.0.0",
-  "build": 9,
-  "release_date": "2026-01-23",
-  "notes": "Synced to web server v7.0.2.",
-  "webserver_version": "7.0.2",
-  "webserver_build": 35,
-  "last_sync": "2026-01-23T20:39:59.066246"
+  "app_name": "StudyFlashcardsWebServer_Packaged",
+  "version": "3.1.0.1",
+  "build": 11,
+  "release_date": "2026-01-25",
+  "notes": "Rebrand to Study Flashcards; per-user data directory (%LOCALAPPDATA%\\Study Flashcards\\data).",
+  "webserver_version": "7.2.0",
+  "webserver_build": 42,
+  "last_sync": "2026-01-25T12:00:00"
 }

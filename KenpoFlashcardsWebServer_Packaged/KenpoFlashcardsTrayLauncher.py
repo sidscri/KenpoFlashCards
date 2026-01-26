@@ -1,5 +1,5 @@
 """
-KenpoFlashcardsTrayLauncher
+StudyFlashcardsTrayLauncher
 - Starts the Flask server (app.py) in the background
 - Shows a system-tray icon with Open / Settings / Restart / Exit
 - Reads server_config.json for host/port configuration
@@ -43,7 +43,7 @@ if BASE_DIR not in sys.path:
 # --- Configuration file support ---
 def _get_config_path():
     """Get config path - check user data dir first, fall back to app dir."""
-    user_config = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "Kenpo Flashcards" / "server_config.json"
+    user_config = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "Study Flashcards" / "server_config.json"
     app_config = Path(BASE_DIR) / "server_config.json"
     
     # Use user config if it exists, otherwise copy from app dir
@@ -111,7 +111,7 @@ HEALTH_CHECK_HOST = "127.0.0.1" if HOST in ("0.0.0.0", "::", "") else HOST
 URL = f"http://{HEALTH_CHECK_HOST}:{PORT}"
 
 def _get_log_path():
-    base = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "Kenpo Flashcards" / "logs"
+    base = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "Study Flashcards" / "logs"
     try:
         base.mkdir(parents=True, exist_ok=True)
     except Exception:
@@ -148,7 +148,7 @@ def _pick_free_port(preferred: int) -> int:
         return p
 
 # Use a writable data dir and a stable base dir for templates/static
-DATA_DIR = str(Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "Kenpo Flashcards" / "data")
+DATA_DIR = str(Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "Study Flashcards" / "data")
 os.environ.setdefault("KENPO_DATA_DIR", DATA_DIR)
 
 # Pick a free port if configured port is already in use
@@ -182,7 +182,7 @@ def _run_server():
     except Exception:
         tb = traceback.format_exc()
         _log("SERVER ERROR:\n" + tb)
-        _popup("Kenpo Flashcards - Server Error", "The web server failed to start.\n\nDetails were written to:\n" + str(_get_log_path()) + "\n\n" + tb)
+        _popup("Study Flashcards - Server Error", "The web server failed to start.\n\nDetails were written to:\n" + str(_get_log_path()) + "\n\n" + tb)
 
 def _open_config():
     """Open the config file in the default editor."""
@@ -196,7 +196,7 @@ def _open_config():
             subprocess.run(['xdg-open', str(config_path)])
     except Exception as e:
         _log(f"Error opening config: {e}")
-        _popup("Kenpo Flashcards", f"Config file location:\n{config_path}")
+        _popup("Study Flashcards", f"Config file location:\n{config_path}")
 
 def _open_config_folder():
     """Open the config folder in file explorer."""
@@ -269,11 +269,11 @@ def main():
         os._exit(0)
 
     def show_info(_icon=None, _item=None):
-        info = f"Kenpo Flashcards Web Server\n\nListening on: {HOST}:{PORT}\nBrowser URL: {BROWSER_URL}\nConfig: {_get_config_path()}"
-        _popup("Kenpo Flashcards - Server Info", info)
+        info = f"Study Flashcards Web Server\n\nListening on: {HOST}:{PORT}\nBrowser URL: {BROWSER_URL}\nConfig: {_get_config_path()}"
+        _popup("Study Flashcards - Server Info", info)
 
     menu = pystray.Menu(
-        pystray.MenuItem("Open Kenpo Flashcards", open_ui, default=True),
+        pystray.MenuItem("Open Study Flashcards", open_ui, default=True),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("Server Info", show_info),
         pystray.MenuItem("Edit Settings", edit_settings),
@@ -283,7 +283,7 @@ def main():
         pystray.MenuItem("Exit", quit_app),
     )
 
-    icon = pystray.Icon("KenpoFlashcards", image, f"Kenpo Flashcards ({HOST}:{PORT})", menu)
+    icon = pystray.Icon("StudyFlashcards", image, f"Study Flashcards ({HOST}:{PORT})", menu)
 
     # Auto-open UI once
     _wait_for_server(15)

@@ -1,5 +1,5 @@
 """
-Kenpo Flashcards Web - System Tray helper
+Study Flashcards Web - System Tray helper
 
 - Opens the web UI
 - Starts/stops/restarts the Windows service (NSSM) if installed
@@ -21,11 +21,11 @@ import requests
 
 ROOT = Path(__file__).resolve().parents[1]
 ICON_PATH = Path(__file__).with_name("icon.png")
-SERVICE_NAME = "KenpoFlashcardsWeb"
+SERVICE_NAME = "StudyFlashcardsWeb"
 
 def _get_config_path():
     """Get config path - check user data dir first, fall back to app dir."""
-    user_config = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "Kenpo Flashcards" / "server_config.json"
+    user_config = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "Study Flashcards" / "server_config.json"
     app_config = ROOT / "server_config.json"
     
     if user_config.exists():
@@ -150,7 +150,7 @@ def _update_title(icon: pystray.Icon):
         running = is_running()
         host = _host()
         port = _port()
-        icon.title = f"Kenpo Flashcards ({host}:{port}) - {'Running' if running else 'Stopped'}"
+        icon.title = f"Study Flashcards ({host}:{port}) - {'Running' if running else 'Stopped'}"
         time.sleep(2.0)
 
 def on_start(icon, item):
@@ -179,7 +179,7 @@ def on_quit(icon, item):
 
 def build_menu():
     return pystray.Menu(
-        pystray.MenuItem("Open Kenpo Flashcards", lambda i, it: open_app(), default=True),
+        pystray.MenuItem("Open Study Flashcards", lambda i, it: open_app(), default=True),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("Edit Settings", on_settings),
         pystray.Menu.SEPARATOR,
@@ -194,7 +194,7 @@ def main():
     image = Image.open(ICON_PATH)
     host = _host()
     port = _port()
-    icon = pystray.Icon("KenpoFlashcards", image, f"Kenpo Flashcards ({host}:{port})", menu=build_menu())
+    icon = pystray.Icon("StudyFlashcards", image, f"Study Flashcards ({host}:{port})", menu=build_menu())
     threading.Thread(target=_update_title, args=(icon,), daemon=True).start()
     icon.run()
 

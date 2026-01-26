@@ -1,17 +1,42 @@
-# Kenpo Flashcards Web Server (Packaged)
+# Study Flashcards Web Server (Packaged)
 
-A Windows **installer** build of the Kenpo Flashcards Web Server + Tray Launcher.
+A Windows **installer** build of the Study Flashcards Web Server + Tray Launcher.
 
-- **Packaged Version:** **v2.0.0 (build 9)**
-- **Bundled Web Server:** **v7.0.2 (build 35)**
+- **Packaged Version:** **v3.1.0.1 (build 11)**
+- **Bundled Web Server:** **v7.2.0 (build 42)**
 
 ## What you get
 
 - **Windows installer (Inno Setup)** that installs to **Program Files** and adds Start Menu shortcuts.
-- **Tray Launcher** (`KenpoFlashcardsTray.exe`) so you can start/stop the server from the system tray.
+- **Tray Launcher** (`AdvancedStudyFlashcards.exe`) so you can start/stop the server from the system tray.
 - **Local web UI** (Flashcards + Admin tools) accessible from your browser.
 - **Configurable network binding** - access from localhost, LAN, or Tailscale.
 - **Upgrade Tool** to safely sync future web server updates without damaging packaging files.
+
+## What's new in v3.0.0 (build 10)
+
+- **Bundled Web Server updated to v7.2.0 (build 42)** (from v7.0.2 build 35), bringing:
+  - **Custom Set Management Modal**
+  - **Settings Tab**
+  - **Manage Tab**
+  - **Saved Sets Tab**
+  - **Server Activity Logs**
+  - **Web Sync Endpoints** — based auth (fixes "login_required" error)
+  - **Breakdown Indicator**
+  - **Breakdown IDs API** — lightweight endpoint returning only IDs of cards with breakdown content
+  - **Enhanced User Stats** — user progress %, current deck, last sync time
+  - **Deck Stats** — created count
+  - **Rebranded to "Study Flashcards"**
+  - **Header shows active deck**
+  - **Set Default Deck**
+  - **API endpoint** — Sets a deck as default
+  - **🤖 AI Deck Generator**
+  - **Keywords**
+  - **Photo**
+  - **Document**
+  - **Edit Deck**
+  - **AI Deck Generator**
+  - **User cards in study deck** — created cards now merge with built-in cards
 
 ## What's new in v2.0.0 (build 9)
 
@@ -65,7 +90,7 @@ A Windows **installer** build of the Kenpo Flashcards Web Server + Tray Launcher
 On first run, a config file is created at:
 
 ```
-%LOCALAPPDATA%\Kenpo Flashcards\server_config.json
+%LOCALAPPDATA%\Study Flashcards\server_config.json
 ```
 
 Edit this file to configure your server (or right-click the tray icon → "Edit Settings"):
@@ -109,13 +134,13 @@ After editing, restart the tray app for changes to take effect.
 
 ## Upgrade Tool
 
-The packaged project now includes an upgrade tool in the `tools/` folder that safely syncs updates from the main KenpoFlashcardsWebServer project.
+The packaged project now includes an upgrade tool in the `tools/` folder that safely syncs updates from the main StudyFlashcardsWebServer project.
 
 ### Usage
 
 ```batch
 cd tools
-upgrade_webserver.bat ..\path\to\KenpoFlashcardsWebServer-v6_2_0.zip
+upgrade_webserver.bat ..\path\to\StudyFlashcardsWebServer-v6_2_0.zip
 ```
 
 Or with Python directly:
@@ -136,7 +161,7 @@ The tool creates automatic backups in `.sync_backups/` before making changes.
 
 ## What's new in v1.1.0 (build 5)
 
-- **Fixed bundled data not loading** — On first run, the app now copies profiles, progress, API keys, breakdowns, and helper data from the bundled `_internal\data` folder to `%LOCALAPPDATA%\Kenpo Flashcards\data\`. This ensures user accounts and progress from the dev build are available in the installed app.
+- **Fixed bundled data not loading** — On first run, the app now copies profiles, progress, API keys, breakdowns, and helper data from the bundled `_internal\data` folder to `%LOCALAPPDATA%\Study Flashcards\data\`. This ensures user accounts and progress from the dev build are available in the installed app.
 
 ## What's new in v1.0.1 (build 4)
 
@@ -148,11 +173,11 @@ The tool creates automatic backups in `.sync_backups/` before making changes.
 ## Install (recommended)
 
 1. On the target PC, run the installer:
-   - `KenpoFlashcardsWebSetup.exe`
+   - `StudyFlashcardsWebSetup.exe`
 2. If Windows SmartScreen prompts:
    - Click **More info** → **Run anyway** (expected for unsigned installers).
 3. After install, use:
-   - **Start Menu → Kenpo Flashcards** → **Kenpo Flashcards** (Tray Launcher)
+   - **Start Menu → Study Flashcards** → **Study Flashcards** (Tray Launcher)
 
 ## Run / Use
 
@@ -164,10 +189,10 @@ The tool creates automatic backups in `.sync_backups/` before making changes.
 The web server stores user data (accounts, progress, breakdowns) in:
 
 ```
-%LOCALAPPDATA%\Kenpo Flashcards\data\
+%LOCALAPPDATA%\Study Flashcards\data\
 ```
 
-This is typically `C:\Users\<YourName>\AppData\Local\Kenpo Flashcards\data\`.
+This is typically `C:\Users\<YourName>\AppData\Local\Study Flashcards\data\`.
 
 The bundled data in `Program Files` serves as the initial/default data on first run.
 
@@ -203,21 +228,21 @@ From the project root:
 
 The pre-build script looks for data in this order:
 
-1. **Dev location:** `C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer\data`
-2. **Android project:** `C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v2\app\src\main\assets\kenpo_words.json`
+1. **Dev location:** `C:\Users\Sidscri\Documents\GitHub\sidscri-apps\StudyFlashcardsWebServer\data`
+2. **Android project:** `C:\Users\Sidscri\Documents\GitHub\sidscri-apps\StudyFlashcardsProject-v2\app\src\main\assets\kenpo_words.json`
 3. **Fallback:** Uses existing `data\` folder in project root
 
 Copied data goes to `build_data\` folder, which the build process uses if present.
 
 ### Build output
 
-- Installer: `packaging\output\KenpoFlashcardsWebSetup.exe`
-- EXE folder: `dist\KenpoFlashcardsTray\`
+- Installer: `packaging\output\StudyFlashcardsWebSetup.exe`
+- EXE folder: `dist\StudyFlashcardsTray\`
 
 ## Uninstall
 
 Use:
 
-- **Windows Settings → Apps → Installed apps → Kenpo Flashcards → Uninstall**
+- **Windows Settings → Apps → Installed apps → Study Flashcards → Uninstall**
 
-(If you want to preserve your progress, back up the `%LOCALAPPDATA%\Kenpo Flashcards\data\` folder before uninstalling.)
+(If you want to preserve your progress, back up the `%LOCALAPPDATA%\Study Flashcards\data\` folder before uninstalling.)

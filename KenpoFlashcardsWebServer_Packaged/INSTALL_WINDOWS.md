@@ -81,7 +81,7 @@ packaging\build_exe.bat
 ```
 
 Expected output:
-- `dist\KenpoFlashcardsTray\KenpoFlashcardsTray.exe`
+- `dist\KenpoFlashcardsTray\AdvancedStudyFlashcards.exe`
 
 **Console should show:**
 ```
@@ -140,10 +140,10 @@ Expected output:
 User data (accounts, progress, breakdowns) is stored in:
 
 ```
-%LOCALAPPDATA%\Kenpo Flashcards\data\
+%LOCALAPPDATA%\Study Flashcards\data\
 ```
 
-This is typically `C:\Users\<YourName>\AppData\Local\Kenpo Flashcards\data\`.
+This is typically `C:\Users\<YourName>\AppData\Local\Study Flashcards\data\`.
 
 The bundled data in Program Files serves as initial/default data.
 

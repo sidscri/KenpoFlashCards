@@ -1,0 +1,10 @@
+{
+  "app_name": "KenpoFlashcardsWebServer_Packaged",
+  "version": "2.0.0",
+  "build": 9,
+  "release_date": "2026-01-23",
+  "notes": "Synced to web server v7.0.2.",
+  "webserver_version": "7.0.2",
+  "webserver_build": 35,
+  "last_sync": "2026-01-23T20:39:59.066246"
+}

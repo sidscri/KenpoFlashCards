@@ -1,10 +1,10 @@
 ; Inno Setup script for KenpoFlashcardsWeb
 ; Builds a standard Windows installer EXE.
 
-#define MyAppName "Kenpo Flashcards"
-#define MyAppVersion "1.0.0"
+#define MyAppName "Study Flashcards"
+#define MyAppVersion "3.1.0.1"
 #define MyAppPublisher "Sidscri"
-#define MyAppExeName "KenpoFlashcardsTray.exe"
+#define MyAppExeName "AdvancedStudyFlashcards.exe"
 
 [Setup]
 AppId={{D0B0A5F1-5E0E-4E1A-9C30-1C7D9A8B4B12}
@@ -14,7 +14,7 @@ AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 OutputDir=output
-OutputBaseFilename=KenpoFlashcardsWebSetup
+OutputBaseFilename=AdvancedStudyFlashcards-{#MyAppVersion}
 Compression=lzma
 SolidCompression=yes
 ArchitecturesAllowed=x64
@@ -28,7 +28,7 @@ Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "A
 
 [Files]
 ; Copy entire dist folder output from PyInstaller (one-folder build)
-Source: "..\dist\KenpoFlashcardsTray\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\AdvancedStudyFlashcards\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"

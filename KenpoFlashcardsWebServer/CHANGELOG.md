@@ -15,6 +15,67 @@ The format is simple and practical:
 
 ---
 
+## 7.3.0 (build 44) — 2026-01-25
+
+### Added
+- **Deck Access Management System**:
+  - Built-in decks can be disabled/enabled per user
+  - Invite codes to unlock specific decks for users
+  - Admin can manually unlock/lock decks for specific users
+  - New users can be set to start with blank app (no decks)
+  - Settings to control whether non-admins can edit built-in/unlocked decks
+
+- **Admin Dashboard - Decks Tab**:
+  - Global deck settings (new users get built-in, allow non-admin edits)
+  - Built-in deck management with remove option
+  - Invite code generation and management
+  - User-specific deck access controls
+
+- **Deck Access Types Displayed**:
+  - 📦 Built-in (comes with app)
+  - 🔓 Unlocked (via invite code or admin)
+  - Owned (user-created)
+
+- **Clear Default Deck**: Can now remove default status from a deck (star button when deck is default)
+
+- **Invite Code Redemption**: Users can enter codes in Edit Decks > Switch tab
+
+### Changed
+- `_load_decks()` now respects user access permissions
+- Deck list shows access type badges
+- Admin stats use `include_all=True` to see all decks
+
+### Technical
+- New files: `data/deck_config.json`, `data/deck_access.json`
+- New API endpoints:
+  - `GET/POST /api/admin/deck-config`
+  - `POST /api/admin/deck-invite-code`
+  - `DELETE /api/admin/deck-invite-code/<code>`
+  - `POST /api/admin/user-deck-access`
+  - `POST /api/redeem-invite-code`
+  - `POST /api/decks/<id>/clear_default`
+
+---
+
+## 7.2.1 (build 43) — 2026-01-25
+
+### Changed
+- **Custom Set Modal Redesign**:
+  - Fixed modal size (700px width, 500px min-height) - no more resizing between tabs
+  - Split-pane Manage Cards tab: "In Custom Set" on left, "Available Cards" on right
+  - Search filtering for both card lists
+  - Click cards to toggle selection, or use checkboxes
+  - Add/Remove buttons between panes for easy bulk management
+  - Saved Sets now show "Active" status with switch functionality
+  - Each saved set stores its own cards, statuses, and settings
+  - Current set name displayed in modal header
+
+### Fixed
+- **Random pick input**: Shortened to 3-digit width, aligned with other settings
+- **Saved Sets**: Now properly switch between sets (not just load/replace)
+
+---
+
 ## 7.2.0 (build 42) — 2026-01-25
 
 ### Added

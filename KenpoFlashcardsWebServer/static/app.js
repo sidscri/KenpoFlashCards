@@ -2595,6 +2595,10 @@ function renderDecksList(){
   
   for(const deck of currentDecks){
     const isActive = deck.id === activeDeckId;
+    const accessType = deck.accessType || (deck.isBuiltIn ? "built-in" : "owned");
+    const accessBadge = accessType === "unlocked" ? '<span class="deckBadge unlocked">🔓 Unlocked</span>' : 
+                        (accessType === "built-in" ? '<span class="deckBadge builtin">📦 Built-in</span>' : '');
+    
     const div = document.createElement("div");
     div.className = "deckItem" + (isActive ? " active" : "");
     div.innerHTML = `
@@ -2602,7 +2606,7 @@ function renderDecksList(){
       <div class="deckInfo">
         <div class="deckName">
           ${escapeHtml(deck.name)}
-          ${deck.isBuiltIn ? '<span class="deckBadge">Built-in</span>' : ''}
+          ${accessBadge}
           ${deck.isDefault ? '<span class="deckBadge default">★ Default</span>' : ''}
         </div>
         <div class="deckDesc">${escapeHtml(deck.description || "")}</div>
@@ -2610,7 +2614,7 @@ function renderDecksList(){
       </div>
       <div class="deckActions">
         ${!isActive ? '<button class="deckSwitchBtn appBtn primary small" title="Switch to this deck">Switch</button>' : '<span class="deckActiveLabel">✓ Active</span>'}
-        ${!deck.isDefault ? '<button class="deckDefaultBtn" title="Set as default startup deck">★</button>' : ''}
+        ${!deck.isDefault ? '<button class="deckDefaultBtn" title="Set as default startup deck">★</button>' : '<button class="deckClearDefaultBtn" title="Clear default (no startup deck)">★</button>'}
         ${!deck.isBuiltIn ? '<button class="deckEditBtn" title="Edit deck">✏️</button>' : ''}
         ${!deck.isBuiltIn ? '<button class="deckDeleteBtn" title="Delete deck">🗑️</button>' : ''}
       </div>
@@ -2629,6 +2633,14 @@ function renderDecksList(){
       defaultBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         setDefaultDeck(deck.id, deck.name);
+      });
+    }
+    
+    const clearDefaultBtn = div.querySelector(".deckClearDefaultBtn");
+    if(clearDefaultBtn){
+      clearDefaultBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        clearDefaultDeck(deck.id, deck.name);
       });
     }
     
@@ -2659,12 +2671,16 @@ function renderDecksList(){
   }
 }
 
-// Select a deck (visual only - just highlights it)
-function selectDeck(deckId){
-  // Just visual highlight, no actual switch
-  document.querySelectorAll(".deckItem").forEach(item => {
-    item.classList.remove("selected");
-  });
+// Clear default deck
+async function clearDefaultDeck(deckId, deckName){
+  try {
+    await jpost(`/api/decks/${deckId}/clear_default`, {});
+    showEditDecksStatus(`"${deckName}" is no longer the default`, "success");
+    await loadDecks();
+  } catch(e){
+    console.error(e);
+    showEditDecksStatus("Failed to clear default", "error");
+  }
 }
 
 // Actually switch to a deck (loads cards)
@@ -2751,6 +2767,33 @@ async function setDefaultDeck(deckId, deckName){
     loadDecks();
   } catch(e){
     showEditDecksStatus("Failed to set default: " + e.message, "error");
+  }
+}
+
+// Redeem an invite code
+async function redeemInviteCode(){
+  const input = $("inviteCodeInput");
+  const code = (input?.value || "").trim();
+  
+  if(!code){
+    showEditDecksStatus("Please enter an invite code", "error");
+    return;
+  }
+  
+  try {
+    const result = await jpost("/api/redeem-invite-code", { code });
+    showEditDecksStatus(`🎉 Unlocked deck: "${result.deckName}"`, "success");
+    input.value = "";
+    await loadDecks();
+  } catch(e){
+    const msg = e.message || "";
+    if(msg.includes("Invalid") || msg.includes("404")){
+      showEditDecksStatus("Invalid invite code", "error");
+    } else if(msg.includes("already")){
+      showEditDecksStatus("You already have access to this deck", "error");
+    } else {
+      showEditDecksStatus("Failed to redeem code: " + msg, "error");
+    }
   }
 }
 
@@ -3128,6 +3171,9 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Create deck
   $("createDeckBtn")?.addEventListener("click", createDeck);
+  
+  // Redeem invite code
+  $("redeemCodeBtn")?.addEventListener("click", redeemInviteCode);
   
   // Add card
   $("addCardBtn")?.addEventListener("click", addUserCard);
@@ -3508,6 +3554,9 @@ async function addSelectedAiCards(){
 // ============ CUSTOM SET MODAL ============
 
 let savedCustomSets = [];
+let activeCustomSetId = "default";
+let csAllCards = [];
+let csCustomSetCards = [];
 
 function openCustomSetModal(){
   const modal = $("customSetModal");
@@ -3517,6 +3566,9 @@ function openCustomSetModal(){
   const settings = window.__activeSettings || settingsAll || {};
   if($("csRandomOrder")) $("csRandomOrder").checked = !!settings.randomize_custom_set;
   if($("csReflectStatus")) $("csReflectStatus").checked = !!settings.reflect_status_in_main;
+  
+  // Update current set display
+  updateCurrentSetDisplay();
   
   // Reset to settings tab
   document.querySelectorAll(".csTab").forEach(t => t.classList.remove("active"));
@@ -3538,8 +3590,15 @@ function closeCustomSetModal(){
   saveCustomSetSettings();
 }
 
+function updateCurrentSetDisplay(){
+  const display = $("csCurrentSetDisplay");
+  if(!display) return;
+  
+  const currentSet = savedCustomSets.find(s => s.id === activeCustomSetId);
+  display.textContent = currentSet ? `Current: ${currentSet.name}` : "Current: Default Set";
+}
+
 async function saveCustomSetSettings(){
-  const settings = window.__activeSettings || settingsAll || {};
   const randomize = $("csRandomOrder")?.checked || false;
   const reflect = $("csReflectStatus")?.checked || false;
   
@@ -3552,7 +3611,6 @@ async function saveCustomSetSettings(){
       } 
     });
     
-    // Update local settings
     if(settingsAll){
       settingsAll.randomize_custom_set = randomize;
       settingsAll.reflect_status_in_main = reflect;
@@ -3572,92 +3630,179 @@ document.querySelectorAll(".csTab").forEach(tab => {
     const tabId = "csTab-" + tab.dataset.cstab;
     $(tabId)?.classList.add("active");
     
-    // Load content for tab
     if(tab.dataset.cstab === "manage"){
-      loadCustomSetCards();
+      loadManageCardsTab();
     } else if(tab.dataset.cstab === "saved"){
       loadSavedCustomSets();
     }
   });
 });
 
-async function loadCustomSetCards(){
-  const list = $("csCardList");
-  const count = $("csCardCount");
-  if(!list) return;
-  
+// ========== MANAGE CARDS TAB ==========
+
+async function loadManageCardsTab(){
   try {
+    // Get all cards for current deck
+    csAllCards = await jget("/api/cards?deck_id=" + encodeURIComponent(activeDeckId));
+    
+    // Get custom set cards
     const customSet = await jget("/api/custom_set");
-    const cardIds = customSet.cards || [];
+    const customCardIds = new Set(customSet.cards || []);
+    const statusMap = customSet.statuses || {};
     
-    if(count) count.textContent = `${cardIds.length} cards in Custom Set`;
+    // Split into in-set and available
+    csCustomSetCards = csAllCards.filter(c => customCardIds.has(c.id)).map(c => ({
+      ...c,
+      customStatus: statusMap[c.id] || "active"
+    }));
     
-    if(cardIds.length === 0){
-      list.innerHTML = '<div class="csEmptyState">No cards in Custom Set. Star cards to add them.</div>';
-      return;
-    }
+    const availableCards = csAllCards.filter(c => !customCardIds.has(c.id));
     
-    // Get card details and statuses
-    const cards = await jget("/api/cards?deck_id=" + encodeURIComponent(activeDeckId));
-    const statuses = await jget("/api/custom_set");
-    const statusMap = statuses.statuses || {};
+    // Render lists
+    renderInSetList(csCustomSetCards);
+    renderAvailableList(availableCards);
     
-    list.innerHTML = cardIds.map(id => {
-      const card = cards.find(c => c.id === id) || { id, term: id, meaning: "Unknown" };
-      const status = statusMap[id] || "active";
-      const statusClass = status === "learned" ? "learned" : (status === "unsure" ? "unsure" : "");
-      const statusLabel = status === "learned" ? "Learned" : (status === "unsure" ? "Unsure" : "");
-      
-      return `
-        <div class="csCardItem">
-          <input type="checkbox" data-cardid="${card.id}" />
-          <div>
-            <div class="cardTerm">${escapeHtml(card.term)}</div>
-            <div class="cardMeaning">${escapeHtml(card.meaning)}</div>
-          </div>
-          ${statusLabel ? `<span class="cardStatus ${statusClass}">${statusLabel}</span>` : ''}
-        </div>
-      `;
-    }).join('');
+    // Update counts
+    $("csInSetCount").textContent = csCustomSetCards.length;
+    $("csAvailableCount").textContent = availableCards.length;
+    
   } catch(e){
-    console.error("Failed to load custom set cards:", e);
-    list.innerHTML = '<div class="csEmptyState">Failed to load cards</div>';
+    console.error("Failed to load manage cards:", e);
   }
 }
 
-function selectAllCustomCards(){
-  document.querySelectorAll("#csCardList input[type='checkbox']").forEach(cb => cb.checked = true);
-}
-
-function deselectAllCustomCards(){
-  document.querySelectorAll("#csCardList input[type='checkbox']").forEach(cb => cb.checked = false);
-}
-
-async function removeSelectedFromCustom(){
-  const selected = Array.from(document.querySelectorAll("#csCardList input[type='checkbox']:checked"))
-    .map(cb => cb.dataset.cardid);
+function renderInSetList(cards, filter = ""){
+  const list = $("csInSetList");
+  if(!list) return;
   
-  if(selected.length === 0){
-    alert("No cards selected");
+  const filtered = filter ? cards.filter(c => 
+    c.term.toLowerCase().includes(filter) || 
+    c.meaning.toLowerCase().includes(filter)
+  ) : cards;
+  
+  if(filtered.length === 0){
+    list.innerHTML = '<div class="csEmptyState">No cards in Custom Set</div>';
     return;
   }
   
-  if(!confirm(`Remove ${selected.length} cards from Custom Set?`)) return;
+  list.innerHTML = filtered.map(c => {
+    const statusClass = c.customStatus === "learned" ? "learned" : (c.customStatus === "unsure" ? "unsure" : "");
+    const statusLabel = c.customStatus === "learned" ? "L" : (c.customStatus === "unsure" ? "U" : "");
+    return `
+      <div class="csCardItem" onclick="toggleCardSelection(this)">
+        <input type="checkbox" data-cardid="${c.id}" onclick="event.stopPropagation()" />
+        <div class="cardInfo">
+          <div class="cardTerm">${escapeHtml(c.term)}</div>
+          <div class="cardMeaning">${escapeHtml(c.meaning)}</div>
+        </div>
+        ${statusLabel ? `<span class="cardStatus ${statusClass}">${statusLabel}</span>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function renderAvailableList(cards, filter = ""){
+  const list = $("csAvailableList");
+  if(!list) return;
+  
+  const filtered = filter ? cards.filter(c => 
+    c.term.toLowerCase().includes(filter) || 
+    c.meaning.toLowerCase().includes(filter)
+  ) : cards;
+  
+  if(filtered.length === 0){
+    list.innerHTML = '<div class="csEmptyState">No available cards</div>';
+    return;
+  }
+  
+  list.innerHTML = filtered.map(c => `
+    <div class="csCardItem" onclick="toggleCardSelection(this)">
+      <input type="checkbox" data-cardid="${c.id}" onclick="event.stopPropagation()" />
+      <div class="cardInfo">
+        <div class="cardTerm">${escapeHtml(c.term)}</div>
+        <div class="cardMeaning">${escapeHtml(c.meaning)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleCardSelection(item){
+  const cb = item.querySelector("input[type='checkbox']");
+  if(cb) cb.checked = !cb.checked;
+  item.classList.toggle("selected", cb?.checked);
+}
+
+function filterCustomSetList(which){
+  const searchInput = which === "inSet" ? $("csInSetSearch") : $("csAvailableSearch");
+  const filter = (searchInput?.value || "").toLowerCase().trim();
+  
+  if(which === "inSet"){
+    renderInSetList(csCustomSetCards, filter);
+  } else {
+    const customIds = new Set(csCustomSetCards.map(c => c.id));
+    const available = csAllCards.filter(c => !customIds.has(c.id));
+    renderAvailableList(available, filter);
+  }
+}
+
+function selectAllInSet(){
+  document.querySelectorAll("#csInSetList .csCardItem").forEach(item => {
+    const cb = item.querySelector("input[type='checkbox']");
+    if(cb) cb.checked = true;
+    item.classList.add("selected");
+  });
+}
+
+function selectAllAvailable(){
+  document.querySelectorAll("#csAvailableList .csCardItem").forEach(item => {
+    const cb = item.querySelector("input[type='checkbox']");
+    if(cb) cb.checked = true;
+    item.classList.add("selected");
+  });
+}
+
+async function removeSelectedFromSet(){
+  const selected = Array.from(document.querySelectorAll("#csInSetList input[type='checkbox']:checked"))
+    .map(cb => cb.dataset.cardid);
+  
+  if(selected.length === 0){
+    alert("No cards selected to remove");
+    return;
+  }
   
   for(const id of selected){
     try {
       await jpost("/api/custom_set/remove", { id });
-    } catch(e){
-      console.error("Failed to remove card:", e);
-    }
+    } catch(e){}
   }
   
-  await loadCustomSetCards();
+  await loadManageCardsTab();
+  await refreshCounts();
+}
+
+async function addSelectedToSet(){
+  const selected = Array.from(document.querySelectorAll("#csAvailableList input[type='checkbox']:checked"))
+    .map(cb => cb.dataset.cardid);
+  
+  if(selected.length === 0){
+    alert("No cards selected to add");
+    return;
+  }
+  
+  let added = 0;
+  for(const id of selected){
+    try {
+      await jpost("/api/custom_set/add", { id });
+      added++;
+    } catch(e){}
+  }
+  
+  await loadManageCardsTab();
   await refreshCounts();
 }
 
 async function bulkMarkLearned(){
-  const selected = Array.from(document.querySelectorAll("#csCardList input[type='checkbox']:checked"))
+  const selected = Array.from(document.querySelectorAll("#csInSetList input[type='checkbox']:checked"))
     .map(cb => cb.dataset.cardid);
   
   if(selected.length === 0){
@@ -3671,19 +3816,17 @@ async function bulkMarkLearned(){
     try {
       await jpost("/api/custom_set/set_status", { id, status: "learned" });
       if(reflectMain){
-        await jpost("/api/progress", { id, status: "learned" });
+        await jpost("/api/set_status", { id, status: "learned" });
       }
-    } catch(e){
-      console.error("Failed to mark learned:", e);
-    }
+    } catch(e){}
   }
   
-  await loadCustomSetCards();
+  await loadManageCardsTab();
   await refreshCounts();
 }
 
 async function bulkMarkUnsure(){
-  const selected = Array.from(document.querySelectorAll("#csCardList input[type='checkbox']:checked"))
+  const selected = Array.from(document.querySelectorAll("#csInSetList input[type='checkbox']:checked"))
     .map(cb => cb.dataset.cardid);
   
   if(selected.length === 0){
@@ -3697,14 +3840,12 @@ async function bulkMarkUnsure(){
     try {
       await jpost("/api/custom_set/set_status", { id, status: "unsure" });
       if(reflectMain){
-        await jpost("/api/progress", { id, status: "unsure" });
+        await jpost("/api/set_status", { id, status: "unsure" });
       }
-    } catch(e){
-      console.error("Failed to mark unsure:", e);
-    }
+    } catch(e){}
   }
   
-  await loadCustomSetCards();
+  await loadManageCardsTab();
   await refreshCounts();
 }
 
@@ -3713,7 +3854,7 @@ async function clearCustomSet(){
   
   try {
     await jpost("/api/custom_set/clear", {});
-    await loadCustomSetCards();
+    await loadManageCardsTab();
     await refreshCounts();
     await refresh();
   } catch(e){
@@ -3731,26 +3872,24 @@ async function pickRandomCardsToCustom(){
   }
   
   try {
-    // Get all cards for current deck
     const cards = await jget("/api/cards?deck_id=" + encodeURIComponent(activeDeckId));
+    const customSet = await jget("/api/custom_set");
+    const existingIds = new Set(customSet.cards || []);
     
-    // Shuffle and pick n
-    const shuffled = [...cards].sort(() => Math.random() - 0.5);
+    // Only pick from cards not already in set
+    const available = cards.filter(c => !existingIds.has(c.id));
+    const shuffled = [...available].sort(() => Math.random() - 0.5);
     const picked = shuffled.slice(0, Math.min(n, shuffled.length));
     
-    // Add to custom set
     let added = 0;
     for(const card of picked){
       try {
         await jpost("/api/custom_set/add", { id: card.id });
         added++;
-      } catch(e){
-        // Card might already be in set
-      }
+      } catch(e){}
     }
     
     alert(`Added ${added} random cards to Custom Set`);
-    await loadCustomSetCards();
     await refreshCounts();
   } catch(e){
     console.error("Failed to pick random cards:", e);
@@ -3758,35 +3897,45 @@ async function pickRandomCardsToCustom(){
   }
 }
 
-// Saved Custom Sets
+// ========== SAVED SETS TAB ==========
+
 function loadSavedCustomSets(){
   const list = $("csSavedSetsList");
   if(!list) return;
   
-  // Load from localStorage
   try {
     savedCustomSets = JSON.parse(localStorage.getItem("kenpo_saved_custom_sets") || "[]");
   } catch(e){
     savedCustomSets = [];
   }
   
+  // Ensure each set has an ID
+  savedCustomSets.forEach((set, i) => {
+    if(!set.id) set.id = "set_" + Date.now() + "_" + i;
+  });
+  
   if(savedCustomSets.length === 0){
     list.innerHTML = '<div class="csEmptyState">No saved sets yet. Save your current Custom Set above.</div>';
     return;
   }
   
-  list.innerHTML = savedCustomSets.map((set, i) => `
-    <div class="csSavedItem">
-      <div>
-        <div class="setName">${escapeHtml(set.name)}</div>
-        <div class="setCount">${set.cardIds.length} cards • Saved ${new Date(set.savedAt).toLocaleDateString()}</div>
+  list.innerHTML = savedCustomSets.map((set, i) => {
+    const isActive = set.id === activeCustomSetId;
+    return `
+      <div class="csSavedItem ${isActive ? 'active' : ''}">
+        <div class="setInfo">
+          <div class="setName">${escapeHtml(set.name)}${isActive ? ' ✓' : ''}</div>
+          <div class="setMeta">${set.cardIds.length} cards • ${new Date(set.savedAt).toLocaleDateString()}</div>
+        </div>
+        <div class="setActions">
+          <button class="appBtn ${isActive ? 'primary' : 'secondary'} small" onclick="switchToSavedSet(${i})">${isActive ? 'Active' : 'Switch'}</button>
+          <button class="appBtn danger small" onclick="deleteSavedSet(${i})">🗑️</button>
+        </div>
       </div>
-      <div class="setActions">
-        <button class="appBtn secondary small" onclick="loadSavedSet(${i})">Load</button>
-        <button class="appBtn danger small" onclick="deleteSavedSet(${i})">🗑️</button>
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
+  
+  updateCurrentSetDisplay();
 }
 
 async function saveCurrentCustomSet(){
@@ -3801,21 +3950,25 @@ async function saveCurrentCustomSet(){
   try {
     const customSet = await jget("/api/custom_set");
     const cardIds = customSet.cards || [];
+    const statuses = customSet.statuses || {};
     
-    if(cardIds.length === 0){
-      alert("Custom Set is empty. Add some cards first.");
-      return;
-    }
-    
-    savedCustomSets.push({
+    const newSet = {
+      id: "set_" + Date.now(),
       name,
       cardIds,
+      statuses,
+      settings: {
+        randomize: $("csRandomOrder")?.checked || false,
+        reflectStatus: $("csReflectStatus")?.checked || false
+      },
       savedAt: Date.now()
-    });
+    };
     
+    savedCustomSets.push(newSet);
     localStorage.setItem("kenpo_saved_custom_sets", JSON.stringify(savedCustomSets));
     
     nameInput.value = "";
+    activeCustomSetId = newSet.id;
     loadSavedCustomSets();
     alert(`Saved "${name}" with ${cardIds.length} cards`);
   } catch(e){
@@ -3824,31 +3977,46 @@ async function saveCurrentCustomSet(){
   }
 }
 
-async function loadSavedSet(index){
+async function switchToSavedSet(index){
   const set = savedCustomSets[index];
   if(!set) return;
   
-  if(!confirm(`Load "${set.name}"? This will replace your current Custom Set.`)) return;
+  if(set.id === activeCustomSetId){
+    return; // Already active
+  }
   
   try {
     // Clear current custom set
     await jpost("/api/custom_set/clear", {});
     
     // Add saved cards
-    let added = 0;
     for(const id of set.cardIds){
       try {
         await jpost("/api/custom_set/add", { id });
-        added++;
       } catch(e){}
     }
     
-    alert(`Loaded "${set.name}" with ${added} cards`);
-    await loadCustomSetCards();
+    // Restore statuses
+    if(set.statuses){
+      for(const [id, status] of Object.entries(set.statuses)){
+        try {
+          await jpost("/api/custom_set/set_status", { id, status });
+        } catch(e){}
+      }
+    }
+    
+    // Restore settings
+    if(set.settings){
+      if($("csRandomOrder")) $("csRandomOrder").checked = !!set.settings.randomize;
+      if($("csReflectStatus")) $("csReflectStatus").checked = !!set.settings.reflectStatus;
+    }
+    
+    activeCustomSetId = set.id;
+    loadSavedCustomSets();
     await refreshCounts();
     await refresh();
   } catch(e){
-    console.error("Failed to load saved set:", e);
+    console.error("Failed to switch to saved set:", e);
     alert("Failed to load set");
   }
 }
@@ -3858,6 +4026,10 @@ function deleteSavedSet(index){
   if(!set) return;
   
   if(!confirm(`Delete saved set "${set.name}"?`)) return;
+  
+  if(set.id === activeCustomSetId){
+    activeCustomSetId = "default";
+  }
   
   savedCustomSets.splice(index, 1);
   localStorage.setItem("kenpo_saved_custom_sets", JSON.stringify(savedCustomSets));

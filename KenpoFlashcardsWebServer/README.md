@@ -5,7 +5,7 @@
 
 Flask-based web application providing sync API and web UI for Study Flashcards.
 
-**Current Version:** v7.2.0 (build 42)  
+**Current Version:** v7.3.0 (build 44)  
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -16,7 +16,7 @@ Flask-based web application providing sync API and web UI for Study Flashcards.
 - **Progress Sync** - Push/pull card progress between devices
 - **Breakdown Sync** - Shared term breakdown database
 - **Web UI** - Browser-based flashcard interface
-- **Custom Set** - Starred cards for personalized study (v6.0.0+)
+- **Custom Set** - Starred cards with full management modal (v7.2.0+)
 - **Edit Decks** - Create, edit, and manage custom study decks (v7.0.0+)
 - **AI Deck Generator** - Generate flashcards from keywords, photos, or documents (v7.0.5+)
 - **User Cards** - Add custom cards with AI-assisted definitions/pronunciations
@@ -24,7 +24,7 @@ Flask-based web application providing sync API and web UI for Study Flashcards.
 - **AI Integration** - ChatGPT and Gemini API for breakdown autofill & card generation
 - **Encrypted API Keys** - Secure storage shared between Android and web
 - **Shared API Keys** - All authenticated users can pull API keys (v5.5.2+)
-- **Admin Management** - Centralized admin users Source of Truth
+- **Admin Management** - Centralized admin users Source of Truth with activity logs
 - **Auto-speak** - Voice settings for auto-speak on card change and flip (v6.0.0+)
 - **Breakdown Indicator** - Visual puzzle icon when card has breakdown data (v7.1.0+)
 - **Android Sync API** - Full deck and user card sync with Android app (v7.0.7+)
@@ -326,8 +326,9 @@ Interactive page with tabbed sections:
 
 | Version | Build | Key Changes |
 |---------|-------|-------------|
-| **7.2.0** | 42 | Custom set management modal, server activity logs, manage tab, settings save prompt |
-|| **7.1.0** | 41 | Admin dashboard redesign (tabbed), breakdown indicator on cards, web sync fix, enhanced user stats |
+| **7.2.1** | 43 | Custom Set modal fixed size, split-pane card management, saved sets switching |
+| **7.2.0** | 42 | Custom Set management modal, server activity logs, settings save prompt |
+| **7.1.0** | 41 | Admin dashboard redesign (tabbed), breakdown indicator on cards, web sync fix, enhanced user stats |
 | **7.0.7** | 40 | Android sync API (/api/vocabulary, /api/sync/decks, /api/sync/user_cards) |
 | **7.0.6** | 39 | Rebranded to "Study Flashcards", header shows deck name, Set Default deck, groups filter fix |
 | **7.0.5** | 38 | AI Deck Generator, Edit Deck, deck switching fix, comprehensive User Guide, interactive About page |

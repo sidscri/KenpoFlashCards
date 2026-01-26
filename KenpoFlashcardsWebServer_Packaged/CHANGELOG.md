@@ -1,6 +1,49 @@
-# Changelog — Kenpo Flashcards Web Server (Packaged)
+# Changelog — Study Flashcards Web Server (Packaged)
 
 All notable changes to the Windows packaged/installer distribution are documented here.
+
+
+## v3.1.0.1 (build 11) — 2026-01-25
+
+### Changed
+- Rebranded the packaged app and installer from **Study Flashcards** to **Study Flashcards**.
+- Moved runtime data out of Program Files; the app now uses **%LOCALAPPDATA%\Study Flashcards\data** (seeded from bundled data on first run).
+- Renamed tray executable to **AdvancedStudyFlashcards.exe** and installer output to **AdvancedStudyFlashcards-3.1.0.1.exe**.
+
+## v3.0.0 (build 10) — 2026-01-25
+
+### Changed
+- **Updated bundled Web Server to v7.2.0 (build 42)** (from v7.0.2 build 35), including:
+  - **Custom Set Management Modal**
+  - **Settings Tab**
+  - **Manage Tab**
+  - **Saved Sets Tab**
+  - **Server Activity Logs**
+  - **Settings Save Prompt**
+  - Moved random cards picker from Custom toggle bar to Custom Set Settings modal
+  - Settings inputs now track dirty state for save prompt
+  - **Web Sync Endpoints**
+  - **Breakdown Indicator**
+  - **Breakdown IDs API**
+  - **Enhanced User Stats**
+  - **Deck Stats**
+  - Tabbed interface: Overview, Users, System, Logs
+  - Removed About/User Guide links (accessible from main app)
+  - Android app can now sync decks and user cards with web server
+  - Full cross-platform deck and card sharing
+  - **Rebranded to "Study Flashcards"**
+  - **Header shows active deck**
+  - **Set Default Deck**
+  - **API endpoint**
+  - **🤖 AI Deck Generator**
+  - **Keywords**
+  - **Photo**
+  - **Document**
+  - **Edit Deck**
+  - **Logout confirmation**
+  - **AI Deck Generator**
+  - **User cards in study deck**
+  - Reshuffle button now works anytime (not just when random is enabled)
 
 ## v2.0.0 (build 9) — 2026-01-23
 
@@ -66,8 +109,8 @@ All notable changes to the Windows packaged/installer distribution are documente
 - **System tray menu additions**:
   - "Server Info" - Shows current host, port, and config file location
   - "Edit Settings" - Opens `server_config.json` in your default editor
-  - "Open Data Folder" - Opens the Kenpo Flashcards data folder
-- Config file is auto-created in `%LOCALAPPDATA%\Kenpo Flashcards\server_config.json` on first run
+  - "Open Data Folder" - Opens the Study Flashcards data folder
+- Config file is auto-created in `%LOCALAPPDATA%\Study Flashcards\server_config.json` on first run
 
 ### Changed
 - Default host binding changed from `127.0.0.1` to `0.0.0.0` for easier LAN/Tailscale access
@@ -77,13 +120,13 @@ All notable changes to the Windows packaged/installer distribution are documente
 ## v1.1.0 (build 5) — 2026-01-22
 
 ### Fixed
-- **Bundled data not loading** — Added initial data seeding that copies profiles, progress, API keys, breakdowns, and helper data from the bundled `_internal\data` folder to `%LOCALAPPDATA%\Kenpo Flashcards\data\` on first run. This ensures user accounts and progress from the dev build are available in the installed app.
+- **Bundled data not loading** — Added initial data seeding that copies profiles, progress, API keys, breakdowns, and helper data from the bundled `_internal\data` folder to `%LOCALAPPDATA%\Study Flashcards\data\` on first run. This ensures user accounts and progress from the dev build are available in the installed app.
 
 ## v1.0.1 (build 4) — 2026-01-22
 
 ### Added
 - **`pre_build.bat`** — New script that copies data from dev location before building:
-  - Copies from `C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer\data`
+  - Copies from `C:\Users\Sidscri\Documents\GitHub\sidscri-apps\StudyFlashcardsWebServer\data`
   - Copies `kenpo_words.json` from Android project assets
   - Creates `build_data\` folder for build process to use
 - **Spec file data priority** — Build now checks `build_data\` first, falls back to `data\`
@@ -97,7 +140,7 @@ All notable changes to the Windows packaged/installer distribution are documente
 
 ### Changed
 - `app.py` — Improved PyInstaller frozen state detection and path resolution
-- `KenpoFlashcardsTrayLauncher.py` — Better BASE_DIR detection, sets KENPO_WEBAPP_BASE_DIR before importing app
+- `StudyFlashcardsTrayLauncher.py` — Better BASE_DIR detection, sets KENPO_WEBAPP_BASE_DIR before importing app
 - `kenpo_tray.spec` — Added version.json bundling, improved hidden imports for jaraco ecosystem
 - `requirements_packaging.txt` — Added explicit jaraco.* dependencies
 
@@ -115,7 +158,7 @@ First stable installer release (graduating from the vbeta line).
 - Inno Setup installer installs the complete PyInstaller folder build (includes `_internal\` and dependencies) into **Program Files** and adds Start Menu shortcuts.
 
 ### Changed
-- The installer now copies the full PyInstaller output folder (`dist\KenpoFlashcardsTray\*`) so the app runs without requiring "extra files" to be manually copied.
+- The installer now copies the full PyInstaller output folder (`dist\StudyFlashcardsTray\*`) so the app runs without requiring "extra files" to be manually copied.
 
 ### Fixed
 - Packaging reliability improvements from the beta line (build scripts, Inno Setup defaults).

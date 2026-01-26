@@ -1676,7 +1676,7 @@ def api_admin_stats():
     cards, status = load_cards_cached()
     profiles = _load_profiles()
     breakdowns = _load_breakdowns()
-    decks = _load_decks()
+    decks = _load_decks(include_all=True)  # Admin sees all decks
     
     # User stats with detailed progress
     users = profiles.get("users", {})
@@ -1973,6 +1973,248 @@ def api_admin_user_reset_password():
     profiles["users"][target_user_id]["password_reset_required"] = True
     
     _save_profiles(profiles)
+    
+    return jsonify({"success": True})
+
+
+# ============ ADMIN DECK ACCESS MANAGEMENT ============
+
+@app.get("/api/admin/deck-config")
+def api_admin_get_deck_config():
+    """Get global deck configuration (admin only)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    if not _is_admin_user(username):
+        return jsonify({"error": "admin_required"}), 403
+    
+    config = _load_deck_config()
+    access = _load_deck_access()
+    
+    return jsonify({
+        "config": config,
+        "inviteCodes": access.get("inviteCodes", {}),
+        "userUnlocks": access.get("userUnlocks", {}),
+        "userBuiltInDisabled": access.get("userBuiltInDisabled", [])
+    })
+
+
+@app.post("/api/admin/deck-config")
+def api_admin_update_deck_config():
+    """Update global deck configuration (admin only)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    if not _is_admin_user(username):
+        return jsonify({"error": "admin_required"}), 403
+    
+    data = request.get_json() or {}
+    config = _load_deck_config()
+    
+    if "newUsersGetBuiltInDecks" in data:
+        config["newUsersGetBuiltInDecks"] = bool(data["newUsersGetBuiltInDecks"])
+    if "allowNonAdminDeckEdits" in data:
+        config["allowNonAdminDeckEdits"] = bool(data["allowNonAdminDeckEdits"])
+    if "builtInDecks" in data and isinstance(data["builtInDecks"], list):
+        config["builtInDecks"] = data["builtInDecks"]
+    
+    _save_deck_config(config)
+    log_activity("info", f"Deck config updated by {username}", username)
+    
+    return jsonify({"success": True, "config": config})
+
+
+@app.post("/api/admin/deck-invite-code")
+def api_admin_create_invite_code():
+    """Create an invite code for a deck (admin only)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    if not _is_admin_user(username):
+        return jsonify({"error": "admin_required"}), 403
+    
+    data = request.get_json() or {}
+    deck_id = data.get("deckId", "")
+    
+    if not deck_id:
+        return jsonify({"error": "deckId required"}), 400
+    
+    access = _load_deck_access()
+    
+    # Generate unique code
+    code = _generate_invite_code()
+    while code in access.get("inviteCodes", {}):
+        code = _generate_invite_code()
+    
+    access.setdefault("inviteCodes", {})[code] = {
+        "deckId": deck_id,
+        "createdAt": int(time.time()),
+        "createdBy": username,
+        "uses": 0
+    }
+    
+    _save_deck_access(access)
+    log_activity("info", f"Invite code {code} created for deck {deck_id} by {username}", username)
+    
+    return jsonify({"success": True, "code": code})
+
+
+@app.delete("/api/admin/deck-invite-code/<code>")
+def api_admin_delete_invite_code(code: str):
+    """Delete an invite code (admin only)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    if not _is_admin_user(username):
+        return jsonify({"error": "admin_required"}), 403
+    
+    access = _load_deck_access()
+    
+    if code in access.get("inviteCodes", {}):
+        del access["inviteCodes"][code]
+        _save_deck_access(access)
+        log_activity("info", f"Invite code {code} deleted by {username}", username)
+    
+    return jsonify({"success": True})
+
+
+@app.post("/api/admin/user-deck-access")
+def api_admin_update_user_deck_access():
+    """Update a user's deck access (admin only)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    if not _is_admin_user(username):
+        return jsonify({"error": "admin_required"}), 403
+    
+    data = request.get_json() or {}
+    target_user_id = data.get("userId", "")
+    action = data.get("action", "")  # "unlock", "lock", "enableBuiltIn", "disableBuiltIn"
+    deck_id = data.get("deckId", "")
+    
+    if not target_user_id:
+        return jsonify({"error": "userId required"}), 400
+    
+    access = _load_deck_access()
+    
+    if action == "unlock" and deck_id:
+        # Add deck to user's unlocked list
+        access.setdefault("userUnlocks", {}).setdefault(target_user_id, [])
+        if deck_id not in access["userUnlocks"][target_user_id]:
+            access["userUnlocks"][target_user_id].append(deck_id)
+            log_activity("info", f"Deck {deck_id} unlocked for user {target_user_id} by {username}", username)
+    
+    elif action == "lock" and deck_id:
+        # Remove deck from user's unlocked list
+        if target_user_id in access.get("userUnlocks", {}):
+            access["userUnlocks"][target_user_id] = [
+                d for d in access["userUnlocks"][target_user_id] if d != deck_id
+            ]
+            log_activity("info", f"Deck {deck_id} locked for user {target_user_id} by {username}", username)
+    
+    elif action == "disableBuiltIn":
+        # Disable built-in decks for user
+        access.setdefault("userBuiltInDisabled", [])
+        if target_user_id not in access["userBuiltInDisabled"]:
+            access["userBuiltInDisabled"].append(target_user_id)
+            log_activity("info", f"Built-in decks disabled for user {target_user_id} by {username}", username)
+    
+    elif action == "enableBuiltIn":
+        # Re-enable built-in decks for user
+        access["userBuiltInDisabled"] = [
+            u for u in access.get("userBuiltInDisabled", []) if u != target_user_id
+        ]
+        log_activity("info", f"Built-in decks enabled for user {target_user_id} by {username}", username)
+    
+    _save_deck_access(access)
+    
+    return jsonify({"success": True})
+
+
+@app.post("/api/redeem-invite-code")
+def api_redeem_invite_code():
+    """Redeem an invite code to unlock a deck."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    data = request.get_json() or {}
+    code = str(data.get("code", "")).strip()
+    
+    if not code:
+        return jsonify({"error": "code required"}), 400
+    
+    access = _load_deck_access()
+    
+    if code not in access.get("inviteCodes", {}):
+        return jsonify({"error": "Invalid invite code"}), 404
+    
+    code_data = access["inviteCodes"][code]
+    deck_id = code_data.get("deckId")
+    
+    if not deck_id:
+        return jsonify({"error": "Invalid invite code"}), 400
+    
+    # Check if already unlocked
+    user_unlocks = access.get("userUnlocks", {}).get(uid, [])
+    if deck_id in user_unlocks:
+        return jsonify({"error": "Deck already unlocked"}), 400
+    
+    # Unlock the deck
+    access.setdefault("userUnlocks", {}).setdefault(uid, [])
+    access["userUnlocks"][uid].append(deck_id)
+    
+    # Increment use count
+    access["inviteCodes"][code]["uses"] = code_data.get("uses", 0) + 1
+    
+    _save_deck_access(access)
+    
+    # Get deck name for response
+    decks = _load_decks(include_all=True)
+    deck_name = deck_id
+    for d in decks:
+        if d.get("id") == deck_id:
+            deck_name = d.get("name", deck_id)
+            break
+    
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    log_activity("info", f"User {username} redeemed code {code} for deck {deck_name}", username)
+    
+    return jsonify({"success": True, "deckId": deck_id, "deckName": deck_name})
+
+
+@app.post("/api/decks/<deck_id>/clear_default")
+def api_clear_default_deck(deck_id: str):
+    """Clear the default flag from a deck."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    decks = _load_decks(include_all=True)
+    
+    # Clear default flag from specified deck
+    for d in decks:
+        if d.get("id") == deck_id:
+            d["isDefault"] = False
+            break
+    
+    _save_decks(decks)
     
     return jsonify({"success": True})
 
@@ -2917,42 +3159,172 @@ def web_admin_save_apikeys():
 # Paths for deck and user cards storage
 DECKS_PATH = os.path.join(DATA_DIR, "decks.json")
 USER_CARDS_DIR = os.path.join(DATA_DIR, "user_cards")
+DECK_ACCESS_PATH = os.path.join(DATA_DIR, "deck_access.json")
+DECK_CONFIG_PATH = os.path.join(DATA_DIR, "deck_config.json")
 
-def _load_decks() -> List[Dict[str, Any]]:
-    """Load deck definitions. Always includes the built-in Kenpo deck."""
-    kenpo_deck = {
-        "id": "kenpo",
-        "name": "Kenpo Vocabulary",
-        "description": "Korean martial arts terminology for Kenpo students",
-        "isDefault": True,
-        "isBuiltIn": True,
-        "sourceFile": "kenpo_words.json",
-        "cardCount": 88,
-        "createdAt": 0,
-        "updatedAt": 0
+
+def _load_deck_config() -> Dict[str, Any]:
+    """Load global deck configuration."""
+    if not os.path.exists(DECK_CONFIG_PATH):
+        return {
+            "newUsersGetBuiltInDecks": True,  # New users get built-in decks by default
+            "allowNonAdminDeckEdits": True,   # Non-admins can edit built-in/unlocked decks
+            "builtInDecks": ["kenpo"]          # List of built-in deck IDs
+        }
+    try:
+        with open(DECK_CONFIG_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {"newUsersGetBuiltInDecks": True, "allowNonAdminDeckEdits": True, "builtInDecks": ["kenpo"]}
+
+
+def _save_deck_config(config: Dict[str, Any]) -> None:
+    """Save global deck configuration."""
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(DECK_CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(config, f, ensure_ascii=False, indent=2)
+
+
+def _load_deck_access() -> Dict[str, Any]:
+    """Load deck access data (invite codes, user unlocks, user overrides)."""
+    if not os.path.exists(DECK_ACCESS_PATH):
+        return {
+            "inviteCodes": {},      # code -> {deckId, createdAt, uses}
+            "userUnlocks": {},      # userId -> [deckIds...]
+            "userOverrides": {},    # userId -> {deckId -> {cards added/removed, settings}}
+            "userBuiltInDisabled": []  # userIds who have built-in decks disabled
+        }
+    try:
+        with open(DECK_ACCESS_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        # Ensure all keys exist
+        data.setdefault("inviteCodes", {})
+        data.setdefault("userUnlocks", {})
+        data.setdefault("userOverrides", {})
+        data.setdefault("userBuiltInDisabled", [])
+        return data
+    except Exception:
+        return {"inviteCodes": {}, "userUnlocks": {}, "userOverrides": {}, "userBuiltInDisabled": []}
+
+
+def _save_deck_access(data: Dict[str, Any]) -> None:
+    """Save deck access data."""
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(DECK_ACCESS_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _generate_invite_code() -> str:
+    """Generate a simple invite code like 'KenpoStudy409'."""
+    import random
+    words = ["Study", "Learn", "Flash", "Card", "Deck", "Quiz", "Train", "Vocab", "Word", "Smart"]
+    word = random.choice(words)
+    num = random.randint(100, 999)
+    return f"Kenpo{word}{num}"
+
+
+def _get_user_accessible_decks(user_id: str) -> List[str]:
+    """Get list of deck IDs accessible to a user (built-in + unlocked)."""
+    config = _load_deck_config()
+    access = _load_deck_access()
+    
+    accessible = []
+    
+    # Check if user has built-in decks disabled
+    if user_id not in access.get("userBuiltInDisabled", []):
+        # Add built-in decks
+        accessible.extend(config.get("builtInDecks", ["kenpo"]))
+    
+    # Add unlocked decks
+    user_unlocks = access.get("userUnlocks", {}).get(user_id, [])
+    accessible.extend(user_unlocks)
+    
+    return list(set(accessible))  # Dedupe
+
+def _load_decks(user_id: str = None, include_all: bool = False) -> List[Dict[str, Any]]:
+    """Load deck definitions.
+    
+    Args:
+        user_id: If provided, filter to decks accessible by this user
+        include_all: If True (admin mode), return all decks regardless of access
+    """
+    config = _load_deck_config()
+    access = _load_deck_access()
+    built_in_deck_ids = config.get("builtInDecks", ["kenpo"])
+    
+    # Define built-in decks
+    built_in_decks = {
+        "kenpo": {
+            "id": "kenpo",
+            "name": "Kenpo Vocabulary",
+            "description": "Korean martial arts terminology for Kenpo students",
+            "isDefault": False,
+            "isBuiltIn": True,
+            "sourceFile": "kenpo_words.json",
+            "cardCount": 88,
+            "createdAt": 0,
+            "updatedAt": 0
+        }
     }
     
-    if not os.path.exists(DECKS_PATH):
-        return [kenpo_deck]
+    all_decks = []
     
-    try:
-        with open(DECKS_PATH, "r", encoding="utf-8") as f:
-            decks = json.load(f)
-        if not isinstance(decks, list):
-            decks = []
-        # Ensure kenpo deck is always first
-        deck_ids = [d.get("id") for d in decks]
-        if "kenpo" not in deck_ids:
-            decks.insert(0, kenpo_deck)
-        else:
-            # Update kenpo deck to ensure it has correct properties
-            for i, d in enumerate(decks):
-                if d.get("id") == "kenpo":
-                    decks[i] = kenpo_deck
-                    break
-        return decks
-    except Exception:
-        return [kenpo_deck]
+    # Load saved decks from file
+    if os.path.exists(DECKS_PATH):
+        try:
+            with open(DECKS_PATH, "r", encoding="utf-8") as f:
+                saved_decks = json.load(f)
+            if isinstance(saved_decks, list):
+                all_decks = saved_decks
+        except Exception:
+            pass
+    
+    # Ensure built-in decks are in the list with correct properties
+    deck_ids = [d.get("id") for d in all_decks]
+    for bid in built_in_deck_ids:
+        if bid in built_in_decks:
+            if bid not in deck_ids:
+                all_decks.insert(0, built_in_decks[bid])
+            else:
+                # Update existing to ensure built-in properties
+                for i, d in enumerate(all_decks):
+                    if d.get("id") == bid:
+                        all_decks[i] = {**built_in_decks[bid], **{"isDefault": d.get("isDefault", False)}}
+                        break
+    
+    # If include_all (admin), return everything
+    if include_all:
+        return all_decks
+    
+    # If no user, return just built-in decks
+    if not user_id:
+        return [d for d in all_decks if d.get("id") in built_in_deck_ids]
+    
+    # Get user's accessible decks
+    accessible_ids = _get_user_accessible_decks(user_id)
+    
+    # Also include user-created decks (those not in built-in list and not locked)
+    # User can see: their unlocked decks + decks they created
+    result = []
+    for d in all_decks:
+        did = d.get("id")
+        # Built-in deck that user has access to
+        if did in accessible_ids:
+            # Mark as unlocked if not in original built-in list for this user
+            d_copy = dict(d)
+            user_has_built_in = user_id not in access.get("userBuiltInDisabled", [])
+            if did in built_in_deck_ids and user_has_built_in:
+                d_copy["accessType"] = "built-in"
+            else:
+                d_copy["accessType"] = "unlocked"
+            result.append(d_copy)
+        # Non-built-in deck (user created or shared)
+        elif not d.get("isBuiltIn"):
+            d_copy = dict(d)
+            d_copy["accessType"] = "owned"
+            result.append(d_copy)
+    
+    return result
 
 
 def _save_decks(decks: List[Dict[str, Any]]) -> None:
@@ -2997,12 +3369,12 @@ def _generate_card_id() -> str:
 
 @app.get("/api/decks")
 def api_get_decks():
-    """Get all available decks."""
+    """Get all available decks for the current user."""
     uid = current_user_id()
     if not uid:
         return jsonify({"error": "Not logged in"}), 401
     
-    decks = _load_decks()
+    decks = _load_decks(user_id=uid)
     
     # Update card counts for user-created decks
     user_cards = _load_user_cards(uid)
@@ -3027,7 +3399,7 @@ def api_create_deck():
     if not name:
         return jsonify({"error": "Deck name is required"}), 400
     
-    decks = _load_decks()
+    decks = _load_decks(include_all=True)  # Check all decks for duplicate names
     
     # Check for duplicate name
     for d in decks:
@@ -3042,6 +3414,7 @@ def api_create_deck():
         "isBuiltIn": False,
         "sourceFile": None,
         "cardCount": 0,
+        "createdBy": uid,  # Track creator
         "createdAt": int(time.time()),
         "updatedAt": int(time.time())
     }
@@ -3066,7 +3439,7 @@ def api_update_deck(deck_id: str):
     if not new_name:
         return jsonify({"error": "Deck name is required"}), 400
     
-    decks = _load_decks()
+    decks = _load_decks(include_all=True)
     
     # Find deck
     deck_to_update = None
@@ -3097,7 +3470,7 @@ def api_delete_deck(deck_id: str):
     if not uid:
         return jsonify({"error": "Not logged in"}), 401
     
-    decks = _load_decks()
+    decks = _load_decks(include_all=True)
     
     # Find and validate deck
     deck_to_delete = None
@@ -3131,7 +3504,7 @@ def api_set_default_deck(deck_id: str):
     if not uid:
         return jsonify({"error": "Not logged in"}), 401
     
-    decks = _load_decks()
+    decks = _load_decks(include_all=True)
     
     # Check deck exists
     deck_found = False
@@ -3758,7 +4131,7 @@ def api_sync_get_decks():
     if not uid:
         return jsonify({"error": "Not logged in"}), 401
     
-    decks = _load_decks()
+    decks = _load_decks(user_id=uid)
     
     # Update card counts for user-created decks
     user_cards = _load_user_cards(uid)
@@ -3792,7 +4165,7 @@ def api_sync_push_decks():
         return jsonify({"error": "No decks provided"}), 400
     
     # Load existing decks
-    existing_decks = _load_decks()
+    existing_decks = _load_decks(include_all=True)
     existing_by_id = {d["id"]: d for d in existing_decks}
     
     # Merge incoming decks (Android wins for non-built-in decks)

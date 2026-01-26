@@ -560,6 +560,15 @@
                 </label>
                 <button id="createDeckBtn" class="appBtn success">Create Deck</button>
               </div>
+              
+              <div class="settingsSectionTitle" style="margin-top: 24px;">🎟️ Redeem Invite Code</div>
+              <div class="inviteCodeForm">
+                <label class="field">
+                  <span>Invite Code</span>
+                  <input id="inviteCodeInput" placeholder="e.g., KenpoStudy409" />
+                </label>
+                <button id="redeemCodeBtn" class="appBtn primary">Redeem Code</button>
+              </div>
             </div>
           </div>
 
@@ -838,9 +847,10 @@
 
   <!-- Custom Set Settings Modal -->
   <div class="modalOverlay hidden" id="customSetModal">
-    <div class="modalCard modalCardWide">
+    <div class="modalCard csModalFixed">
       <div class="modalHeaderRow">
         <h2 class="modalTitle">⭐ Custom Set Settings</h2>
+        <div class="csCurrentSetName" id="csCurrentSetDisplay">Current: Default Set</div>
         <button class="closeBtn" onclick="closeCustomSetModal()">✕</button>
       </div>
       
@@ -850,72 +860,108 @@
         <button class="csTab" data-cstab="saved">Saved Sets</button>
       </div>
       
-      <!-- Settings Tab -->
-      <div class="csTabContent active" id="csTab-settings">
-        <div class="settingsCard" style="margin-bottom:16px;">
-          <div class="settingsCardHeader">🎲 Randomization</div>
-          <label class="settingRow">
-            <span class="switch small"><input type="checkbox" id="csRandomOrder" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Random order</div>
-              <div class="settingDesc">Shuffle cards when studying Custom Set.</div>
+      <div class="csTabBody">
+        <!-- Settings Tab -->
+        <div class="csTabContent active" id="csTab-settings">
+          <div class="settingsCard" style="margin-bottom:16px;">
+            <div class="settingsCardHeader">🎲 Randomization</div>
+            <label class="settingRow">
+              <span class="switch small"><input type="checkbox" id="csRandomOrder" /><span class="slider"></span></span>
+              <div class="settingText">
+                <div class="settingTitle">Random order</div>
+                <div class="settingDesc">Shuffle cards when studying Custom Set.</div>
+              </div>
+            </label>
+            <div class="settingRow">
+              <div class="settingText" style="flex:1;">
+                <div class="settingTitle">Pick random cards to add</div>
+                <div class="settingDesc">Add random cards from current deck to this Custom Set.</div>
+              </div>
+              <div class="csRandomPickRow">
+                <input type="number" id="csRandomPickCount" min="1" max="999" value="10" class="csRandomInput" />
+                <button class="appBtn secondary small" onclick="pickRandomCardsToCustom()">🎲 Add Random</button>
+              </div>
             </div>
-          </label>
-          <div class="settingRow" style="flex-direction:column;align-items:flex-start;gap:8px;">
-            <div class="settingTitle">Pick random cards to add</div>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <input type="number" id="csRandomPickCount" min="1" max="50" value="10" style="width:80px;" />
-              <button class="appBtn secondary small" onclick="pickRandomCardsToCustom()">🎲 Add Random</button>
-            </div>
+          </div>
+          
+          <div class="settingsCard">
+            <div class="settingsCardHeader">🔄 Status Sync</div>
+            <label class="settingRow">
+              <span class="switch small"><input type="checkbox" id="csReflectStatus" /><span class="slider"></span></span>
+              <div class="settingText">
+                <div class="settingTitle">Reflect status in Main Decks</div>
+                <div class="settingDesc">When ON, marking cards as Learned/Unsure in Custom will also update their status in main decks.</div>
+              </div>
+            </label>
           </div>
         </div>
         
-        <div class="settingsCard">
-          <div class="settingsCardHeader">🔄 Status Sync</div>
-          <label class="settingRow">
-            <span class="switch small"><input type="checkbox" id="csReflectStatus" /><span class="slider"></span></span>
-            <div class="settingText">
-              <div class="settingTitle">Reflect status in Main Decks</div>
-              <div class="settingDesc">When ON, marking cards as Learned/Unsure in Custom will also update their status in main decks.</div>
+        <!-- Manage Cards Tab -->
+        <div class="csTabContent hidden" id="csTab-manage">
+          <div class="csManageSplit">
+            <!-- Left: Cards in Custom Set -->
+            <div class="csManagePane">
+              <div class="csPaneHeader">
+                <span class="csPaneTitle">📋 In Custom Set</span>
+                <span class="csPaneCount" id="csInSetCount">0</span>
+              </div>
+              <div class="csPaneSearch">
+                <input type="text" id="csInSetSearch" placeholder="Search..." class="csSearchInput" oninput="filterCustomSetList('inSet')" />
+              </div>
+              <div class="csCardList" id="csInSetList">
+                <div class="csEmptyState">No cards in Custom Set</div>
+              </div>
+              <div class="csPaneActions">
+                <button class="appBtn secondary small" onclick="selectAllInSet()">Select All</button>
+                <button class="appBtn danger small" onclick="removeSelectedFromSet()">← Remove</button>
+              </div>
             </div>
-          </label>
-        </div>
-      </div>
-      
-      <!-- Manage Cards Tab -->
-      <div class="csTabContent hidden" id="csTab-manage">
-        <div class="csManageHeader">
-          <span id="csCardCount">0 cards in Custom Set</span>
-          <div class="csManageActions">
-            <button class="appBtn secondary small" onclick="selectAllCustomCards()">Select All</button>
-            <button class="appBtn secondary small" onclick="deselectAllCustomCards()">Deselect All</button>
-            <button class="appBtn danger small" onclick="removeSelectedFromCustom()">Remove Selected</button>
+            
+            <!-- Right: Available Cards -->
+            <div class="csManagePane">
+              <div class="csPaneHeader">
+                <span class="csPaneTitle">📚 Available Cards</span>
+                <span class="csPaneCount" id="csAvailableCount">0</span>
+              </div>
+              <div class="csPaneSearch">
+                <input type="text" id="csAvailableSearch" placeholder="Search..." class="csSearchInput" oninput="filterCustomSetList('available')" />
+              </div>
+              <div class="csCardList" id="csAvailableList">
+                <div class="csEmptyState">Loading...</div>
+              </div>
+              <div class="csPaneActions">
+                <button class="appBtn secondary small" onclick="selectAllAvailable()">Select All</button>
+                <button class="appBtn primary small" onclick="addSelectedToSet()">Add →</button>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="csCardList" id="csCardList">
-          <div class="csEmptyState">Loading cards...</div>
-        </div>
-        <div class="csBulkActions">
-          <button class="appBtn secondary" onclick="bulkMarkLearned()">Mark Selected Learned</button>
-          <button class="appBtn secondary" onclick="bulkMarkUnsure()">Mark Selected Unsure</button>
-          <button class="appBtn danger" onclick="clearCustomSet()">🗑️ Clear All</button>
-        </div>
-      </div>
-      
-      <!-- Saved Sets Tab -->
-      <div class="csTabContent hidden" id="csTab-saved">
-        <div class="settingsCard" style="margin-bottom:16px;">
-          <div class="settingsCardHeader">💾 Save Current Set</div>
-          <div style="display:flex;gap:8px;margin-top:12px;">
-            <input type="text" id="csSaveSetName" placeholder="Set name (e.g., 'Numbers Practice')" style="flex:1;" />
-            <button class="appBtn primary" onclick="saveCurrentCustomSet()">Save</button>
+          
+          <div class="csBulkBar">
+            <button class="appBtn secondary small" onclick="bulkMarkLearned()">Mark In-Set Learned</button>
+            <button class="appBtn secondary small" onclick="bulkMarkUnsure()">Mark In-Set Unsure</button>
+            <button class="appBtn danger small" onclick="clearCustomSet()">🗑️ Clear All</button>
           </div>
         </div>
         
-        <div class="settingsCard">
-          <div class="settingsCardHeader">📁 Saved Custom Sets</div>
-          <div id="csSavedSetsList" class="csSavedList">
-            <div class="csEmptyState">No saved sets yet. Save your current Custom Set above.</div>
+        <!-- Saved Sets Tab -->
+        <div class="csTabContent hidden" id="csTab-saved">
+          <div class="settingsCard" style="margin-bottom:16px;">
+            <div class="settingsCardHeader">💾 Save Current Custom Set</div>
+            <div class="csSaveRow">
+              <input type="text" id="csSaveSetName" placeholder="Enter name for this set..." class="csSaveInput" />
+              <button class="appBtn primary" onclick="saveCurrentCustomSet()">💾 Save</button>
+            </div>
+          </div>
+          
+          <div class="settingsCard">
+            <div class="settingsCardHeader">📁 Saved Custom Sets</div>
+            <div id="csSavedSetsList" class="csSavedList">
+              <div class="csEmptyState">No saved sets yet. Save your current Custom Set above.</div>
+            </div>
+          </div>
+          
+          <div class="csSetInfo">
+            <div class="csInfoText">💡 Each saved set has its own cards and settings. Switch between sets to study different card collections.</div>
           </div>
         </div>
       </div>

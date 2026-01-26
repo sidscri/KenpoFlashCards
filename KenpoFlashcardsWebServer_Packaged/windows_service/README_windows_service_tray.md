@@ -1,4 +1,4 @@
-# Run Kenpo Flashcards Web like Sonarr (Windows Service + Tray)
+# Run Study Flashcards Web like Sonarr (Windows Service + Tray)
 
 This folder adds a **Windows service** (so the webapp runs in the background after boot) and an optional **system tray icon** (near Wi‑Fi/Bluetooth) to open / start / stop the app.
 
@@ -10,7 +10,7 @@ You chose: **Option A (Service + Tray), option 2 (NSSM)**.
 
 - **Windows service (NSSM)**: runs `app.py` in the background, starts on boot.
 - **Tray icon** (optional): shows an icon in the system tray with menu items:
-  - Open Kenpo Flashcards
+  - Open Study Flashcards
   - Start / Stop / Restart service
   - Quit tray (service keeps running)
 
@@ -20,7 +20,7 @@ You chose: **Option A (Service + Tray), option 2 (NSSM)**.
 
 1. **Python 3.8+** installed (your setup uses Python 3.8).
 2. This project extracted somewhere permanent, e.g.:
-   `C:\PersonalServers\KenpoFlashcardsWeb`
+   `C:\PersonalServers\StudyFlashcardsWeb`
 3. **NSSM** (Non-Sucking Service Manager) downloaded by you:
    - Place `nssm.exe` in: `windows_service\nssm.exe`
 
@@ -42,7 +42,7 @@ windows_service\INSTALL_Service_NSSM.bat
 This will:
 - create/update `.venv`
 - install `requirements.txt`
-- install the service named **KenpoFlashcardsWeb**
+- install the service named **StudyFlashcardsWeb**
 - set it to auto-start
 - set default env values (you can change them)
 

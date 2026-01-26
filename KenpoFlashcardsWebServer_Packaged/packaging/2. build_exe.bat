@@ -2,7 +2,7 @@
 setlocal EnableExtensions
 
 REM -----------------------------------------------------------------------------
-REM Kenpo Flashcards - Build EXE (PyInstaller one-folder)
+REM Study Flashcards - Build EXE (PyInstaller one-folder)
 REM Run this from the repo root:
 REM   M:\KenpoFlashcardsWebServer_Packaged> .\packaging\build_exe.bat
 REM -----------------------------------------------------------------------------
@@ -55,7 +55,7 @@ if errorlevel 1 (
 
 echo.
 echo [DONE] Build complete.
-echo       Output: dist\KenpoFlashcardsTray\KenpoFlashcardsTray.exe
+echo       Output: dist\AdvancedStudyFlashcards\AdvancedStudyFlashcards.exe
 popd
 pause
 exit /b 0
@@ -77,7 +77,7 @@ if errorlevel 1 goto :FAIL
 
 echo.
 echo [DONE] Build complete (after retry).
-echo       Output: dist\KenpoFlashcardsTray\KenpoFlashcardsTray.exe
+echo       Output: dist\AdvancedStudyFlashcards\AdvancedStudyFlashcards.exe
 popd
 pause
 exit /b 0

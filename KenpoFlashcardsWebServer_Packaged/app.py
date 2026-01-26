@@ -1,4 +1,5 @@
 import os
+import shutil
 import json
 import time
 import hashlib
@@ -13,7 +14,7 @@ from flask import Flask, jsonify, request, send_from_directory, session, send_fi
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # =========================================================
-# Kenpo Flashcards Web (Multi-user with Username/Password Auth)
+# Study Flashcards Web (Multi-user with Username/Password Auth)
 # - Users create a profile with username/password
 # - Progress + settings are stored per user on the server
 # - Login from any device with the same credentials
@@ -21,7 +22,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 DEFAULT_KENPO_ROOT = r"C:\Users\Sidscri\Documents\GitHub\sidscri-apps"
 # Fallback (only used if auto-discovery fails)
-DEFAULT_KENPO_JSON_FALLBACK = r"C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v2\app\src\main\assets\kenpo_words.json"
+DEFAULT_KENPO_JSON_FALLBACK = r"C:\Users\Sidscri\Documents\GitHub\sidscri-apps\StudyFlashcardsProject-v2\app\src\main\assets\kenpo_words.json"
 
 def _resolve_kenpo_json_path() -> str:
     """Resolve the kenpo_words.json path.
@@ -56,7 +57,45 @@ KENPO_JSON_PATH = _resolve_kenpo_json_path()
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
-DATA_DIR = os.path.join(APP_DIR, "data")
+# ---------------------------------------------------------------------------
+# Study Flashcards — Per-user data directory
+#   Seed data is bundled alongside the app in APP_DIR\data.
+#   Runtime data lives in: %LOCALAPPDATA%\Study Flashcards\data
+# ---------------------------------------------------------------------------
+APP_DISPLAY_NAME = "Study Flashcards"
+
+def _get_user_data_dir() -> str:
+    base = (os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA") or os.path.expanduser("~"))
+    return os.path.join(base, APP_DISPLAY_NAME, "data")
+
+def _ensure_user_data_dir(seed_dir: str) -> str:
+    user_dir = _get_user_data_dir()
+    os.makedirs(user_dir, exist_ok=True)
+
+    # If user data is empty, seed it from bundled data (fresh install / first run)
+    try:
+        is_empty = (not os.listdir(user_dir))
+    except FileNotFoundError:
+        is_empty = True
+
+    if is_empty and os.path.isdir(seed_dir):
+        for name in os.listdir(seed_dir):
+            src = os.path.join(seed_dir, name)
+            dst = os.path.join(user_dir, name)
+            if os.path.isdir(src):
+                if not os.path.exists(dst):
+                    shutil.copytree(src, dst)
+            else:
+                if not os.path.exists(dst):
+                    shutil.copy2(src, dst)
+
+    return user_dir
+
+# Bundled seed data (inside the app folder / _internal when packaged)
+_BUNDLED_DATA_DIR = os.path.join(APP_DIR, "data")
+
+# Runtime data (per-user)
+DATA_DIR = _ensure_user_data_dir(_BUNDLED_DATA_DIR)
 
 BREAKDOWNS_PATH = os.path.join(DATA_DIR, "breakdowns.json")
 
@@ -78,6 +117,30 @@ OPENAI_API_BASE = (os.environ.get("OPENAI_API_BASE") or "https://api.openai.com"
 GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
 GEMINI_MODEL = (os.environ.get("GEMINI_MODEL") or "gemini-1.5-flash").strip()
 GEMINI_API_BASE = (os.environ.get("GEMINI_API_BASE") or "https://generativelanguage.googleapis.com").rstrip("/")
+
+def _init_api_keys_from_encrypted():
+    """Load API keys from encrypted file if not set via environment."""
+    global OPENAI_API_KEY, OPENAI_MODEL, GEMINI_API_KEY, GEMINI_MODEL
+    
+    # Only load from encrypted if not already set via environment
+    if OPENAI_API_KEY and GEMINI_API_KEY:
+        return
+    
+    try:
+        keys = _load_encrypted_api_keys()
+        if keys:
+            if not OPENAI_API_KEY and keys.get("chatGptKey"):
+                OPENAI_API_KEY = keys["chatGptKey"]
+                print("[INIT] Loaded OpenAI API key from encrypted storage")
+            if keys.get("chatGptModel"):
+                OPENAI_MODEL = keys["chatGptModel"]
+            if not GEMINI_API_KEY and keys.get("geminiKey"):
+                GEMINI_API_KEY = keys["geminiKey"]
+                print("[INIT] Loaded Gemini API key from encrypted storage")
+            if keys.get("geminiModel"):
+                GEMINI_MODEL = keys["geminiModel"]
+    except Exception as e:
+        print(f"[INIT] Could not load encrypted API keys: {e}")
 
 # -------- Shared Breakdowns (global across all user profiles) --------
 def _load_breakdowns() -> Dict[str, Any]:
@@ -409,6 +472,90 @@ def _gemini_breakdown(term: str, meaning: str = "", group: str = "") -> Tuple[Op
     except Exception as e:
         return None, {"provider": "gemini", "status": None, "message": f"Gemini error: {e.__class__.__name__}"}
 
+
+def _call_openai_chat(prompt: str, model: str, api_key: str) -> str:
+    """Simple OpenAI chat completion for generating text responses."""
+    if not api_key:
+        raise Exception("OpenAI API key not configured")
+    
+    url = f"{OPENAI_API_BASE}/v1/chat/completions"
+    
+    # Use higher token limit for card generation (detect from prompt)
+    max_tokens = 4000 if "flashcard" in prompt.lower() or "cards" in prompt.lower() else 500
+    
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": max_tokens,
+        "temperature": 0.7
+    }
+    
+    r = requests.post(
+        url,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json=payload,
+        timeout=60
+    )
+    
+    if r.status_code != 200:
+        try:
+            err = r.json().get("error", {}).get("message", f"HTTP {r.status_code}")
+        except:
+            err = f"HTTP {r.status_code}"
+        raise Exception(f"OpenAI error: {err}")
+    
+    data = r.json()
+    choices = data.get("choices", [])
+    if choices and isinstance(choices[0], dict):
+        return choices[0].get("message", {}).get("content", "")
+    return ""
+
+
+def _call_gemini_chat(prompt: str, model: str, api_key: str) -> str:
+    """Simple Gemini chat for generating text responses."""
+    if not api_key:
+        raise Exception("Gemini API key not configured")
+    
+    url = f"{GEMINI_API_BASE}/v1beta/models/{model}:generateContent"
+    
+    # Use higher token limit for card generation
+    max_tokens = 4000 if "flashcard" in prompt.lower() or "cards" in prompt.lower() else 500
+    
+    payload = {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "maxOutputTokens": max_tokens,
+            "temperature": 0.7
+        }
+    }
+    
+    r = requests.post(
+        url,
+        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
+        json=payload,
+        timeout=60
+    )
+    
+    if r.status_code != 200:
+        try:
+            err = r.json().get("error", {}).get("message", f"HTTP {r.status_code}")
+        except:
+            err = f"HTTP {r.status_code}"
+        raise Exception(f"Gemini error: {err}")
+    
+    data = r.json()
+    try:
+        cands = data.get("candidates", [])
+        if cands and isinstance(cands[0], dict):
+            content = cands[0].get("content", {})
+            parts = content.get("parts", [])
+            if parts and isinstance(parts[0], dict):
+                return parts[0].get("text", "")
+    except:
+        pass
+    return ""
+
+
 USERS_DIR = os.path.join(DATA_DIR, "users")
 PROFILES_PATH = os.path.join(DATA_DIR, "profiles.json")
 SECRET_PATH = os.path.join(DATA_DIR, "secret_key.txt")
@@ -525,6 +672,8 @@ def _is_admin_user(username: str) -> bool:
     """Check if username is an admin."""
     return username.lower() in {u.lower() for u in ADMIN_USERNAMES}
 
+# Initialize API keys from encrypted storage at startup
+_init_api_keys_from_encrypted()
 
 app.secret_key = os.environ.get("KENPO_SECRET_KEY", "") or _load_or_create_secret()
 # ----------------------------
@@ -544,8 +693,8 @@ def get_version():
                 _VERSION_CACHE = json.load(f)
             _VERSION_MTIME = st.st_mtime
     except Exception:
-        return {"name": "KenpoFlashcardsWebServer", "version": "unknown", "build": "unknown"}
-    return _VERSION_CACHE or {"name": "KenpoFlashcardsWebServer", "version": "unknown", "build": "unknown"}
+        return {"name": "StudyFlashcardsWebServer", "version": "unknown", "build": "unknown"}
+    return _VERSION_CACHE or {"name": "StudyFlashcardsWebServer", "version": "unknown", "build": "unknown"}
 
 # Optional allowlist: set env var KENPO_ALLOWED_IPS="1.2.3.4,5.6.7.8"
 ALLOWED_IPS = {ip.strip() for ip in os.environ.get("KENPO_ALLOWED_IPS", "").split(",") if ip.strip()}
@@ -1099,16 +1248,23 @@ def api_login():
         return jsonify({"error": "password_required"}), 401
 
     if not check_password_hash(stored_hash, password):
+        log_activity("warn", f"Failed login attempt for user: {username}", "")
         return jsonify({"error": "invalid_credentials"}), 401
 
     _ensure_user_progress(user_id)
     session["user_id"] = user_id
+    log_activity("info", f"User logged in: {username}", username)
     return jsonify({"ok": True, "user": _get_user(user_id)})
 
 
 @app.post("/api/logout")
 def api_logout():
+    uid = current_user_id()
+    user = _get_user(uid) if uid else None
+    username = user.get("username", "") if user else ""
     session.pop("user_id", None)
+    if username:
+        log_activity("info", f"User logged out: {username}", username)
     return jsonify({"ok": True})
 
 
@@ -1116,7 +1272,16 @@ def api_logout():
 def health():
     cards, status = load_cards_cached()
     v = get_version()
-    return jsonify({"status": status, "cards_loaded": len(cards), "server_time": _now(), "version": v.get("version"), "build": v.get("build")})
+    kenpo_exists = os.path.exists(KENPO_JSON_PATH)
+    return jsonify({
+        "status": status, 
+        "cards_loaded": len(cards), 
+        "server_time": _now(), 
+        "version": v.get("version"), 
+        "build": v.get("build"),
+        "kenpo_json_exists": kenpo_exists,
+        "kenpo_json_path": KENPO_JSON_PATH
+    })
 
 
 @app.get("/api/version")
@@ -1124,10 +1289,36 @@ def api_version():
     return jsonify(get_version())
 @app.get("/api/groups")
 def api_groups():
-    cards, status = load_cards_cached()
-    if status != "ok":
-        return jsonify({"error": status}), 500
-    return jsonify(sorted({c["group"] for c in cards}))
+    uid, _ = require_user()
+    deck_id = request.args.get("deck_id", "")
+    
+    # Get active deck from settings if not specified
+    if uid and not deck_id:
+        progress = load_progress(uid)
+        settings = progress.get("__settings__", _default_settings())
+        deck_id = settings.get("activeDeckId", "kenpo")
+    
+    if not deck_id or deck_id == "kenpo":
+        # Built-in Kenpo deck
+        cards, status = load_cards_cached()
+        if status != "ok":
+            return jsonify({"error": status}), 500
+        all_cards = list(cards)
+        # Also include user cards for kenpo deck
+        if uid:
+            user_cards = _load_user_cards(uid)
+            kenpo_user_cards = [c for c in user_cards if c.get("deckId", "kenpo") == "kenpo"]
+            all_cards = all_cards + kenpo_user_cards
+    else:
+        # User-created deck
+        if not uid:
+            return jsonify([])
+        user_cards = _load_user_cards(uid)
+        all_cards = [c for c in user_cards if c.get("deckId") == deck_id]
+    
+    # Get unique groups
+    groups = sorted({c.get("group", "") for c in all_cards if c.get("group")})
+    return jsonify(groups)
 
 import datetime
 
@@ -1150,61 +1341,85 @@ def user_guide_pdf():
         from reportlab.lib.pagesizes import letter
         from reportlab.pdfgen import canvas
         from reportlab.lib.units import inch
-    except Exception:
-        return jsonify({"error": "reportlab not installed on server. Run: pip install reportlab"}), 500
+        from io import BytesIO
+    except ImportError as e:
+        # Return a helpful HTML page instead of a blank error
+        return f"""
+        <html><body style="font-family: sans-serif; padding: 40px; background: #1a1f2e; color: #fff;">
+        <h1>PDF Generation Unavailable</h1>
+        <p>The reportlab library is not installed on this server.</p>
+        <p>To enable PDF downloads, run: <code>pip install reportlab</code></p>
+        <p><a href="/user-guide" style="color: #5ca5ff;">← View User Guide (HTML)</a></p>
+        <p><a href="/" style="color: #5ca5ff;">← Back to App</a></p>
+        </body></html>
+        """, 500
 
-    v = get_version()
-    title = f"Kenpo Flashcards (Web) — User Guide  (v{v.get('version','')}, build {v.get('build','')})"
-    lines = [
-        "Created by Sidney Shelton (Sidscri@yahoo.com)",
-        "",
-        "Overview:",
-        "• Study Kenpo vocabulary and track progress across devices.",
-        "• Tabs: Unlearned / Unsure / Learned / All.",
-        "• Group filtering and All Cards mode.",
-        "• Sync: progress + breakdowns between Android and Web.",
-        "• AI Breakdowns (optional): OpenAI/Gemini configured server-side.",
-        "",
-        "How to use:",
-        "1) Choose a tab (Unlearned/Unsure/Learned/All).",
-        "2) Use Group dropdown or All Cards button to set your filter.",
-        "3) Use status buttons to move a card between states.",
-        "4) Use Search to jump to a term quickly.",
-        "5) Use Breakdown tools to view or generate a breakdown.",
-        "6) Use Sync to push/pull progress and pull breakdowns on other devices.",
-        "",
-        "Troubleshooting:",
-        "• If sync seems stuck: logout/login and pull again.",
-        "• Ensure server is running and reachable from your device.",
-        "• Visit /admin for diagnostics.",
-    ]
+    try:
+        v = get_version()
+        title = f"Study Flashcards (Web) — User Guide  (v{v.get('version','')}, build {v.get('build','')})"
+        lines = [
+            "Created by Sidney Shelton (Sidscri@yahoo.com)",
+            "",
+            "Overview:",
+            "• Study Kenpo vocabulary and track progress across devices.",
+            "• Tabs: Unlearned / Unsure / Learned / All / Custom Set.",
+            "• Group filtering and All Cards mode.",
+            "• Sync: progress + breakdowns between Android and Web.",
+            "• AI Breakdowns (optional): OpenAI/Gemini configured server-side.",
+            "",
+            "How to use:",
+            "1) Choose a tab (Unlearned/Unsure/Learned/All).",
+            "2) Use Group dropdown or All Cards button to set your filter.",
+            "3) Use status buttons to move a card between states.",
+            "4) Use Search to jump to a term quickly.",
+            "5) Use Breakdown tools to view or generate a breakdown.",
+            "6) Use Sync to push/pull progress and pull breakdowns on other devices.",
+            "",
+            "Keyboard Shortcuts:",
+            "• Space/Enter: Flip card",
+            "• Arrow keys: Navigate cards",
+            "• 1/2/3: Mark as Didn't Get It / Unsure / Got It",
+            "",
+            "Troubleshooting:",
+            "• If sync seems stuck: logout/login and pull again.",
+            "• Ensure server is running and reachable from your device.",
+            "• Visit /admin for diagnostics.",
+        ]
 
-    from io import BytesIO
-    buf = BytesIO()
-    c = canvas.Canvas(buf, pagesize=letter)
-    width, height = letter
+        buf = BytesIO()
+        c = canvas.Canvas(buf, pagesize=letter)
+        width, height = letter
 
-    x = 0.8 * inch
-    y = height - 1.0 * inch
-    c.setTitle("Kenpo Flashcards User Guide")
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(x, y, title)
-    y -= 0.4 * inch
+        x = 0.8 * inch
+        y = height - 1.0 * inch
+        c.setTitle("Study Flashcards User Guide")
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(x, y, title)
+        y -= 0.4 * inch
 
-    c.setFont("Helvetica", 11)
-    for ln in lines:
-        if y < 0.8 * inch:
-            c.showPage()
-            y = height - 1.0 * inch
-            c.setFont("Helvetica", 11)
-        c.drawString(x, y, ln)
-        y -= 0.22 * inch
+        c.setFont("Helvetica", 11)
+        for ln in lines:
+            if y < 0.8 * inch:
+                c.showPage()
+                y = height - 1.0 * inch
+                c.setFont("Helvetica", 11)
+            c.drawString(x, y, ln)
+            y -= 0.22 * inch
 
-    c.showPage()
-    c.save()
-    buf.seek(0)
+        c.showPage()
+        c.save()
+        buf.seek(0)
 
-    return send_file(buf, mimetype="application/pdf", as_attachment=True, download_name="KenpoFlashcards_User_Guide.pdf")
+        return send_file(buf, mimetype="application/pdf", as_attachment=True, download_name="StudyFlashcards_User_Guide.pdf")
+    except Exception as e:
+        return f"""
+        <html><body style="font-family: sans-serif; padding: 40px; background: #1a1f2e; color: #fff;">
+        <h1>PDF Generation Error</h1>
+        <p>Error: {str(e)}</p>
+        <p><a href="/user-guide" style="color: #5ca5ff;">← View User Guide (HTML)</a></p>
+        <p><a href="/" style="color: #5ca5ff;">← Back to App</a></p>
+        </body></html>
+        """, 500
 
 @app.get("/api/whoami")
 def whoami():
@@ -1286,14 +1501,32 @@ def api_counts():
         return jsonify({"error": "login_required"}), 401
 
     group = request.args.get("group", "")
-    cards, status = load_cards_cached()
-    if status != "ok":
-        return jsonify({"error": status}), 500
-
+    deck_id = request.args.get("deck_id", "")
+    
+    # Get user's settings to check active deck
     progress = load_progress(uid)
+    settings = progress.get("__settings__", _default_settings())
+    active_deck_id = deck_id or settings.get("activeDeckId", "kenpo")
+    
+    # Load cards based on deck
+    if active_deck_id == "kenpo":
+        # Built-in Kenpo deck
+        cards, status = load_cards_cached()
+        if status != "ok":
+            return jsonify({"error": status}), 500
+        all_cards = list(cards)
+        # Also add any user cards assigned to kenpo deck
+        user_cards = _load_user_cards(uid)
+        kenpo_user_cards = [c for c in user_cards if c.get("deckId", "kenpo") == "kenpo"]
+        all_cards = all_cards + kenpo_user_cards
+    else:
+        # User-created deck - only show user cards for this deck
+        user_cards = _load_user_cards(uid)
+        all_cards = [c for c in user_cards if c.get("deckId") == active_deck_id]
+
     counts = {"active": 0, "unsure": 0, "learned": 0, "deleted": 0, "total": 0}
-    for c in cards:
-        if group and c["group"] != group:
+    for c in all_cards:
+        if group and c.get("group", "") != group:
             continue
         s = card_status(progress, c["id"])
         counts["total"] += 1
@@ -1482,20 +1715,74 @@ def api_admin_stats():
     cards, status = load_cards_cached()
     profiles = _load_profiles()
     breakdowns = _load_breakdowns()
+    decks = _load_decks()
     
-    # User stats with list
+    # User stats with detailed progress
     users = profiles.get("users", {})
     total_users = len(users)
     user_list = []
+    
     for user_id, udata in users.items():
         if isinstance(udata, dict):
             uname = udata.get("username", "")
+            is_admin = _is_admin_user(uname)
+            
+            # Get user's progress
+            try:
+                progress = load_progress(user_id)
+                settings = progress.get("__settings__", {})
+                active_deck_id = settings.get("activeDeckId", "kenpo")
+                last_sync = progress.get("__last_sync__", 0)
+                
+                # Count statuses
+                learned = 0
+                unsure = 0
+                active = 0
+                for k, v in progress.items():
+                    if k.startswith("__"):
+                        continue
+                    if isinstance(v, dict):
+                        s = v.get("status", "active")
+                        if s == "learned":
+                            learned += 1
+                        elif s == "unsure":
+                            unsure += 1
+                        elif s == "active":
+                            active += 1
+                
+                total_cards_user = learned + unsure + active
+                progress_pct = round((learned / total_cards_user * 100) if total_cards_user > 0 else 0, 1)
+                
+                # Get active deck name
+                active_deck_name = "Kenpo Vocabulary"
+                for d in decks:
+                    if d.get("id") == active_deck_id:
+                        active_deck_name = d.get("name", active_deck_id)
+                        break
+                
+            except Exception:
+                learned = unsure = active = 0
+                progress_pct = 0
+                active_deck_id = "kenpo"
+                active_deck_name = "Kenpo Vocabulary"
+                last_sync = 0
+            
             user_list.append({
                 "id": user_id,
                 "username": uname,
-                "is_admin": _is_admin_user(uname),
-                "password_reset_required": udata.get("password_reset_required", False)
+                "is_admin": is_admin,
+                "password_reset_required": udata.get("password_reset_required", False),
+                "learned": learned,
+                "unsure": unsure,
+                "active": active,
+                "progress_pct": progress_pct,
+                "active_deck_id": active_deck_id,
+                "active_deck_name": active_deck_name,
+                "last_sync": last_sync
             })
+    
+    # Sort users by progress descending
+    user_list.sort(key=lambda x: x["progress_pct"], reverse=True)
     
     # Card stats
     total_cards = len(cards) if status == "ok" else 0
@@ -1510,27 +1797,17 @@ def api_admin_stats():
                                    if isinstance(b, dict) and 
                                    (b.get("parts") or b.get("literal")))
     
-    # Progress stats across all users
-    total_learned = 0
-    total_unsure = 0
-    total_active = 0
+    # Breakdown IDs for frontend
+    breakdown_ids = list(breakdowns.keys())
     
-    for user_id in users:
-        try:
-            progress = load_progress(user_id)
-            for k, v in progress.items():
-                if k.startswith("__"):
-                    continue
-                if isinstance(v, dict):
-                    s = v.get("status", "active")
-                    if s == "learned":
-                        total_learned += 1
-                    elif s == "unsure":
-                        total_unsure += 1
-                    elif s == "active":
-                        total_active += 1
-        except Exception:
-            pass
+    # Progress stats across all users
+    total_learned = sum(u["learned"] for u in user_list)
+    total_unsure = sum(u["unsure"] for u in user_list)
+    total_active = sum(u["active"] for u in user_list)
+    
+    # Deck stats
+    total_decks = len(decks)
+    user_decks = sum(1 for d in decks if not d.get("isBuiltIn"))
     
     # API key status
     keys = _load_encrypted_api_keys()
@@ -1548,7 +1825,12 @@ def api_admin_stats():
         },
         "breakdowns": {
             "total": total_breakdowns,
-            "with_content": breakdowns_with_content
+            "with_content": breakdowns_with_content,
+            "ids": breakdown_ids
+        },
+        "decks": {
+            "total": total_decks,
+            "user_created": user_decks
         },
         "progress": {
             "total_learned": total_learned,
@@ -1567,6 +1849,87 @@ def api_admin_stats():
             "uptime": _now()
         }
     })
+
+
+# Server activity log storage
+ACTIVITY_LOG = []
+MAX_LOG_ENTRIES = 500
+
+def log_activity(level: str, message: str, user: str = ""):
+    """Add an entry to the activity log."""
+    global ACTIVITY_LOG
+    entry = {
+        "timestamp": _now(),
+        "level": level,  # info, warn, error
+        "message": message,
+        "user": user
+    }
+    ACTIVITY_LOG.append(entry)
+    # Keep only recent entries
+    if len(ACTIVITY_LOG) > MAX_LOG_ENTRIES:
+        ACTIVITY_LOG = ACTIVITY_LOG[-MAX_LOG_ENTRIES:]
+
+
+@app.get("/api/admin/logs")
+def api_admin_logs():
+    """Get server activity logs (admin only)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    if not _is_admin_user(username):
+        return jsonify({"error": "admin_required"}), 403
+    
+    log_type = request.args.get("type", "all")
+    limit = int(request.args.get("limit", 100))
+    
+    logs = ACTIVITY_LOG.copy()
+    
+    # Filter by type
+    if log_type == "error":
+        logs = [l for l in logs if l["level"] == "error"]
+    elif log_type == "user":
+        logs = [l for l in logs if l["user"]]
+    elif log_type == "server":
+        logs = [l for l in logs if not l["user"]]
+    
+    # Return most recent first, limited
+    logs = logs[-limit:]
+    logs.reverse()
+    
+    return jsonify({"logs": logs})
+
+
+@app.post("/api/admin/logs/clear")
+def api_admin_logs_clear():
+    """Clear activity logs (admin only)."""
+    global ACTIVITY_LOG
+    
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    if not _is_admin_user(username):
+        return jsonify({"error": "admin_required"}), 403
+    
+    log_type = request.args.get("type", "all")
+    
+    if log_type == "all":
+        ACTIVITY_LOG = []
+    elif log_type == "error":
+        ACTIVITY_LOG = [l for l in ACTIVITY_LOG if l["level"] != "error"]
+    elif log_type == "user":
+        ACTIVITY_LOG = [l for l in ACTIVITY_LOG if not l["user"]]
+    elif log_type == "server":
+        ACTIVITY_LOG = [l for l in ACTIVITY_LOG if l["user"]]
+    
+    log_activity("info", f"Logs cleared by {username}", username)
+    
+    return jsonify({"success": True})
 
 
 @app.post("/api/admin/user/update")
@@ -1664,20 +2027,35 @@ def api_cards():
         status_filter = ""
     group = request.args.get("group", "")
     q = (request.args.get("q", "") or "").strip().lower()
+    deck_id = request.args.get("deck_id", "")
 
-    cards, status = load_cards_cached()
-    if status != "ok":
-        return jsonify({"error": status}), 500
-
+    # Get user's settings to check active deck
     progress = load_progress(uid)
+    settings = progress.get("__settings__", _default_settings())
+    active_deck_id = deck_id or settings.get("activeDeckId", "kenpo")
+    
+    # Load cards based on deck
+    if active_deck_id == "kenpo":
+        # Built-in Kenpo deck
+        cards, status = load_cards_cached()
+        if status != "ok":
+            return jsonify({"error": status}), 500
+        all_cards = list(cards)
+        # Also add any user cards assigned to kenpo deck
+        user_cards = _load_user_cards(uid)
+        kenpo_user_cards = [c for c in user_cards if c.get("deckId", "kenpo") == "kenpo"]
+        all_cards = all_cards + kenpo_user_cards
+    else:
+        # User-created deck - only show user cards for this deck
+        user_cards = _load_user_cards(uid)
+        all_cards = [c for c in user_cards if c.get("deckId") == active_deck_id]
     
     # Get custom set IDs for this user
-    settings = progress.get("__settings__", _default_settings())
     custom_set_ids = set(settings.get("custom_set", []))
     
     out: List[Dict[str, Any]] = []
-    for c in cards:
-        if group and c["group"] != group:
+    for c in all_cards:
+        if group and c.get("group", "") != group:
             continue
 
         s = card_status(progress, c["id"])
@@ -1920,6 +2298,7 @@ def api_breakdown_autofill():
 
 
 @app.get("/api/ai")
+@app.get("/api/ai/status")
 def api_ai_status():
     """Simple status so the UI can show if AI autofill is available."""
     uid, _ = require_user()
@@ -1967,6 +2346,18 @@ def api_breakdowns_list():
     # newest first
     items.sort(key=lambda x: int(x.get("updated_at") or 0), reverse=True)
     return jsonify({"ok": True, "items": items})
+
+
+@app.get("/api/breakdowns/ids")
+def api_breakdowns_ids():
+    """Get just the IDs of cards that have breakdowns (lightweight endpoint)."""
+    data = _load_breakdowns()
+    # Only return IDs of breakdowns with actual content
+    ids_with_content = []
+    for k, v in data.items():
+        if isinstance(v, dict) and (v.get("parts") or v.get("literal")):
+            ids_with_content.append(k)
+    return jsonify({"ids": ids_with_content})
 
 
 
@@ -2125,6 +2516,57 @@ def api_breakdowns_save_android():
     _save_breakdowns(data)
 
     return jsonify({"ok": True, "id": bid})
+
+
+# ============ WEB SYNC ENDPOINTS (Session Auth) ============
+
+@app.post("/api/web/sync/push")
+def api_web_sync_push():
+    """Push progress from web app to server (session auth)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    # Web app pushes the full progress from localStorage
+    # For simplicity, just update last_sync timestamp
+    progress = load_progress(uid)
+    progress["__last_sync__"] = int(time.time())
+    save_progress(uid, progress)
+    
+    return jsonify({"success": True, "message": "Sync complete"})
+
+
+@app.get("/api/web/sync/pull")
+def api_web_sync_pull():
+    """Pull progress from server to web app (session auth)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    progress = load_progress(uid)
+    
+    # Extract card progress entries
+    entries = {}
+    for key, value in progress.items():
+        if isinstance(key, str) and key.startswith('__'):
+            continue
+        if not isinstance(key, str):
+            continue
+        
+        if isinstance(value, dict) and 'status' in value:
+            status = str(value.get('status') or '').lower().strip()
+            if status not in ('active', 'unsure', 'learned', 'deleted'):
+                continue
+            updated_at = int(value.get('updated_at') or 0)
+            entries[key] = {'status': status, 'updated_at': updated_at}
+        elif isinstance(value, str):
+            status = value.lower().strip()
+            if status not in ('active', 'unsure', 'learned', 'deleted'):
+                continue
+            entries[key] = {'status': status, 'updated_at': 0}
+    
+    return jsonify({'progress': entries})
+
 
 @app.get("/api/sync/pull")
 @android_auth_required
@@ -2649,6 +3091,44 @@ def api_create_deck():
     return jsonify(new_deck)
 
 
+@app.post("/api/decks/<deck_id>")
+def api_update_deck(deck_id: str):
+    """Update a user-created deck."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    data = request.get_json() or {}
+    new_name = str(data.get("name", "")).strip()
+    new_desc = str(data.get("description", "")).strip()
+    
+    if not new_name:
+        return jsonify({"error": "Deck name is required"}), 400
+    
+    decks = _load_decks()
+    
+    # Find deck
+    deck_to_update = None
+    for d in decks:
+        if d.get("id") == deck_id:
+            deck_to_update = d
+            break
+    
+    if not deck_to_update:
+        return jsonify({"error": "Deck not found"}), 404
+    
+    if deck_to_update.get("isBuiltIn"):
+        return jsonify({"error": "Cannot edit built-in deck"}), 400
+    
+    # Update fields
+    deck_to_update["name"] = new_name
+    deck_to_update["description"] = new_desc
+    
+    _save_decks(decks)
+    
+    return jsonify(deck_to_update)
+
+
 @app.delete("/api/decks/<deck_id>")
 def api_delete_deck(deck_id: str):
     """Delete a user-created deck."""
@@ -2681,6 +3161,41 @@ def api_delete_deck(deck_id: str):
     _save_user_cards(uid, user_cards)
     
     return jsonify({"success": True, "deleted": deck_id})
+
+
+@app.post("/api/decks/<deck_id>/set_default")
+def api_set_default_deck(deck_id: str):
+    """Set a deck as the default startup deck."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    decks = _load_decks()
+    
+    # Check deck exists
+    deck_found = False
+    for d in decks:
+        if d.get("id") == deck_id:
+            deck_found = True
+            break
+    
+    if not deck_found:
+        return jsonify({"error": "Deck not found"}), 404
+    
+    # Clear all isDefault flags, then set the new one
+    for d in decks:
+        d["isDefault"] = (d.get("id") == deck_id)
+    
+    _save_decks(decks)
+    
+    # Also save as the user's active deck preference
+    progress = load_progress(uid)
+    settings = progress.get("__settings__", _default_settings())
+    settings["activeDeckId"] = deck_id
+    progress["__settings__"] = settings
+    save_progress(uid, progress)
+    
+    return jsonify({"success": True, "defaultDeckId": deck_id})
 
 
 @app.get("/api/user_cards")
@@ -2801,6 +3316,8 @@ def api_ai_generate_definition():
     
     data = request.get_json() or {}
     term = str(data.get("term", "")).strip()
+    deck_name = str(data.get("deckName", "")).strip() or "General vocabulary"
+    deck_desc = str(data.get("deckDescription", "")).strip()
     
     if not term:
         return jsonify({"error": "Term is required"}), 400
@@ -2808,8 +3325,20 @@ def api_ai_generate_definition():
     if not OPENAI_API_KEY and not GEMINI_API_KEY:
         return jsonify({"error": "No AI provider configured"}), 400
     
-    prompt = f"""Generate 3 different definitions for the term "{term}" in the context of Korean martial arts vocabulary.
-Return ONLY a JSON array with 3 strings, no explanation. Example: ["definition 1", "definition 2", "definition 3"]"""
+    # Build context from deck info
+    context = f"{deck_name}"
+    if deck_desc:
+        context += f" ({deck_desc})"
+    
+    prompt = f"""For the vocabulary term "{term}" in the context of {context}:
+
+Provide 3 translation/definition options. Keep them SHORT and LITERAL:
+- For foreign language words: give the English translation (e.g., "Hola" = "Hello")
+- For English words: give a brief definition (1-5 words)
+- For technical terms: give the simple meaning
+
+Return ONLY a JSON array with 3 short strings. Example: ["Hello", "Hi", "Greetings"]
+Do NOT include explanations or full sentences."""
     
     try:
         if OPENAI_API_KEY:
@@ -2845,7 +3374,8 @@ def api_ai_generate_pronunciation():
     if not OPENAI_API_KEY and not GEMINI_API_KEY:
         return jsonify({"error": "No AI provider configured"}), 400
     
-    prompt = f"""Provide the English phonetic pronunciation for the Korean martial arts term "{term}".
+    prompt = f"""Provide the English phonetic pronunciation for the term "{term}".
+Use simple syllables separated by hyphens that an English speaker can read.
 Return ONLY the pronunciation guide, nothing else. Example: tay-kwon-doh"""
     
     try:
@@ -2878,10 +3408,11 @@ def api_ai_generate_group():
         return jsonify({"error": "No AI provider configured"}), 400
     
     groups_str = ", ".join(existing_groups[:20]) if existing_groups else "None yet"
+    meaning_context = f" (meaning: {meaning})" if meaning else ""
     
-    prompt = f"""Suggest 3 category/group names for the Korean martial arts term "{term}" (meaning: {meaning}).
+    prompt = f"""Suggest 3 category/group names for the vocabulary term "{term}"{meaning_context}.
 Existing groups in the deck: {groups_str}
-Prefer existing groups if they fit. Return ONLY a JSON array with 3 strings. Example: ["Stances", "Kicks", "Commands"]"""
+Prefer existing groups if they fit. Return ONLY a JSON array with 3 strings. Example: ["Category1", "Category2", "Category3"]"""
     
     try:
         if OPENAI_API_KEY:
@@ -2898,6 +3429,314 @@ Prefer existing groups if they fit. Return ONLY a JSON array with 3 strings. Exa
             return jsonify({"groups": [result.strip()]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.post("/api/ai/generate_deck")
+def api_ai_generate_deck():
+    """Generate flashcard deck from keywords, photo, or document using AI."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    if not OPENAI_API_KEY and not GEMINI_API_KEY:
+        return jsonify({"error": "No AI provider configured"}), 400
+    
+    data = request.get_json() or {}
+    gen_type = data.get("type", "keywords")
+    max_cards = min(int(data.get("maxCards", 20)), 200)
+    
+    try:
+        if gen_type == "keywords":
+            keywords = str(data.get("keywords", "")).strip()
+            if not keywords:
+                return jsonify({"error": "Keywords required"}), 400
+            print(f"[AI GEN] Generating {max_cards} cards for keywords: {keywords[:100]}")
+            cards = _ai_generate_from_keywords(keywords, max_cards)
+            print(f"[AI GEN] Generated {len(cards)} cards")
+        
+        elif gen_type == "photo":
+            image_data = data.get("imageData", "")
+            if not image_data:
+                return jsonify({"error": "Image data required"}), 400
+            print(f"[AI GEN] Generating from photo, max {max_cards} cards")
+            cards = _ai_generate_from_image(image_data, max_cards)
+            print(f"[AI GEN] Generated {len(cards)} cards from photo")
+        
+        elif gen_type == "document":
+            doc = data.get("document", {})
+            if not doc.get("content"):
+                return jsonify({"error": "Document content required"}), 400
+            print(f"[AI GEN] Generating from document: {doc.get('name', 'unknown')}")
+            cards = _ai_generate_from_document(doc, max_cards)
+            print(f"[AI GEN] Generated {len(cards)} cards from document")
+        
+        else:
+            return jsonify({"error": "Invalid generation type"}), 400
+        
+        return jsonify({"cards": cards})
+    
+    except Exception as e:
+        print(f"[AI GEN ERROR] {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+def _ai_generate_from_keywords(keywords: str, max_cards: int) -> list:
+    """Generate flashcards from search keywords."""
+    prompt = f"""Generate exactly {max_cards} vocabulary flashcards about: {keywords}
+
+IMPORTANT: For foreign language vocabulary, definitions should be SHORT LITERAL TRANSLATIONS.
+Example for Spanish: "Hola" -> definition: "Hello" (NOT a long explanation)
+
+For each card provide:
+- term: the vocabulary word in the target language
+- definition: SHORT English translation or meaning (1-5 words max)
+- pronunciation: phonetic guide (e.g., "oh-lah"), or empty string if obvious
+- group: category (e.g., "Greetings", "Numbers", "Colors")
+
+Respond ONLY with valid JSON, no markdown or explanation:
+{{"cards": [
+    {{"term": "Hola", "definition": "Hello", "pronunciation": "oh-lah", "group": "Greetings"}},
+    {{"term": "Adiós", "definition": "Goodbye", "pronunciation": "ah-dee-ohs", "group": "Greetings"}}
+]}}"""
+    
+    return _parse_ai_cards_response(_call_ai_chat(prompt))
+
+
+def _ai_generate_from_image(image_data: str, max_cards: int) -> list:
+    """Generate flashcards from image using vision API."""
+    # Extract base64 data if it's a data URL
+    if "," in image_data:
+        image_data = image_data.split(",", 1)[1]
+    
+    prompt = f"""Analyze this image and extract educational content to create up to {max_cards} flashcards.
+Look for: vocabulary terms, definitions, concepts, diagrams with labels, or any study material.
+
+For each item found, create a flashcard with:
+- term: the word or concept
+- definition: clear explanation
+- pronunciation: phonetic guide if applicable, or empty string
+- group: category for organization
+
+Respond ONLY with valid JSON, no markdown:
+{{"cards": [
+    {{"term": "Term", "definition": "Definition", "pronunciation": "", "group": "Category"}}
+]}}"""
+    
+    # Use vision-capable model
+    if OPENAI_API_KEY:
+        result = _call_openai_vision(prompt, image_data)
+    elif GEMINI_API_KEY:
+        result = _call_gemini_vision(prompt, image_data)
+    else:
+        return []
+    
+    return _parse_ai_cards_response(result)
+
+
+def _ai_generate_from_document(doc: dict, max_cards: int) -> list:
+    """Generate flashcards from document content."""
+    content = doc.get("content", "")
+    doc_type = doc.get("type", "text/plain")
+    
+    # For PDF base64, we need vision API
+    if doc_type == "application/pdf" and content.startswith("data:"):
+        if "," in content:
+            content = content.split(",", 1)[1]
+        
+        prompt = f"""Analyze this PDF document and extract educational content to create up to {max_cards} flashcards.
+Extract key terms, definitions, concepts, and important facts.
+
+For each item, create a flashcard with:
+- term: the word or concept  
+- definition: clear explanation
+- pronunciation: phonetic guide if applicable, or empty string
+- group: category for organization
+
+Respond ONLY with valid JSON:
+{{"cards": [{{"term": "Term", "definition": "Definition", "pronunciation": "", "group": "Category"}}]}}"""
+        
+        if OPENAI_API_KEY:
+            result = _call_openai_vision(prompt, content, "application/pdf")
+        elif GEMINI_API_KEY:
+            result = _call_gemini_vision(prompt, content, "application/pdf")
+        else:
+            return []
+        
+        return _parse_ai_cards_response(result)
+    
+    # For text content, use regular chat
+    # Truncate if too long
+    if len(content) > 15000:
+        content = content[:15000] + "...[truncated]"
+    
+    prompt = f"""Analyze this document and create up to {max_cards} educational flashcards from its content:
+
+---DOCUMENT START---
+{content}
+---DOCUMENT END---
+
+For each key term/concept found, create a flashcard with:
+- term: the word or concept
+- definition: clear explanation based on the document
+- pronunciation: phonetic guide if applicable, or empty string
+- group: category for organization
+
+Respond ONLY with valid JSON:
+{{"cards": [{{"term": "Term", "definition": "Definition", "pronunciation": "", "group": "Category"}}]}}"""
+    
+    return _parse_ai_cards_response(_call_ai_chat(prompt))
+
+
+def _call_ai_chat(prompt: str) -> str:
+    """Call the configured AI chat API."""
+    if OPENAI_API_KEY:
+        return _call_openai_chat(prompt, OPENAI_MODEL, OPENAI_API_KEY)
+    elif GEMINI_API_KEY:
+        return _call_gemini_chat(prompt, GEMINI_MODEL, GEMINI_API_KEY)
+    else:
+        raise Exception("No AI provider configured")
+
+
+def _call_openai_vision(prompt: str, image_data: str, media_type: str = "image/jpeg") -> str:
+    """Call OpenAI with vision capability."""
+    url = f"{OPENAI_API_BASE}/v1/chat/completions"
+    
+    # Determine the correct media type prefix
+    if media_type == "application/pdf":
+        data_url = f"data:application/pdf;base64,{image_data}"
+    else:
+        data_url = f"data:image/jpeg;base64,{image_data}"
+    
+    payload = {
+        "model": "gpt-4o",  # Use vision-capable model
+        "messages": [{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": data_url}}
+            ]
+        }],
+        "max_tokens": 4000,
+        "temperature": 0.7
+    }
+    
+    r = requests.post(
+        url,
+        headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+        json=payload,
+        timeout=60
+    )
+    
+    if r.status_code != 200:
+        raise Exception(f"OpenAI error: {r.status_code}")
+    
+    data = r.json()
+    return data.get("choices", [{}])[0].get("message", {}).get("content", "")
+
+
+def _call_gemini_vision(prompt: str, image_data: str, media_type: str = "image/jpeg") -> str:
+    """Call Gemini with vision capability."""
+    # Use gemini-1.5-flash or gemini-1.5-pro for vision
+    model = "gemini-1.5-flash"
+    url = f"{GEMINI_API_BASE}/v1beta/models/{model}:generateContent"
+    
+    payload = {
+        "contents": [{
+            "parts": [
+                {"text": prompt},
+                {"inline_data": {"mime_type": media_type, "data": image_data}}
+            ]
+        }],
+        "generationConfig": {
+            "temperature": 0.7,
+            "maxOutputTokens": 4000
+        }
+    }
+    
+    r = requests.post(
+        url,
+        headers={"Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY},
+        json=payload,
+        timeout=60
+    )
+    
+    if r.status_code != 200:
+        raise Exception(f"Gemini error: {r.status_code}")
+    
+    data = r.json()
+    try:
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+    except:
+        return ""
+
+
+def _parse_ai_cards_response(response: str) -> list:
+    """Parse AI response to extract cards array."""
+    import re
+    
+    if not response:
+        print("[AI PARSE] Empty response")
+        return []
+    
+    print(f"[AI PARSE] Response length: {len(response)}, first 200 chars: {response[:200]}")
+    
+    # Try to find JSON object in response
+    response = response.strip()
+    
+    # Remove markdown code blocks if present
+    response = re.sub(r'^```json\s*', '', response)
+    response = re.sub(r'^```\s*', '', response)
+    response = re.sub(r'\s*```$', '', response)
+    response = response.strip()
+    
+    cards = []
+    
+    try:
+        # Try parsing as complete JSON
+        data = json.loads(response)
+        cards = data.get("cards", [])
+        print(f"[AI PARSE] Parsed JSON directly, found {len(cards)} cards")
+    except Exception as e:
+        print(f"[AI PARSE] Direct JSON parse failed: {e}")
+        # Try to find cards array in response
+        match = re.search(r'"cards"\s*:\s*\[', response)
+        if match:
+            # Find matching closing bracket
+            start = match.end() - 1
+            bracket_count = 0
+            end = start
+            for i, c in enumerate(response[start:]):
+                if c == '[':
+                    bracket_count += 1
+                elif c == ']':
+                    bracket_count -= 1
+                    if bracket_count == 0:
+                        end = start + i + 1
+                        break
+            try:
+                cards = json.loads(response[start:end])
+                print(f"[AI PARSE] Extracted cards array, found {len(cards)} cards")
+            except Exception as e2:
+                print(f"[AI PARSE] Cards array parse failed: {e2}")
+                cards = []
+        else:
+            print("[AI PARSE] No 'cards' key found in response")
+            cards = []
+    
+    # Validate and normalize cards
+    valid_cards = []
+    for card in cards:
+        if isinstance(card, dict) and card.get("term") and card.get("definition"):
+            valid_cards.append({
+                "term": str(card.get("term", "")).strip(),
+                "definition": str(card.get("definition", "")).strip(),
+                "pronunciation": str(card.get("pronunciation", "")).strip(),
+                "group": str(card.get("group", "General")).strip() or "General"
+            })
+    
+    return valid_cards
 
 
 # --- Common public files (avoid 404 noise) ---
@@ -2921,6 +3760,228 @@ def security_txt():
 @app.get("/<path:filename>")
 def static_files(filename):
     return send_from_directory("static", filename)
+
+
+# ============ ANDROID SYNC API ============
+
+@app.get("/api/vocabulary")
+def api_get_vocabulary():
+    """Get the kenpo vocabulary file (for Android app sync)."""
+    # Return the canonical kenpo_words.json from data folder
+    vocab_path = DATA_DIR / "kenpo_words.json"
+    if vocab_path.exists():
+        with open(vocab_path, "r", encoding="utf-8") as f:
+            return jsonify(json.load(f))
+    else:
+        # Fallback: load from cards if vocab file doesn't exist
+        cards, status = load_cards_cached()
+        if status == "ok":
+            # Convert to the format expected by Android
+            vocab = []
+            for c in cards:
+                vocab.append({
+                    "group": c.get("group", ""),
+                    "subgroup": c.get("subgroup"),
+                    "term": c.get("term", ""),
+                    "pron": c.get("pron"),
+                    "meaning": c.get("meaning", "")
+                })
+            return jsonify(vocab)
+        return jsonify({"error": "Vocabulary not available"}), 500
+
+
+@app.get("/api/sync/decks")
+def api_sync_get_decks():
+    """Get all decks for Android sync (requires auth)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    decks = _load_decks()
+    
+    # Update card counts for user-created decks
+    user_cards = _load_user_cards(uid)
+    for deck in decks:
+        if not deck.get("isBuiltIn"):
+            deck["cardCount"] = len([c for c in user_cards if c.get("deckId") == deck.get("id")])
+    
+    # Get user's active deck setting
+    progress = load_progress(uid)
+    settings = progress.get("__settings__", _default_settings())
+    active_deck_id = settings.get("activeDeckId", "kenpo")
+    
+    return jsonify({
+        "decks": decks,
+        "activeDeckId": active_deck_id
+    })
+
+
+@app.post("/api/sync/decks")
+def api_sync_push_decks():
+    """Push deck changes from Android (requires auth)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    data = request.get_json() or {}
+    incoming_decks = data.get("decks", [])
+    active_deck_id = data.get("activeDeckId", "")
+    
+    if not incoming_decks:
+        return jsonify({"error": "No decks provided"}), 400
+    
+    # Load existing decks
+    existing_decks = _load_decks()
+    existing_by_id = {d["id"]: d for d in existing_decks}
+    
+    # Merge incoming decks (Android wins for non-built-in decks)
+    for incoming in incoming_decks:
+        deck_id = incoming.get("id")
+        if not deck_id:
+            continue
+        
+        # Skip built-in decks
+        if incoming.get("isBuiltIn"):
+            continue
+        
+        if deck_id in existing_by_id:
+            # Update existing
+            existing = existing_by_id[deck_id]
+            existing["name"] = incoming.get("name", existing["name"])
+            existing["description"] = incoming.get("description", existing["description"])
+            existing["isDefault"] = incoming.get("isDefault", existing.get("isDefault", False))
+            existing["updatedAt"] = int(time.time())
+        else:
+            # Add new deck
+            new_deck = {
+                "id": deck_id,
+                "name": incoming.get("name", "Untitled"),
+                "description": incoming.get("description", ""),
+                "isDefault": incoming.get("isDefault", False),
+                "isBuiltIn": False,
+                "sourceFile": None,
+                "cardCount": incoming.get("cardCount", 0),
+                "createdAt": incoming.get("createdAt", int(time.time())),
+                "updatedAt": int(time.time())
+            }
+            existing_decks.append(new_deck)
+    
+    _save_decks(existing_decks)
+    
+    # Update active deck setting if provided
+    if active_deck_id:
+        progress = load_progress(uid)
+        settings = progress.get("__settings__", _default_settings())
+        settings["activeDeckId"] = active_deck_id
+        progress["__settings__"] = settings
+        save_progress(uid, progress)
+    
+    return jsonify({"success": True, "deckCount": len(existing_decks)})
+
+
+@app.get("/api/sync/user_cards")
+def api_sync_get_user_cards():
+    """Get all user-created cards for Android sync (requires auth)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    deck_id = request.args.get("deck_id", "")
+    cards = _load_user_cards(uid)
+    
+    if deck_id:
+        cards = [c for c in cards if c.get("deckId") == deck_id]
+    
+    return jsonify({"cards": cards})
+
+
+@app.post("/api/sync/user_cards")
+def api_sync_push_user_cards():
+    """Push user-created cards from Android (requires auth)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    data = request.get_json() or {}
+    incoming_cards = data.get("cards", [])
+    deck_id = data.get("deckId", "")
+    replace_all = data.get("replaceAll", False)  # If true, replace all cards for this deck
+    
+    if not incoming_cards:
+        return jsonify({"error": "No cards provided"}), 400
+    
+    existing_cards = _load_user_cards(uid)
+    
+    if replace_all and deck_id:
+        # Remove all existing cards for this deck
+        existing_cards = [c for c in existing_cards if c.get("deckId") != deck_id]
+    
+    # Build lookup of existing cards by ID
+    existing_by_id = {c["id"]: c for c in existing_cards}
+    
+    added = 0
+    updated = 0
+    
+    for incoming in incoming_cards:
+        card_id = incoming.get("id")
+        if not card_id:
+            # Generate new ID
+            card_id = _generate_card_id()
+            incoming["id"] = card_id
+        
+        if card_id in existing_by_id:
+            # Update existing card
+            existing = existing_by_id[card_id]
+            existing["term"] = incoming.get("term", existing["term"])
+            existing["meaning"] = incoming.get("meaning", existing["meaning"])
+            existing["pron"] = incoming.get("pron", existing.get("pron", ""))
+            existing["group"] = incoming.get("group", existing.get("group", ""))
+            existing["deckId"] = incoming.get("deckId", existing.get("deckId", "kenpo"))
+            existing["updatedAt"] = int(time.time())
+            updated += 1
+        else:
+            # Add new card
+            new_card = {
+                "id": card_id,
+                "term": incoming.get("term", ""),
+                "meaning": incoming.get("meaning", ""),
+                "pron": incoming.get("pron", ""),
+                "group": incoming.get("group", ""),
+                "subgroup": incoming.get("subgroup", ""),
+                "deckId": incoming.get("deckId", deck_id or "kenpo"),
+                "isUserCreated": True,
+                "createdAt": incoming.get("createdAt", int(time.time())),
+                "updatedAt": int(time.time())
+            }
+            existing_cards.append(new_card)
+            added += 1
+    
+    _save_user_cards(uid, existing_cards)
+    
+    return jsonify({
+        "success": True,
+        "added": added,
+        "updated": updated,
+        "totalCards": len(existing_cards)
+    })
+
+
+@app.delete("/api/sync/user_cards/<card_id>")
+def api_sync_delete_user_card(card_id: str):
+    """Delete a user-created card (for Android sync)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    cards = _load_user_cards(uid)
+    original_count = len(cards)
+    cards = [c for c in cards if c.get("id") != card_id]
+    
+    if len(cards) == original_count:
+        return jsonify({"error": "Card not found"}), 404
+    
+    _save_user_cards(uid, cards)
+    return jsonify({"success": True, "deleted": card_id})
 
 
 def _load_api_keys_on_startup():
