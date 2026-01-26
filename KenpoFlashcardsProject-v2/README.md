@@ -7,7 +7,7 @@ An Android flash-card app designed to help students of **American Kenpo Karate**
 
 This app focuses on **active recall**, **progress tracking**, and **organized learning**, making it ideal for beginners through advanced practitioners.
 
-**Current Version:** v5.2.0 (build 34)
+**Current Version:** v5.3.1 (build 36)
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -201,6 +201,7 @@ app/src/main/
 
 | Version | Code | Key Changes |
 |---------|------|-------------|
+| **5.3.1** | 36 | Changed icons and logos from Kenpo to Advanced Flashcards |
 | **5.2.0** | 34 | Updated server data paths for Windows installer location |
 | **5.1.1** | 33 | Deck switching fix, user cards in deck, AI toggles in Settings, file upload feedback |
 | **5.1.0** | 32 | AI Generate buttons for definitions/pronunciations/groups, user cards management, Create Deck AI search |

@@ -1,5 +1,12 @@
 # Changelog — KenpoFlashcardsProject-v2 (Android)
 
+## 5.3.1 (build 36) — 2026-01-26
+
+### Changed
+- Changed icons and logos from Kenpo to Advanced Flashcards
+
+---
+
 ## 5.3.0 (build 35) — 2026-01-24
 
 ### Added — Web Server Sync Integration
