@@ -18,7 +18,7 @@ A Windows **installer** build of the Advanced Flashcards WebApp Server + Tray La
 
 This release was built in **steps** while the v3.1.0 cycle is in-progress. Documentation stays on **v3.1.0 (build 11)**, and the items below reflect the completed steps:
 
-- **Step 1 (v3.1.0.1)**: Rebrand from “Kenpo Flashcards” to **Advanced Flashcards WebApp Server**. Runtime data moved out of Program Files to:  
+- **Step 1 (v3.1.0.1 + v3.1.0.2)**: Rebrand from “Kenpo Flashcards” to **Advanced Flashcards WebApp Server**. Runtime data moved out of Program Files to:  
   `%LOCALAPPDATA%\Advanced Flashcards WebApp Server\data`
 - **Step 2 (v3.1.0.3)**: Builder stages data from LOCALAPPDATA into `packaging\build_data` (when present) with repo + local logging and safe backups.
 - **Step 3 (v3.1.0.4)**: Adds a build-data source flag; after a successful build, `root\data` is backed up then replaced from flagged `packaging\build_data` so the **next package seeds new installs** with current data. Logs moved to:  
@@ -190,7 +190,7 @@ The tool creates automatic backups in `.sync_backups/` before making changes.
 ## Install (recommended)
 
 1. On the target PC, run the installer:
-   - `StudyFlashcardsWebSetup.exe`
+   - `AdvancedFlashcardsWebAppServer-<AppVersion>.exe`
 2. If Windows SmartScreen prompts:
    - Click **More info** → **Run anyway** (expected for unsigned installers).
 3. After install, use:
@@ -228,33 +228,35 @@ From the project root:
 
 1. **Run pre-build data sync** (copies data from dev location if available):
    ```
-   packaging\pre_build.bat
+   packaging\1. pre_build.bat
    ```
 
 2. **Build the PyInstaller EXE:**
    ```
-   packaging\build_exe.bat
+   packaging\2. build_exe.bat
    ```
 
 3. **Build the installer:**
    ```
-   packaging\build_installer_inno.bat
+   packaging\3. build_installer_inno.bat
    ```
 
-### Data sources (pre_build.bat)
+### Data sources (1. pre_build.bat)
 
-The pre-build script looks for data in this order:
+The pre-build script stages data in this order:
 
-1. **Dev location:** `C:\Users\Sidscri\Documents\GitHub\sidscri-apps\StudyFlashcardsWebServer\data`
-2. **Android project:** `C:\Users\Sidscri\Documents\GitHub\sidscri-apps\StudyFlashcardsProject-v2\app\src\main\assets\kenpo_words.json`
-3. **Fallback:** Uses existing `data\` folder in project root
+1. **LOCALAPPDATA user data (preferred):**
+   `%LOCALAPPDATA%\Advanced Flashcards WebApp Server\data\`
+   - If present, it is staged into `packaging\build_data\` (and flagged as sourced from LOCALAPPDATA)
+2. **Fallback (fresh install behavior):**
+   Uses the project’s existing `root\data\` folder when LOCALAPPDATA data does not exist.
 
-Copied data goes to `build_data\` folder, which the build process uses if present.
+When `packaging\build_data\` is present and flagged, the build process uses it as the data source; otherwise it defaults to `root\data\`.
 
 ### Build output
 
-- Installer: `packaging\output\StudyFlashcardsWebSetup.exe`
-- EXE folder: `dist\StudyFlashcardsTray\`
+- Installer: `packaging\output\AdvancedFlashcardsWebAppServer-<AppVersion>.exe`
+- EXE folder: `dist\AdvancedFlashcardsWebAppServer\`
 
 ## Uninstall
 
@@ -267,4 +269,4 @@ Use:
 
 ## Startup
 
-**Recommended:** enable "Run server in background at login (Scheduled Task - recommended)" during install. This creates a Task Scheduler entry (not a true Windows Service) that starts the server automatically at user logon with highest privileges and a short delay.
+**Tip:** Choose the startup option that matches your package variant (Service/WinSW vs Task Scheduler).

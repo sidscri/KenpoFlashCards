@@ -1,5 +1,0 @@
-START Fri 01/16/2026  0:46:01.73
-BASE=C:\Users\Sidscri\Documents\GitHub\sidscri-apps
-SRC=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged_in_exe_msi
-VERJSON=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged_in_exe_msi\version.json
-ERROR: version.json not found

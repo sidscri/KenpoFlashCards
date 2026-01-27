@@ -1,8 +1,0 @@
-{
-  "host": "0.0.0.0",
-  "port": 8009,
-  "open_browser": true,
-  "browser_url": "http://localhost:8009",
-  "_comment_host": "Use '127.0.0.1' for localhost only, '0.0.0.0' or '::' for all interfaces, or a specific IP like '192.168.0.129'",
-  "_comment_browser_url": "The URL opened in your browser. Change to your Tailscale/LAN IP if accessing remotely"
-}

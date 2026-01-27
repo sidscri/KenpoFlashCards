@@ -6,31 +6,52 @@ All notable changes to the Windows packaged/installer distribution are documente
 
 This release was completed in steps. Documentation stays on **v3.1.0 (build 11)** while the step work is in progress.
 
-### Step 1 — Rebrand + move runtime data (v3.1.0.1)
+### Step 1 — Rebrand + move runtime data (v3.1.0.1 + v3.1.0.2)
+
+#### Changed
 - Rebranded the packaged app and installer to **Advanced Flashcards WebApp Server** (no more “Kenpo Flashcards”).
 - Runtime data moved out of Program Files; the app now uses:  
   `%LOCALAPPDATA%\Advanced Flashcards WebApp Server\data`
-- Tray executable and installer naming updated to match branding.
+
+#### Added
+- Tray executable naming updated to match branding: `AdvancedFlashcardsWebAppServer.exe`
+- Installer output naming updated to include version: `AdvancedFlashcardsWebAppServer-<AppVersion>.exe`
+
+#### Fixed
+- Ensured the packaged build consistently points at the per-user LOCALAPPDATA data location (seeded from bundled data on first run).
 
 ### Step 2 — Builder stages LOCALAPPDATA data (v3.1.0.3)
-- `packaging\1. pre_build.bat`: if local user data exists at `%LOCALAPPDATA%\Advanced Flashcards WebApp Server\data`, stage it into `packaging\build_data` (otherwise treat as fresh install).
+
+#### Added
+- `packaging\1. pre_build.bat`: if local user data exists at  
+  `%LOCALAPPDATA%\Advanced Flashcards WebApp Server\data`, stage it into `packaging\build_data` (otherwise treat as fresh install).
 - Repo + local logs added for data staging and build decisions.
 
 ### Step 3 — Build-data flag + seed next package (v3.1.0.4)
+
+#### Added
 - Adds a flag in `packaging\build_data` to indicate it was sourced from LOCALAPPDATA.
+
+#### Changed
 - After a successful build, `root\data` is backed up then replaced from flagged `packaging\build_data` so the next package includes the newest data for new installs.
 - Local log location moved to:  
   `%LOCALAPPDATA%\Advanced Flashcards WebApp Server\log\Advanced Flashcards WebApp Server logs\`
 
 ### Step 4 — Update behavior + backups + startup options (v3.1.0.5)
+
+#### Changed
 - Updates prefer **existing local data**; packaged data only seeds missing files (and only safe reference files may be overwritten if packaged is newer).
-- Backups added:
+
+#### Added
+- Backups:
   - Update backups: `...\DataBackups\Data_Updated_<Date>_<AppVersion>\data.zip`
   - Auto backups (on change + interval): `...\DataBackups\Data_Auto_<Date>_<AppVersion>\data.zip` (keep last 10)
   - On-demand backup (tray): `Backup Now`
-- Startup options available (tray + installer tasks):
+- Startup options (tray + installer tasks):
   - Start with Windows (HKCU Run)
   - Background at login (Task Scheduler)
+
+#### Fixed
 - Tray “Restart” now actually relaunches the app instead of only killing it.
 - Tray Restart will restart the Windows Service when installed (otherwise it relaunches the tray app).
 

@@ -1,8 +1,0 @@
-{
-  "description": "Source of Truth for admin users. Both Android app and web server reference this file.",
-  "updated": "2026-01-13",
-  "admin_usernames": [
-    "sidscri"
-  ],
-  "notes": "Usernames are case-insensitive. Add new admins by username (not user ID)."
-}

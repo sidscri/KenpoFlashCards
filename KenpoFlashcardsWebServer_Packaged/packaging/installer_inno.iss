@@ -25,8 +25,8 @@ SetupIconFile=..\Kenpo_Vocabulary_Study_Flashcards.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "Additional icons:"; Flags: unchecked
-Name: "startup"; Description: "Start with Windows (current user)"; Flags: unchecked
+Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "Additional icons:"
+Name: "startup"; Description: "Start with Windows (current user)"
 
 Name: "service_winsw"; Description: "Run server as a Windows Service (WinSW wrapper - advanced)"; Flags: checkedonce
 [Files]
@@ -50,6 +50,6 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: no
 
 
 [UninstallRun]
-Filename: "powershell"; Parameters: '-NoProfile -ExecutionPolicy Bypass -File "{app}\service\uninstall_service_winsw.ps1" -AppDir "{app}" -ServiceName "AdvancedFlashcardsWebAppServer"'; Tasks: service_winsw; Flags: runhidden waituntilterminated
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\service\uninstall_service_winsw.ps1"" -AppDir ""{app}"" -ServiceName ""AdvancedFlashcardsWebAppServer"""; Tasks: service_winsw; Flags: runhidden waituntilterminated
 
 [Code]
