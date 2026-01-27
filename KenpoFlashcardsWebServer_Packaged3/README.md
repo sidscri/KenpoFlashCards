@@ -24,7 +24,6 @@ This release was built in **steps** while the v3.1.0 cycle is in-progress. Docum
 - **Step 3 (v3.1.0.4)**: Adds a build-data source flag; after a successful build, `root\data` is backed up then replaced from flagged `packaging\build_data` so the **next package seeds new installs** with current data. Logs moved to:  
   `%LOCALAPPDATA%\Advanced Flashcards WebApp Server\log\Advanced Flashcards WebApp Server logs\`
 - **Step 4 (v3.1.0.5)**: Update/install behavior: **local data wins**, packaged data seeds missing files; backups on update + on-demand + auto (keep last 10); tray now includes **Start with Windows** (default ON) and restart options: **Restart server**, **Restart service**, or **Restart both**; `packaging\2. build_exe.bat` now shows **live pip + PyInstaller progress** and **pauses on failure**; on **success it closes automatically**.
-- **Step 5 (v3.1.0.6)**: Packaging stability + visuals: EXE icon uses assets under `static\res\webappservericons\` (no changes to browser/web icons), build logs always land in `packaging\logs\build_exe_<timestamp>_v<version>.log`, and `2. build_exe.bat` prints clean step-by-step progress (full details in the log).
 
 **This package variant:** Windows Service option via WinSW wrapper (advanced)
 

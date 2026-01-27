@@ -2,168 +2,163 @@
 setlocal EnableExtensions EnableDelayedExpansion
 
 REM =============================================================================
-REM Advanced Flashcards WebApp Server - 2. build_exe.bat
+REM  Advanced Flashcards WebApp Server - 2. build_exe.bat
 REM
-REM Goals:
-REM   - Clean, high-level progress output (details go to the log)
-REM   - Logs are written to: <project>\packaging\logs
-REM   - Uses ONLY: <project>\data  (no staging / swapping)
-REM   - Auto-closes on success (no pause); stays open on failure
+REM  Goals (per Sidney):
+REM    - venv, build, dist live in project ROOT (\KenpoFlashcardsWebServer_Packaged\)
+REM    - kenpo_words.json stays in \data\ (auto-copy from Android assets if missing)
+REM    - version.json stays in repo root
+REM    - Logs always go to: \packaging\logs\build_exe_<timestamp>_v<version>.log
+REM    - Quieter console output (section progress), full details in the log
+REM    - Window closes on SUCCESS; pauses on FAIL
 REM =============================================================================
 
 set "SCRIPT_DIR=%~dp0"
-set "PROJ_DIR=%SCRIPT_DIR%.."
-pushd "%PROJ_DIR%" || (echo [ERROR] Could not cd to project root. & exit /b 1)
+
+REM --- Resolve project root (one level up from /packaging) ---
+pushd "%SCRIPT_DIR%.." >nul || (echo [ERROR] Could not cd to project root. & goto :FAIL_EARLY)
+set "PROJ_DIR=%CD%"
 
 set "VENV_DIR=%PROJ_DIR%\.venv"
 set "PY_EXE=%VENV_DIR%\Scripts\python.exe"
 set "REQFILE=%SCRIPT_DIR%requirements_packaging.txt"
 set "SPECFILE=%PROJ_DIR%\packaging\pyinstaller\kenpo_tray.spec"
 
-set "ROOT_DATA=%PROJ_DIR%\data"
-set "DATA_DIR=%ROOT_DATA%"
+set "DATA_DIR=%PROJ_DIR%\data"
+set "ANDROID_ASSETS=%PROJ_DIR%\..\KenpoFlashcardsProject-v2\app\src\main\assets"
 
-REM Local app logs (kept for compatibility; not used for build output)
-set "APPDATA_ROOT=%LOCALAPPDATA%\Advanced Flashcards WebApp Server"
-set "LOCAL_LOG_DIR=%APPDATA_ROOT%\log\Advanced Flashcards WebApp Server logs"
-set "LOCAL_LOG_FILE=%LOCAL_LOG_DIR%\builder.log"
-
-REM Repo build logs (requested)
-set "REPO_LOG_DIR=%SCRIPT_DIR%logs"
-
-call :STAMP
-set "STAMP=%STAMP%"
-
-REM Determine version (best-effort)
+REM --- Read version/build from version.json (supports either .version or .appVersion) ---
 set "APP_VERSION=unknown"
-for /f "usebackq tokens=* delims=" %%v in (`powershell -NoProfile -Command ^
-  "$p = Join-Path '%PROJ_DIR%' 'version.json'; if(Test-Path $p){ (Get-Content $p -Raw | ConvertFrom-Json).version }" 2^>nul`) do set "APP_VERSION=%%v"
+set "BUILD_NUM="
+for /f "usebackq tokens=1,2 delims=|" %%A in (`powershell -NoProfile -Command "$p=Join-Path '%PROJ_DIR%' 'version.json'; if(Test-Path $p){try{$j=Get-Content $p -Raw|ConvertFrom-Json; $v=($j.version); if(-not $v){$v=$j.appVersion}; $b=($j.build); if(-not $b){$b=$j.buildNumber}; if($v){Write-Output ($v + '|' + $b)}}catch{}}" 2^>nul`) do (
+  if not "%%A"=="" set "APP_VERSION=%%A"
+  if not "%%B"=="" set "BUILD_NUM=%%B"
+)
 
-call :ENSURE_DIR "%REPO_LOG_DIR%"
-set "REPO_LOG=%REPO_LOG_DIR%\build_exe_%STAMP%_v%APP_VERSION%.log"
+REM --- Log file (always) ---
+for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set "STAMP=%%i"
+set "LOG_DIR=%SCRIPT_DIR%logs"
+if not exist "%LOG_DIR%" mkdir "%LOG_DIR%" >nul 2>nul
+set "LOG_FILE=%LOG_DIR%\build_exe_%STAMP%_v%APP_VERSION%.log"
 
-call :ENSURE_DIR "%LOCAL_LOG_DIR%"
+call :LOG "============================================================"
+call :LOG " Advanced Flashcards WebApp Server - Build EXE"
+call :LOG "============================================================"
+call :LOG "Project root : %PROJ_DIR%"
+call :LOG "Version      : %APP_VERSION%"
+if defined BUILD_NUM call :LOG "Build        : %BUILD_NUM%"
+call :LOG "Data dir     : %DATA_DIR%"
+call :LOG "Spec file    : %SPECFILE%"
+call :LOG "Log          : %LOG_FILE%"
+call :LOG ""
 
-REM Validate inputs (do not move files)
-if not exist "%PY_EXE%" (
-  echo [INFO] Virtualenv not found. Creating at "%VENV_DIR%"...
-  call :ENSURE_VENV
-  if errorlevel 1 (
-    echo [ERROR] Failed to create virtualenv / install base tools.
-    goto :FAIL
+echo.
+echo ============================================================
+echo  Build EXE  (v%APP_VERSION% %BUILD_NUM%)
+echo ============================================================
+echo [INFO] Log: %LOG_FILE%
+echo.
+
+REM --- Preflight ---
+if not exist "%REQFILE%"  (call :FAIL "Missing requirements file: %REQFILE%")
+if not exist "%SPECFILE%" (call :FAIL "Missing spec file: %SPECFILE%")
+if not exist "%DATA_DIR%" (call :FAIL "Missing data directory: %DATA_DIR%")
+
+REM --- Ensure kenpo_words.json is present in \data\ ---
+if not exist "%DATA_DIR%\kenpo_words.json" (
+  if exist "%ANDROID_ASSETS%\kenpo_words.json" (
+    call :LOG "[INFO] kenpo_words.json missing in data - copying from Android assets"
+    copy /y "%ANDROID_ASSETS%\kenpo_words.json" "%DATA_DIR%\kenpo_words.json" >>"%LOG_FILE%" 2>>&1
   )
 )
-if not exist "%REQFILE%" (
-  echo [ERROR] Missing: "%REQFILE%"
-  goto :FAIL
-)
-if not exist "%SPECFILE%" (
-  echo [ERROR] Missing: "%SPECFILE%"
-  goto :FAIL
-)
-if not exist "%PROJ_DIR%\version.json" (
-  echo [ERROR] Missing: "%PROJ_DIR%\version.json"
-  goto :FAIL
-)
 if not exist "%DATA_DIR%\kenpo_words.json" (
-  echo [ERROR] Missing: "%DATA_DIR%\kenpo_words.json"
-  echo         (Per Step 5, kenpo_words.json must live in <project>\data\)
-  goto :FAIL
+  call :FAIL "kenpo_words.json not found. Expected: %DATA_DIR%\kenpo_words.json"
 )
 
-REM Tell PyInstaller/spec where the data folder is
+REM --- Clean build artifacts (ROOT build/dist) ---
+call :STEP "Clean build artifacts (root\\build, root\\dist)"
+if exist "%PROJ_DIR%\build" rmdir /s /q "%PROJ_DIR%\build" >>"%LOG_FILE%" 2>>&1
+if exist "%PROJ_DIR%\dist"  rmdir /s /q "%PROJ_DIR%\dist"  >>"%LOG_FILE%" 2>>&1
+
+REM --- Ensure venv in ROOT ---
+call :STEP "Ensure virtualenv (root\\.venv)"
+if not exist "%PY_EXE%" (
+  call :LOG "[INFO] Creating venv at: %VENV_DIR%"
+  call :FIND_SYS_PY
+  if not defined SYS_PY call :FAIL "No system Python found (py/python). Install Python or enable the py launcher."
+  cmd /c "%SYS_PY% -m venv \"%VENV_DIR%\"" >>"%LOG_FILE%" 2>>&1
+)
+if not exist "%PY_EXE%" (
+  call :FAIL "Virtualenv python not found after venv creation: %PY_EXE%"
+)
+
+REM --- Provide data dir to spec (spec reads env var AFS_DATA_DIR) ---
 set "AFS_DATA_DIR=%DATA_DIR%"
 
-echo.
-echo ============================================================
-echo  Advanced Flashcards WebApp Server - Build EXE
-echo  Version: %APP_VERSION%   Stamp: %STAMP%
-echo  Data   : %AFS_DATA_DIR%
-echo  Log    : %REPO_LOG%
-echo ============================================================
-echo.
+REM --- Install packaging deps (quiet console, detailed log) ---
+call :STEP "Upgrade pip/setuptools/wheel"
+cmd /c "\"%PY_EXE%\" -m pip --version" >>"%LOG_FILE%" 2>>&1
+cmd /c "\"%PY_EXE%\" -m pip install --upgrade pip setuptools wheel" >>"%LOG_FILE%" 2>>&1
+if errorlevel 1 call :FAIL "pip upgrade failed (see log)"
 
-REM Start log
-echo ============================================================ > "%REPO_LOG%"
-echo Build EXE - %DATE% %TIME%>> "%REPO_LOG%"
-echo Project: %PROJ_DIR%>> "%REPO_LOG%"
-echo Version: %APP_VERSION%>> "%REPO_LOG%"
-echo Data   : %AFS_DATA_DIR%>> "%REPO_LOG%"
-echo ============================================================>> "%REPO_LOG%"
-echo.>> "%REPO_LOG%"
+call :STEP "Install packaging requirements"
+cmd /c "\"%PY_EXE%\" -m pip install -r \"%REQFILE%\"" >>"%LOG_FILE%" 2>>&1
+if errorlevel 1 call :FAIL "pip install -r requirements_packaging.txt failed (see log)"
 
-echo [1/3] Ensuring packaging dependencies...
-echo     (details in log)
-"%PY_EXE%" -m pip install -r "%REQFILE%" >> "%REPO_LOG%" 2>&1
-if errorlevel 1 (
-  echo [ERROR] Packaging requirements install failed.
-  goto :FAIL
-)
+REM --- Build EXE (ROOT build/dist) ---
+call :STEP "Run PyInstaller"
+cmd /c "\"%PY_EXE%\" -m PyInstaller \"%SPECFILE%\" --noconfirm --clean --distpath \"%PROJ_DIR%\dist\" --workpath \"%PROJ_DIR%\build\"" >>"%LOG_FILE%" 2>>&1
+if errorlevel 1 call :FAIL "PyInstaller failed (see log)"
 
-echo [2/3] Building EXE (PyInstaller)...
-echo     (this can take a bit - details in log)
-"%PY_EXE%" -m PyInstaller "%SPECFILE%" --noconfirm >> "%REPO_LOG%" 2>&1
-set "PYI_RC=%ERRORLEVEL%"
-echo PyInstaller exit code: %PYI_RC%>> "%REPO_LOG%"
-if not "%PYI_RC%"=="0" (
-  echo [ERROR] PyInstaller failed (exit code %PYI_RC%).
-  goto :FAIL
-)
-
-echo [3/3] Verifying output...
-set "OUT_EXE=%PROJ_DIR%\dist\AdvancedFlashcardsWebAppServer\AdvancedFlashcardsWebAppServer.exe"
-if not exist "%OUT_EXE%" (
-  echo [ERROR] Build completed but output EXE not found:
-  echo         "%OUT_EXE%"
-  goto :FAIL
-)
-
-echo.>> "%REPO_LOG%"
-echo [DONE] Output: %OUT_EXE%>> "%REPO_LOG%"
-echo Build completed successfully.>> "%REPO_LOG%"
+call :LOG "[OK] build_exe completed"
+call :LOG "Output: %PROJ_DIR%\\dist\\AdvancedFlashcardsWebAppServer\\AdvancedFlashcardsWebAppServer.exe"
 
 echo.
 echo [DONE] Build complete.
-echo Output: %OUT_EXE%
-echo Log   : %REPO_LOG%
+echo        Output: dist\AdvancedFlashcardsWebAppServer\AdvancedFlashcardsWebAppServer.exe
 echo.
 
-popd
+popd >nul
+exit /b 0
+
+REM ======================= helpers =======================
+
+:STEP
+set "_MSG=%~1"
+echo [STEP] %_MSG%
+call :LOG "[STEP] %_MSG%"
+exit /b 0
+
+:LOG
+set "_L=%~1"
+echo %_L%>>"%LOG_FILE%"
+exit /b 0
+
+:FIND_SYS_PY
+set "SYS_PY="
+where py >nul 2>nul && set "SYS_PY=py -3"
+if not defined SYS_PY where python >nul 2>nul && set "SYS_PY=python"
+if not defined SYS_PY where python3 >nul 2>nul && set "SYS_PY=python3"
 exit /b 0
 
 :FAIL
+set "_E=%~1"
+call :LOG "[FAIL] %_E%"
+call :LOG "Log: %LOG_FILE%"
+
 echo.
 echo [FAIL] Build did not complete.
-echo Log: %REPO_LOG%
+echo %_E%
+echo Log: %LOG_FILE%
 echo.
-REM Show a short tail to make it easier to spot the failure without scrolling
-powershell -NoProfile -Command "if(Test-Path '%REPO_LOG%'){ '--- log tail (last 40 lines) ---'; Get-Content '%REPO_LOG%' -Tail 40 }" 2>nul
-echo.
+
+REM Print last ~50 lines for quick view
+powershell -NoProfile -Command "if(Test-Path '%LOG_FILE%'){Get-Content '%LOG_FILE%' -Tail 50}" 2>nul
+
+popd >nul
 pause
-popd
 exit /b 1
 
-
-:ENSURE_VENV
-REM Create a clean virtualenv in the repo root (.venv) if missing.
-if exist "%VENV_DIR%" (
-  rmdir /s /q "%VENV_DIR%" >> "%REPO_LOG%" 2>&1
-)
-set "PYLAUNCH=py -3.8"
-%PYLAUNCH% -V >nul 2>&1 || set "PYLAUNCH=py -3"
-%PYLAUNCH% -V >nul 2>&1 || set "PYLAUNCH=python"
-echo [INFO] Using Python launcher: %PYLAUNCH% >> "%REPO_LOG%"
-%PYLAUNCH% -m venv "%VENV_DIR%" >> "%REPO_LOG%" 2>&1
-if errorlevel 1 exit /b 1
-if not exist "%PY_EXE%" exit /b 1
-"%PY_EXE%" -m pip install -U pip setuptools wheel >> "%REPO_LOG%" 2>&1
-if errorlevel 1 exit /b 1
-exit /b 0
-
-:ENSURE_DIR
-if not exist "%~1\" mkdir "%~1" >nul 2>&1
-exit /b 0
-
-:STAMP
-for /f %%a in ('powershell -NoProfile -Command "(Get-Date).ToString('yyyyMMdd_HHmmss')"') do set "STAMP=%%a"
-exit /b 0
+:FAIL_EARLY
+pause
+exit /b 1

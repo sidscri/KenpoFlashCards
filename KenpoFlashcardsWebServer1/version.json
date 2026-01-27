@@ -1,7 +1,0 @@
-{
-  "name": "Advanced Flashcards WebAppServer",
-  "version": "8.0.1",
-  "build": 46,
-  "released": "2026-01-27",
-  "notes": "Major rebrand to Advanced Flashcards + new per-deck logo support (default + Kenpo). | Fix: header now displays per-deck logo (fallback to default)."
-}

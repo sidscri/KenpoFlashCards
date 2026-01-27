@@ -58,17 +58,6 @@ This release was completed in steps. Documentation stays on **v3.1.0 (build 11)*
 - Tray restart is now a **true restart** (relaunches the tray app so the web server is restarted).
 - Added restart choices: **Restart server**, **Restart Windows Service only** (if installed), or **Restart server + service**.
 
-### Step 5 — EXE build stability + icon swap (v3.1.0.6)
-
-#### Changed
-- Packaging icon update: the EXE uses a generated `.ico` under `static\\res\\webappservericons\\`.
-- `packaging\\2. build_exe.bat` now reads the version from `version.json` via the `version` field (with fallback support), always writes build output to `packaging\\logs\\build_exe_<timestamp>_v<version>.log`, and keeps `venv`, `build`, and `dist` in the project root.
-- Console output is now cleaner (section progress messages); full command output is captured in the log.
-
-#### Fixed
-- Version detection no longer reports `vunknown` when `version.json` uses `version` instead of `appVersion`.
-- If `data\\kenpo_words.json` is missing, the build script can optionally pull it from `..\\KenpoFlashcardsProject-v2\\app\\src\\main\\assets\\kenpo_words.json`.
-
 
 ### Package variant
 - WinSW Windows Service wrapper (advanced)

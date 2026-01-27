@@ -1,0 +1,6 @@
+8.0.1 > I want logo size and placement on main screen 25% larger, The logo image on deck pages isnt working very well, need to make sure the image is perminantly associated with whichever image i select and it shows.  It needs to change just like "Study Flashcards Basic Spanish Words 3rd Grade Level
+Cards loaded: 95" changes when I switch decks. 
+
+When I change basic spanish deck to default logo, it also changes Kenpo decks logo.  Only Kenpo deck will have kenpo logo, every deck will have a logo on deck page, use defaulted advanced_flashcards_logo when deck has no logo. add smaller icon to each deck in "Switch Study Subject" section.  
+
+When I upload an image to change "basic spanish..." image on deck page. it works after hiting save, but when I change kenpo it is on that page instead of the kenpo image. If i refresh page it always changes back to kenpo with kenpo image even if im on "basic spanish..." deck page with default image and when i refresh page it always changes back to kenpo with kenpo image. Then back on "basic spanish..." deck page kenpo image is there, but if i got to edit the deck, but just press save the "basic spanish..." image apears again. Same goes if I had chosen the default logo image. &&upload "run log when changing images.txt" (logs)&&

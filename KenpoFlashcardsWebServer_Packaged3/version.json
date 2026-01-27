@@ -1,7 +1,6 @@
 {
   "app_name": "AdvancedFlashcardsWebAppServer_Packaged",
-  "version": "3.1.0.6.4
-",
+  "version": "3.1.0.6.3",
   "build": 11,
   "release_date": "2026-01-27",
   "notes": "Rebrand to Advanced Flashcards WebApp Server; per-user data directory (%LOCALAPPDATA%\\Advanced Flashcards WebApp Server\\data). Fix PyInstaller tray spec/launcher and include kenpo_words.json. | Step 2: pre_build pulls local data when present, backs up root\\data, stages packaging\\build_data; build_exe prefers packaging\\build_data when newer; adds repo+local build logs. | Step 3: add build_data source flag; build_exe uses build_data only when flagged; after successful build, backup root\\data then replace from build_data for next package seeding; move local builder log to %LOCALAPPDATA%\\Advanced Flashcards WebApp Server\\log\\Advanced Flashcards WebApp Server logs\\. | Step 4: Update install uses local data (local wins); seed missing files only; safe overwrite reference files if packaged newer; backup on update and auto backups (keep 10); tray restart relaunches; startup + background (scheduled task) toggles; logs moved to %LOCALAPPDATA%\\Advanced Flashcards WebApp Server\\log\\Advanced Flashcards WebApp Server logs\\. | Step 5: Standardize packaging paths. kenpo_words.json stays in root\\data; version.json stays at repo root. New EXE/installer icon lives in static\\res\\webappservericons (AdvancedFlashcardsWebAppServer.ico generated from PNG). build_exe logs are written to packaging\\logs; console shows high-level progress and auto-closes on success.",

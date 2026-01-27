@@ -1,0 +1,6 @@
+[Tue 01/27/2026 17:14:29.77] START build_exe
+PC=SIDSCRI-GRAB USER=Sidscri VERSION=unknown
+PROJ_DIR=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\packaging\..
+SCRIPT_DIR=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\packaging\
+
+[ERROR] Missing: "C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\packaging\..\data\kenpo_words.json"

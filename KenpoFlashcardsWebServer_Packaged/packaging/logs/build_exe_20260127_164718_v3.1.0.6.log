@@ -1,0 +1,13 @@
+[Tue 01/27/2026 16:47:18.79] PC=SIDSCRI-GRAB USER=Sidscri VERSION=3.1.0.6 BUILD=11 MODE=build_exe
+[ROOT] C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged
+
+
+[STEP 1] Ensure venv
+venv exists: "C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\.venv\Scripts\python.exe"
+
+[STEP 2] Upgrade pip/setuptools/wheel
+Requirement already satisfied: pip in c:\users\sidscri\documents\github\sidscri-apps\kenpoflashcardswebserver_packaged\.venv\lib\site-packages (25.0.1)
+Requirement already satisfied: setuptools in c:\users\sidscri\documents\github\sidscri-apps\kenpoflashcardswebserver_packaged\.venv\lib\site-packages (75.3.3)
+Requirement already satisfied: wheel in c:\users\sidscri\documents\github\sidscri-apps\kenpoflashcardswebserver_packaged\.venv\lib\site-packages (0.45.1)
+
+[STEP 3] Install requirements
