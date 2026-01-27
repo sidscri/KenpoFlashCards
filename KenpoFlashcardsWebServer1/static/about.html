@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>About • Advanced Flashcards WebApp</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/res/webappicons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/res/webappicons/favicon-16.png" />
+  <style>
+    .about-page { max-width: 900px; margin: 0 auto; padding: 24px; }
+    .about-header { text-align: center; margin-bottom: 32px; }
+    .about-header h1 { font-size: 36px; margin-bottom: 8px; }
+    .about-header .subtitle { color: #888; font-size: 16px; }
+    .about-header .creator { color: #5ca5ff; margin-top: 8px; }
+    .about-header .creator a { color: #5ca5ff; text-decoration: none; }
+    .about-header .creator a:hover { text-decoration: underline; }
+    
+    .about-nav { display: flex; gap: 12px; justify-content: center; margin-bottom: 32px; flex-wrap: wrap; }
+    .about-nav a, .about-nav button { 
+      padding: 10px 18px; border-radius: 10px; text-decoration: none; font-size: 14px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      color: #ccc; transition: all 0.2s; cursor: pointer;
+    }
+    .about-nav a:hover, .about-nav button:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .about-nav .primary { background: linear-gradient(135deg, #1f6feb 0%, #1d4ed8 100%); color: #fff; border: none; }
+    
+    /* Section tabs */
+    .section-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; justify-content: center; }
+    .section-tab {
+      padding: 12px 20px; border-radius: 12px; cursor: pointer;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+      color: #888; font-size: 14px; transition: all 0.2s;
+    }
+    .section-tab:hover { background: rgba(255,255,255,0.08); color: #ccc; }
+    .section-tab.active { background: linear-gradient(135deg, #1f6feb 0%, #1d4ed8 100%); color: #fff; border-color: transparent; }
+    .section-tab span { margin-right: 6px; }
+    
+    /* Section content */
+    .section-content { display: none; }
+    .section-content.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .about-card { 
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); 
+      border-radius: 16px; padding: 24px; margin-bottom: 20px;
+    }
+    .about-card h2 { font-size: 20px; margin: 0 0 16px 0; display: flex; align-items: center; gap: 10px; }
+    .about-card h2 span { font-size: 24px; }
+    .about-card h3 { font-size: 16px; margin: 20px 0 12px 0; color: #5ca5ff; }
+    .about-card p { color: #bbb; line-height: 1.7; margin: 12px 0; }
+    .about-card ul { margin: 12px 0; padding-left: 24px; color: #bbb; }
+    .about-card li { margin: 8px 0; line-height: 1.6; }
+    
+    .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 16px; }
+    .feature-item { 
+      background: rgba(0,0,0,0.2); border-radius: 12px; padding: 16px; text-align: center;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .feature-item:hover { transform: translateY(-2px); background: rgba(0,0,0,0.3); }
+    .feature-item .icon { font-size: 32px; margin-bottom: 8px; }
+    .feature-item h4 { margin: 0 0 8px 0; color: #fff; font-size: 15px; }
+    .feature-item p { margin: 0; font-size: 13px; color: #888; }
+    
+    .version-card {
+      background: linear-gradient(135deg, rgba(31, 111, 235, 0.15) 0%, rgba(29, 78, 216, 0.15) 100%);
+      border: 1px solid rgba(31, 111, 235, 0.3); border-radius: 16px; padding: 24px; text-align: center;
+    }
+    .version-card .version-num { font-size: 32px; font-weight: 700; color: #fff; }
+    .version-card .version-label { font-size: 14px; color: #888; margin-top: 4px; }
+    
+    .tech-stack { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+    .tech-badge {
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      padding: 8px 16px; border-radius: 20px; font-size: 13px; color: #ccc;
+    }
+    
+    .contact-card { text-align: center; }
+    .contact-card .email-btn {
+      display: inline-block; padding: 14px 28px; border-radius: 12px;
+      background: linear-gradient(135deg, #1f6feb 0%, #1d4ed8 100%);
+      color: #fff; text-decoration: none; font-size: 16px; margin-top: 16px;
+    }
+    .contact-card .email-btn:hover { opacity: 0.9; }
+    
+    .changelog-list { max-height: 400px; overflow-y: auto; }
+    .changelog-item { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .changelog-item:last-child { border-bottom: none; }
+    .changelog-item .ver { font-weight: 600; color: #5ca5ff; }
+    .changelog-item .date { font-size: 12px; color: #666; margin-left: 8px; }
+    .changelog-item ul { margin: 8px 0 0 0; padding-left: 20px; font-size: 14px; }
+    
+    @media print {
+      .about-nav, .section-tabs { display: none; }
+      .section-content { display: block !important; }
+      body { background: #fff !important; color: #000 !important; }
+      .about-card { border: 1px solid #ccc; background: #fff; }
+    }
+  </style>
+</head>
+<body>
+  <div class="about-page">
+    <header class="about-header">
+      <h1>📚 Advanced Flashcards WebApp</h1>
+      <p class="subtitle">Interactive Vocabulary Learning System</p>
+      <p class="creator">
+        Created by <strong>Sidney Shelton</strong> • 
+        <a href="mailto:Sidscri@yahoo.com">Sidscri@yahoo.com</a>
+      </p>
+    </header>
+
+    <nav class="about-nav">
+      <a href="/" class="primary">← Back to App</a>
+      <a href="/user-guide">📖 User Guide</a>
+      <a href="/admin">⚙️ Admin</a>
+    </nav>
+
+    <div class="section-tabs">
+      <div class="section-tab active" data-section="overview"><span>🎯</span>Overview</div>
+      <div class="section-tab" data-section="features"><span>✨</span>Features</div>
+      <div class="section-tab" data-section="technology"><span>🔧</span>Technology</div>
+      <div class="section-tab" data-section="changelog"><span>📋</span>Changelog</div>
+      <div class="section-tab" data-section="contact"><span>📧</span>Contact</div>
+    </div>
+
+    <!-- Overview Section -->
+    <div class="section-content active" id="section-overview">
+      <div class="version-card">
+        <div class="version-num" id="versionDisplay">Loading...</div>
+        <div class="version-label" id="versionLabel"></div>
+      </div>
+
+      <div class="about-card" style="margin-top: 24px;">
+        <h2><span>📖</span> What is Advanced Flashcards WebApp?</h2>
+        <p>
+          Advanced Flashcards WebApp is a comprehensive vocabulary learning system designed to help you master any subject through 
+          interactive flashcard study. While it was originally created for learning Korean martial arts terminology, 
+          it now supports creating custom decks for any topic – Spanish, Chemistry, History, and more!
+        </p>
+        <p>
+          The application features AI-powered card generation, progress tracking across devices, 
+          customizable study sessions, and a modern, responsive interface that works on desktop and mobile.
+        </p>
+      </div>
+
+      <div class="about-card">
+        <h2><span>🚀</span> Quick Start</h2>
+        <ol>
+          <li><strong>Log in</strong> to your account to save progress</li>
+          <li><strong>Choose a deck</strong> or create a new one for your subject</li>
+          <li><strong>Start studying</strong> by clicking on cards to flip them</li>
+          <li><strong>Mark your progress</strong> using Got It, Unsure, or Didn't Get It</li>
+          <li><strong>Use AI Generator</strong> to create cards from keywords or documents</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="section-content" id="section-features">
+      <div class="about-card">
+        <h2><span>✨</span> Core Features</h2>
+        <div class="feature-grid">
+          <div class="feature-item">
+            <div class="icon">📚</div>
+            <h4>Multiple Decks</h4>
+            <p>Create unlimited study decks for different subjects</p>
+          </div>
+          <div class="feature-item">
+            <div class="icon">🤖</div>
+            <h4>AI Generation</h4>
+            <p>Generate cards from keywords, photos, or documents</p>
+          </div>
+          <div class="feature-item">
+            <div class="icon">📊</div>
+            <h4>Progress Tracking</h4>
+            <p>Track Unlearned, Unsure, and Learned cards</p>
+          </div>
+          <div class="feature-item">
+            <div class="icon">🔄</div>
+            <h4>Cross-Device Sync</h4>
+            <p>Sync progress between web and Android</p>
+          </div>
+          <div class="feature-item">
+            <div class="icon">⭐</div>
+            <h4>Custom Set</h4>
+            <p>Star cards for focused study sessions</p>
+          </div>
+          <div class="feature-item">
+            <div class="icon">🔊</div>
+            <h4>Text-to-Speech</h4>
+            <p>Hear pronunciations with auto-speak</p>
+          </div>
+          <div class="feature-item">
+            <div class="icon">🧩</div>
+            <h4>Word Breakdowns</h4>
+            <p>See meaning of each part of terms</p>
+          </div>
+          <div class="feature-item">
+            <div class="icon">🎲</div>
+            <h4>Randomization</h4>
+            <p>Shuffle cards and pick random subsets</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="about-card">
+        <h2><span>🤖</span> AI-Powered Features</h2>
+        <h3>AI Card Generator</h3>
+        <ul>
+          <li><strong>Keywords:</strong> Enter a topic and generate vocabulary cards instantly</li>
+          <li><strong>Photo:</strong> Upload images of textbooks or notes, AI extracts terms</li>
+          <li><strong>Document:</strong> Upload PDF/TXT files for automatic card creation</li>
+        </ul>
+        <h3>AI Assistance</h3>
+        <ul>
+          <li>Generate definitions with one click (3 options to choose from)</li>
+          <li>Auto-generate pronunciations for any term</li>
+          <li>Smart group suggestions based on existing categories</li>
+          <li>AI breakdown autofill for compound terms</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Technology Section -->
+    <div class="section-content" id="section-technology">
+      <div class="about-card">
+        <h2><span>🔧</span> Technology Stack</h2>
+        <div class="tech-stack">
+          <span class="tech-badge">Python 3</span>
+          <span class="tech-badge">Flask</span>
+          <span class="tech-badge">JavaScript (ES6+)</span>
+          <span class="tech-badge">HTML5</span>
+          <span class="tech-badge">CSS3</span>
+          <span class="tech-badge">OpenAI API</span>
+          <span class="tech-badge">Google Gemini API</span>
+          <span class="tech-badge">Web Speech API</span>
+        </div>
+      </div>
+
+      <div class="about-card">
+        <h2><span>📁</span> Project Structure</h2>
+        <ul>
+          <li><strong>app.py</strong> — Flask backend with REST API</li>
+          <li><strong>static/</strong> — Frontend HTML, CSS, JavaScript</li>
+          <li><strong>data/</strong> — User data, progress, decks (JSON storage)</li>
+          <li><strong>kenpo_words.json</strong> — Built-in Kenpo vocabulary (88 cards)</li>
+        </ul>
+      </div>
+
+      <div class="about-card">
+        <h2><span>🔌</span> API Integration</h2>
+        <p>The application supports two AI providers:</p>
+        <ul>
+          <li><strong>OpenAI (GPT-4)</strong> — For text generation and image analysis</li>
+          <li><strong>Google Gemini</strong> — Alternative AI provider with vision support</li>
+        </ul>
+        <p>API keys are stored encrypted by the app and shared with all authenticated users.</p>
+      </div>
+    </div>
+
+    <!-- Changelog Section -->
+    <div class="section-content" id="section-changelog">
+      <div class="about-card">
+        <h2><span>📋</span> Recent Changes</h2>
+        <div class="changelog-list" id="changelogList">
+          <div class="changelog-item">
+            <span class="ver">v7.0.5</span><span class="date">January 2026</span>
+            <ul>
+              <li>🤖 AI Deck Generator (keywords, photo, document)</li>
+              <li>✏️ Edit deck name and description</li>
+              <li>🔄 Fixed deck switching</li>
+              <li>🔍 Duplicate filtering in AI generation</li>
+              <li>📝 Literal translations for vocabulary</li>
+            </ul>
+          </div>
+          <div class="changelog-item">
+            <span class="ver">v7.0.0</span><span class="date">January 2026</span>
+            <ul>
+              <li>📁 Multiple deck support</li>
+              <li>➕ Add custom cards</li>
+              <li>🤖 AI definition/pronunciation/group generation</li>
+              <li>🗑️ Deleted cards recovery</li>
+            </ul>
+          </div>
+          <div class="changelog-item">
+            <span class="ver">v6.0.0</span><span class="date">January 2026</span>
+            <ul>
+              <li>⭐ Custom Set (starred cards)</li>
+              <li>🔊 Auto-speak settings</li>
+              <li>📊 Admin dashboard redesign</li>
+            </ul>
+          </div>
+        </div>
+        <p style="text-align: center; margin-top: 16px;">
+          <a href="/user-guide#troubleshooting" style="color: #5ca5ff;">View Full Changelog →</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- Contact Section -->
+    <div class="section-content" id="section-contact">
+      <div class="about-card contact-card">
+        <h2><span>📧</span> Get in Touch</h2>
+        <p>Have questions, feedback, or feature requests?</p>
+        <a href="mailto:Sidscri@yahoo.com?subject=Kenpo%20Flashcards%20Feedback" class="email-btn">
+          ✉️ Send Email
+        </a>
+      </div>
+
+      <div class="about-card">
+        <h2><span>💡</span> Feature Requests</h2>
+        <p>I'm always looking to improve Advanced Flashcards WebApp! If you have ideas for new features or improvements, please reach out. Common requests include:</p>
+        <ul>
+          <li>Android app sync improvements</li>
+          <li>Additional AI providers</li>
+          <li>Spaced repetition algorithms</li>
+          <li>Quiz/test mode</li>
+          <li>Multi-language support</li>
+        </ul>
+      </div>
+
+      <div class="about-card">
+        <h2><span>🐛</span> Report Issues</h2>
+        <p>Found a bug or something not working as expected? Please email me with:</p>
+        <ul>
+          <li>Description of the issue</li>
+          <li>Steps to reproduce</li>
+          <li>Browser/device information</li>
+          <li>Screenshots if helpful</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Tab switching
+    document.querySelectorAll('.section-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const section = tab.dataset.section;
+        
+        // Update active tab
+        document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        // Update active section
+        document.querySelectorAll('.section-content').forEach(s => s.classList.remove('active'));
+        document.getElementById('section-' + section).classList.add('active');
+      });
+    });
+
+    // Load version info
+    fetch("/api/version").then(r => r.json()).then(v => {
+      document.getElementById("versionDisplay").textContent = `v${v.version}`;
+      document.getElementById("versionLabel").textContent = `${v.name} • Build ${v.build} • ${v.released || ''}`;
+    }).catch(() => {
+      document.getElementById("versionDisplay").textContent = "Version unavailable";
+    });
+  </script>
+</body>
+</html>

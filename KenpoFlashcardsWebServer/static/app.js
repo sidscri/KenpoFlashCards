@@ -53,7 +53,7 @@ let settingsAll = null;      // global settings
 let settingsGroup = {};      // group overrides (loaded on demand)
 
 const $ = (id) => document.getElementById(id);
-const DEFAULT_DECK_LOGO_URL = "/res/webappicons/advanced_flashcards_logo.png";
+const DEFAULT_DECK_LOGO_URL = "/res/decklogos/advanced_flashcards_logo.png";
 function bind(id, evt, fn){
   const el = $(id);
   if(!el){ console.warn("Missing element:", id); return; }

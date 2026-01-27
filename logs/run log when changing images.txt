@@ -1,0 +1,294 @@
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/decks ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:11:50] "GET /api/decks HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/breakdowns/ids ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /res/decklogos/kenpo_vocabulary.png ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:11:50] "GET /api/breakdowns/ids HTTP/1.1" 200 -
+47.188.42.192 - - [27/Jan/2026 15:11:50] "GET /res/decklogos/kenpo_vocabulary.png HTTP/1.1" 304 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/groups ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:11:50] "GET /api/groups?deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/health ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:11:50] "GET /api/health HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/ai ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:11:50] "GET /api/ai HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/counts ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:11:50] "GET /api/counts?&deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/counts ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:11:50] "GET /api/counts?&deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:11:50] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:11:50] "GET /api/cards?status=active&deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/breakdown ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:11:50] "GET /api/breakdown?id=db4fca1ad62f88e1 HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/ai ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:11:54] "GET /api/ai HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:11:54] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/decks ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/user_cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:11:55] "GET /api/user_cards HTTP/1.1" 200 -
+47.188.42.192 - - [27/Jan/2026 15:11:55] "GET /api/decks HTTP/1.1" 200 -
+47.188.42.192 - - [27/Jan/2026 15:11:55] "GET /api/cards?status=deleted HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:11:55] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri POST /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:11:59] "POST /api/settings HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/groups ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:11:59] "GET /api/groups?deck_id=deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/counts ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:11:59] "GET /api/counts?&deck_id=deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:11:59] "GET /api/cards?status=active&deck_id=deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/breakdown ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/user_cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:11:59] "GET /api/breakdown?id=b47d70c8fc894d2e HTTP/1.1" 200 -
+47.188.42.192 - - [27/Jan/2026 15:11:59] "GET /api/user_cards HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri POST /api/decks/deck_7bb3a7af ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:12:09] "POST /api/decks/deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/decks ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:12:09] "GET /api/decks HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:12:09] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /res/decklogos/user/1cc70e61cd9e/deck_7bb3a7af_1769547768.jpg ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:12:09] "GET /res/decklogos/user/1cc70e61cd9e/deck_7bb3a7af_1769547768.jpg HTTP/1.1" 304 -
+[REQ] ip=47.188.42.192 user=Sidscri POST /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:16:56] "POST /api/settings HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/groups ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:16:56] "GET /api/groups?deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/counts ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:16:56] "GET /api/counts?&deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:16:56] "GET /api/cards?status=active&deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/user_cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:16:56] "GET /api/user_cards HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri POST /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:34] "POST /api/settings HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/groups ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:34] "GET /api/groups?deck_id=deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/counts ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:34] "GET /api/counts?&deck_id=deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:34] "GET /api/cards?status=active&deck_id=deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/user_cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:34] "GET /api/user_cards HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri POST /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:36] "POST /api/settings HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/groups ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:36] "GET /api/groups?deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/counts ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:36] "GET /api/counts?&deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:36] "GET /api/cards?status=active&deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/user_cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:36] "GET /api/user_cards HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET / ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:38] "GET / HTTP/1.1" 304 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /styles.css ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:39] "GET /styles.css HTTP/1.1" 304 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /app.js ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:39] "GET /app.js HTTP/1.1" 304 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/ai/status ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/me ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:39] "GET /api/ai/status HTTP/1.1" 200 -
+47.188.42.192 - - [27/Jan/2026 15:17:39] "GET /api/me HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:40] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /res/webappicons/favicon-32.png ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:40] "GET /res/webappicons/favicon-32.png HTTP/1.1" 304 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/decks ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:40] "GET /api/decks HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/breakdowns/ids ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /res/decklogos/kenpo_vocabulary.png ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:40] "GET /api/breakdowns/ids HTTP/1.1" 200 -
+47.188.42.192 - - [27/Jan/2026 15:17:40] "GET /res/decklogos/kenpo_vocabulary.png HTTP/1.1" 304 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/groups ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:40] "GET /api/groups?deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/health ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:40] "GET /api/health HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/ai ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:40] "GET /api/ai HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/counts ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:40] "GET /api/counts?&deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/counts ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:40] "GET /api/counts?&deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:40] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:40] "GET /api/cards?status=active&deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/breakdown ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:17:40] "GET /api/breakdown?id=db4fca1ad62f88e1 HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/ai ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:04] "GET /api/ai HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:04] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/decks ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/user_cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:05] "GET /api/user_cards HTTP/1.1" 200 -
+47.188.42.192 - - [27/Jan/2026 15:18:05] "GET /api/decks HTTP/1.1" 200 -
+47.188.42.192 - - [27/Jan/2026 15:18:05] "GET /api/cards?status=deleted HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:05] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri POST /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:07] "POST /api/settings HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/groups ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:07] "GET /api/groups?deck_id=deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/counts ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:07] "GET /api/counts?&deck_id=deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:07] "GET /api/cards?status=active&deck_id=deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/breakdown ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/user_cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:07] "GET /api/breakdown?id=b47d70c8fc894d2e HTTP/1.1" 200 -
+47.188.42.192 - - [27/Jan/2026 15:18:07] "GET /api/user_cards HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri POST /api/decks/deck_7bb3a7af ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:12] "POST /api/decks/deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/decks ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:12] "GET /api/decks HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:12] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /res/decklogos/user/1cc70e61cd9e/deck_7bb3a7af_1769547768.jpg ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:12] "GET /res/decklogos/user/1cc70e61cd9e/deck_7bb3a7af_1769547768.jpg HTTP/1.1" 304 -
+[REQ] ip=47.188.42.192 user=Sidscri GET / ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:17] "GET / HTTP/1.1" 304 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /styles.css ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:17] "GET /styles.css HTTP/1.1" 304 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /app.js ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:17] "GET /app.js HTTP/1.1" 304 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/me ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/ai/status ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:17] "GET /api/me HTTP/1.1" 200 -
+47.188.42.192 - - [27/Jan/2026 15:18:17] "GET /api/ai/status HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:17] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /res/webappicons/favicon-32.png ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/decks ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:17] "GET /res/webappicons/favicon-32.png HTTP/1.1" 304 -
+47.188.42.192 - - [27/Jan/2026 15:18:17] "GET /api/decks HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/breakdowns/ids ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /res/decklogos/kenpo_vocabulary.png ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:17] "GET /api/breakdowns/ids HTTP/1.1" 200 -
+47.188.42.192 - - [27/Jan/2026 15:18:17] "GET /res/decklogos/kenpo_vocabulary.png HTTP/1.1" 304 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/groups ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:17] "GET /api/groups?deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/health ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:17] "GET /api/health HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/ai ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:17] "GET /api/ai HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/counts ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:17] "GET /api/counts?&deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/counts ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:17] "GET /api/counts?&deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:17] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:17] "GET /api/cards?status=active&deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/breakdown ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:18:18] "GET /api/breakdown?id=db4fca1ad62f88e1 HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/ai ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:22] "GET /api/ai HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:22] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/decks ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/user_cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:23] "GET /api/user_cards HTTP/1.1" 200 -
+47.188.42.192 - - [27/Jan/2026 15:24:23] "GET /api/decks HTTP/1.1" 200 -
+47.188.42.192 - - [27/Jan/2026 15:24:23] "GET /api/cards?status=deleted HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:23] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri POST /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:25] "POST /api/settings HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/groups ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:25] "GET /api/groups?deck_id=deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/counts ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:25] "GET /api/counts?&deck_id=deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:25] "GET /api/cards?status=active&deck_id=deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/breakdown ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/user_cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:25] "GET /api/breakdown?id=b47d70c8fc894d2e HTTP/1.1" 200 -
+47.188.42.192 - - [27/Jan/2026 15:24:25] "GET /api/user_cards HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri POST /api/decks/deck_7bb3a7af ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:29] "POST /api/decks/deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/decks ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:30] "GET /api/decks HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:30] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /res/decklogos/advanced_flashcards_logo.png ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:30] "GET /res/decklogos/advanced_flashcards_logo.png HTTP/1.1" 304 -
+[REQ] ip=47.188.42.192 user=Sidscri POST /api/decks/deck_7bb3a7af ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:31] "POST /api/decks/deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/decks ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:31] "GET /api/decks HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:31] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET / ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:34] "GET / HTTP/1.1" 304 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /styles.css ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:35] "GET /styles.css HTTP/1.1" 304 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /app.js ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:35] "GET /app.js HTTP/1.1" 304 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/me ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/ai/status ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:35] "GET /api/me HTTP/1.1" 200 -
+47.188.42.192 - - [27/Jan/2026 15:24:35] "GET /api/ai/status HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:36] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /res/webappicons/favicon-32.png ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:36] "GET /res/webappicons/favicon-32.png HTTP/1.1" 304 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/decks ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:36] "GET /api/decks HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/breakdowns/ids ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /res/decklogos/kenpo_vocabulary.png ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:36] "GET /api/breakdowns/ids HTTP/1.1" 200 -
+47.188.42.192 - - [27/Jan/2026 15:24:36] "GET /res/decklogos/kenpo_vocabulary.png HTTP/1.1" 304 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/groups ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:36] "GET /api/groups?deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/health ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:36] "GET /api/health HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/ai ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:36] "GET /api/ai HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/counts ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:36] "GET /api/counts?&deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/counts ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:36] "GET /api/counts?&deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:36] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:36] "GET /api/cards?status=active&deck_id=kenpo HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/breakdown ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:36] "GET /api/breakdown?id=db4fca1ad62f88e1 HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/ai ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:39] "GET /api/ai HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:39] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/user_cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/decks ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:40] "GET /api/user_cards HTTP/1.1" 200 -
+47.188.42.192 - - [27/Jan/2026 15:24:40] "GET /api/decks HTTP/1.1" 200 -
+47.188.42.192 - - [27/Jan/2026 15:24:40] "GET /api/cards?status=deleted HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:40] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri POST /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:42] "POST /api/settings HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/groups ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:42] "GET /api/groups?deck_id=deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/counts ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:42] "GET /api/counts?&deck_id=deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:42] "GET /api/cards?status=active&deck_id=deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/breakdown ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/user_cards ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:42] "GET /api/breakdown?id=b47d70c8fc894d2e HTTP/1.1" 200 -
+47.188.42.192 - - [27/Jan/2026 15:24:42] "GET /api/user_cards HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri POST /api/decks/deck_7bb3a7af ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:47] "POST /api/decks/deck_7bb3a7af HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/decks ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:47] "GET /api/decks HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /api/settings ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:47] "GET /api/settings?scope=all HTTP/1.1" 200 -
+[REQ] ip=47.188.42.192 user=Sidscri GET /res/decklogos/advanced_flashcards_logo.png ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.
+47.188.42.192 - - [27/Jan/2026 15:24:47] "GET /res/decklogos/advanced_flashcards_logo.png HTTP/1.1" 304 -

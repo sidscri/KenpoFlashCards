@@ -5,7 +5,7 @@
 
 Flask-based web application providing sync API and web UI for Advanced Flashcards WebApp.
 
-**Current Version:** v8.0.0 (build 45)  
+**Current Version:** v8.0.1 (build 46)  
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -138,6 +138,24 @@ Open: `http://localhost:8009`
 | `/user-guide` | GET | User guide page |
 
 ---
+
+## 🖼️ Branding, Icons, and Deck Logos (v8.0.0+)
+
+### WebApp browser icons (favicons)
+Web UI / browser icons are stored here (so they stay separate from Windows EXE/tray icons):
+- `static/res/webappicons/`
+
+The favicon and tab icon are served from this folder and use the **Advanced Flashcards** logo.
+
+*(Reserved for later: `static/res/webappservericons/` for Windows/EXE packaging assets — not used by the Web UI.)*
+
+### Deck logos (optional)
+Decks can optionally have a `logoPath` that points to an image under:
+- `static/res/decklogos/`
+
+Behavior:
+- Kenpo deck uses the Kenpo Vocabulary logo by default.
+- Any deck without a logo falls back to `/res/decklogos/advanced_flashcards_logo.png`.
 
 ## 🔑 Data & Secrets
 
@@ -283,7 +301,7 @@ Should return JSON with `version`, `term_to_id`, `cards`
 ```
 http://localhost:8009/api/version
 ```
-Should return `{"version": "7.0.5", "build": 38, ...}`
+Should return `{"version": "8.0.1", "build": 38, ...}`
 
 ### 3. Test Admin Users Endpoint
 ```
@@ -326,6 +344,9 @@ Interactive page with tabbed sections:
 
 | Version | Build | Key Changes |
 |---------|-------|-------------|
+| **8.0.1** | 46 | Fixed deck header logos not rendering; logo now refreshes on deck switch/load |
+| **8.0.0** | 45 | Major rebrand to Advanced Flashcards WebApp; WebApp favicon/icons path; deck logo support |
+| **7.3.0** | 44 | Deck access management system, invite codes, admin dashboard - decks tab, deck access types displayed, clear default deck |
 | **7.2.1** | 43 | Custom Set modal fixed size, split-pane card management, saved sets switching |
 | **7.2.0** | 42 | Custom Set management modal, server activity logs, settings save prompt |
 | **7.1.0** | 41 | Admin dashboard redesign (tabbed), breakdown indicator on cards, web sync fix, enhanced user stats |
@@ -350,6 +371,7 @@ Interactive page with tabbed sections:
 | **5.1.1** | 22 | version.json, favicon, security.txt |
 | **5.0.0** | 20 | Stable ID mapping baseline |
 | **4.2.0** | 18 | Settings reorg, Python 3.8 compat |
+
 
 See [CHANGELOG.md](CHANGELOG.md) for full details.
 

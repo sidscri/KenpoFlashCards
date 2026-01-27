@@ -1,4 +1,4 @@
-# Changelog — Study Flashcards (formerly KenpoFlashcardsWebServer)
+# Changelog — Advanced Flashcards WebAppServer (formerly KenpoFlashcardsWebServer)
 
 All notable changes to this project will be documented in this file.
 
@@ -14,6 +14,28 @@ The format is simple and practical:
 - (Add changes here as you work. Move them into a release when you publish.)
 
 ---
+
+## 8.0.1 (build 46) — 2026-01-27
+
+### Fixed
+- **Deck header logos** now render correctly on the Study page (missing header `<img>` elements prevented any logo from showing).
+- Logo refresh now runs on initial load and when switching/loading decks.
+- Decks with no assigned logo now fall back to `/res/decklogos/advanced_flashcards_logo.png` (instead of any Kenpo-specific default).
+
+---
+
+## 8.0.0 (build 45) — 2026-01-27
+
+### Added
+- **Major rebrand**: internal project name is now **Advanced Flashcards WebAppServer**; browser UI branding is **Advanced Flashcards WebApp** (no user-visible “Server”).
+- **WebApp icons**: new dedicated path `static/res/webappicons/` with updated favicon / browser tab icon using the Advanced Flashcards logo.
+- **Deck logos (optional)**: support for per-deck logos with default fallback to the Advanced Flashcards logo; Kenpo deck uses its own logo.
+
+### Changed
+- Updated user-facing text from “Kenpo Flashcards” → “Advanced Flashcards WebApp” across the Web UI (while keeping the main Study page header line `Study Flashcards • {Deck} • Cards loaded: {#}` unchanged).
+
+---
+
 
 ## 7.3.0 (build 44) — 2026-01-25
 
@@ -348,11 +370,6 @@ The format is simple and practical:
 
 ---
 
-## v8.0.0 (build 45) — 2026-01-27
-
-- **Major rebrand:** internal project name is now **Advanced Flashcards WebAppServer**; browser UI branding is **Advanced Flashcards WebApp** (no visible “Server”).
-- **Deck logos:** support for optional per-deck logos + header logo display; Kenpo deck uses its own logo; other decks fall back to the default Advanced Flashcards logo.
-- **WebApp icons:** new dedicated path `static/res/webappicons/` and updated favicon / browser tab icon.
 
 ## v5.5.1 (build 28) — 2026-01-13
 ### Added
