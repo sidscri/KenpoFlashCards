@@ -1,7 +1,7 @@
 {
   "name": "Study Flashcards",
-  "version": "7.3.1",
-  "build": 45,
-  "released": "2026-01-26",
-  "notes": "Changed Icons; Staged for future deck image feature."
+  "version": "7.3.0",
+  "build": 44,
+  "released": "2026-01-25",
+  "notes": "Deck access management: built-in deck controls, invite codes, user-specific unlocks, admin dashboard Decks tab."
 }

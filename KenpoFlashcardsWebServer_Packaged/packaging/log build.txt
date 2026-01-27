@@ -1,5 +1,5 @@
-[Tue 01/27/2026  9:52:56.58] PC=SIDSCRI-GRAB USER=Sidscri VERSION=3.1.0.5.2 MODE=install
-[Tue 01/27/2026  9:52:56.58] DATA_DIR=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\packaging\..\data
+[Tue 01/27/2026 10:53:34.47] PC=SIDSCRI-GRAB USER=Sidscri VERSION=3.1.0.5.2 MODE=install
+[Tue 01/27/2026 10:53:34.47] DATA_DIR=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\packaging\..\data
 p i p   2 5 . 0 . 1   f r o m   C : \ U s e r s \ S i d s c r i \ D o c u m e n t s \ G i t H u b \ s i d s c r i - a p p s \ K e n p o F l a s h c a r d s W e b S e r v e r _ P a c k a g e d \ . v e n v \ l i b \ s i t e - p a c k a g e s \ p i p   ( p y t h o n   3 . 8 )  
   
  R e q u i r e m e n t   a l r e a d y   s a t i s f i e d :   p i p   i n   c : \ u s e r s \ s i d s c r i \ d o c u m e n t s \ g i t h u b \ s i d s c r i - a p p s \ k e n p o f l a s h c a r d s w e b s e r v e r _ p a c k a g e d \ . v e n v \ l i b \ s i t e - p a c k a g e s   ( 2 5 . 0 . 1 )  
@@ -41,37 +41,37 @@ p i p   2 5 . 0 . 1   f r o m   C : \ U s e r s \ S i d s c r i \ D o c u m e n 
  R e q u i r e m e n t   a l r e a d y   s a t i s f i e d :   i m p o r t l i b - r e s o u r c e s   i n   c : \ u s e r s \ s i d s c r i \ d o c u m e n t s \ g i t h u b \ s i d s c r i - a p p s \ k e n p o f l a s h c a r d s w e b s e r v e r _ p a c k a g e d \ . v e n v \ l i b \ s i t e - p a c k a g e s   ( f r o m   j a r a c o . t e x t > = 3 . 0 . 0 - > - r   C : \ U s e r s \ S i d s c r i \ D o c u m e n t s \ G i t H u b \ s i d s c r i - a p p s \ K e n p o F l a s h c a r d s W e b S e r v e r _ P a c k a g e d \ p a c k a g i n g \ r e q u i r e m e n t s _ p a c k a g i n g . t x t   ( l i n e   1 6 ) )   ( 6 . 4 . 5 )  
  R e q u i r e m e n t   a l r e a d y   s a t i s f i e d :   c o l o r a m a   i n   c : \ u s e r s \ s i d s c r i \ d o c u m e n t s \ g i t h u b \ s i d s c r i - a p p s \ k e n p o f l a s h c a r d s w e b s e r v e r _ p a c k a g e d \ . v e n v \ l i b \ s i t e - p a c k a g e s   ( f r o m   c l i c k > = 8 . 1 . 3 - > f l a s k < 3 . 0 , > = 2 . 2 . 2 - > - r   C : \ U s e r s \ S i d s c r i \ D o c u m e n t s \ G i t H u b \ s i d s c r i - a p p s \ K e n p o F l a s h c a r d s W e b S e r v e r _ P a c k a g e d \ p a c k a g i n g \ r e q u i r e m e n t s _ p a c k a g i n g . t x t   ( l i n e   7 ) )   ( 0 . 4 . 6 )  
  R e q u i r e m e n t   a l r e a d y   s a t i s f i e d :   z i p p > = 3 . 2 0   i n   c : \ u s e r s \ s i d s c r i \ d o c u m e n t s \ g i t h u b \ s i d s c r i - a p p s \ k e n p o f l a s h c a r d s w e b s e r v e r _ p a c k a g e d \ . v e n v \ l i b \ s i t e - p a c k a g e s   ( f r o m   i m p o r t l i b - m e t a d a t a > = 4 . 6 - > p y i n s t a l l e r = = 6 . 6 . 0 - > - r   C : \ U s e r s \ S i d s c r i \ D o c u m e n t s \ G i t H u b \ s i d s c r i - a p p s \ K e n p o F l a s h c a r d s W e b S e r v e r _ P a c k a g e d \ p a c k a g i n g \ r e q u i r e m e n t s _ p a c k a g i n g . t x t   ( l i n e   1 ) )   ( 3 . 2 0 . 2 )  
- p y t h o n . e x e   :   2 8 0   I N F O :   P y I n s t a l l e r :   6 . 6 . 0 ,   c o n t r i b   h o o k s :   2 0 2 6 . 0  
+ p y t h o n . e x e   :   2 8 5   I N F O :   P y I n s t a l l e r :   6 . 6 . 0 ,   c o n t r i b   h o o k s :   2 0 2 6 . 0  
  A t   l i n e : 1   c h a r : 3 6  
  +   . . .   ' C o n t i n u e ' ;   &   ' C : \ U s e r s \ S i d s c r i \ D o c u m e n t s \ G i t H u b \ s i d s c r i - a p p s \ K e n p o F l   . . .  
  +                                   ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~  
-         +   C a t e g o r y I n f o                     :   N o t S p e c i f i e d :   ( 2 8 0   I N F O :   P y I n s . . . b   h o o k s :   2 0 2 6 . 0 : S t r i n g )   [ ] ,   R e m o t e E x c e p t i o n  
+         +   C a t e g o r y I n f o                     :   N o t S p e c i f i e d :   ( 2 8 5   I N F O :   P y I n s . . . b   h o o k s :   2 0 2 6 . 0 : S t r i n g )   [ ] ,   R e m o t e E x c e p t i o n  
          +   F u l l y Q u a l i f i e d E r r o r I d   :   N a t i v e C o m m a n d E r r o r  
     
- 2 8 0   I N F O :   P y t h o n :   3 . 8 . 1  
- 2 8 0   I N F O :   P l a t f o r m :   W i n d o w s - 1 0 - 1 0 . 0 . 1 9 0 4 1 - S P 0  
- 2 8 3   I N F O :   R e m o v i n g   t e m p o r a r y   f i l e s   a n d   c l e a n i n g   c a c h e   i n   C : \ U s e r s \ S i d s c r i \ A p p D a t a \ L o c a l \ p y i n s t a l l e r  
- 4 2 1 4   I N F O :   E x t e n d i n g   P Y T H O N P A T H   w i t h   p a t h s  
+ 2 8 6   I N F O :   P y t h o n :   3 . 8 . 1  
+ 2 8 6   I N F O :   P l a t f o r m :   W i n d o w s - 1 0 - 1 0 . 0 . 1 9 0 4 1 - S P 0  
+ 2 8 9   I N F O :   R e m o v i n g   t e m p o r a r y   f i l e s   a n d   c l e a n i n g   c a c h e   i n   C : \ U s e r s \ S i d s c r i \ A p p D a t a \ L o c a l \ p y i n s t a l l e r  
+ 4 2 1 7   I N F O :   E x t e n d i n g   P Y T H O N P A T H   w i t h   p a t h s  
  [ ' C : \ \ U s e r s \ \ S i d s c r i \ \ D o c u m e n t s \ \ G i t H u b \ \ s i d s c r i - a p p s \ \ K e n p o F l a s h c a r d s W e b S e r v e r _ P a c k a g e d ' ,  
    ' C : \ \ U s e r s \ \ S i d s c r i \ \ D o c u m e n t s \ \ G i t H u b \ \ s i d s c r i - a p p s \ \ K e n p o F l a s h c a r d s W e b S e r v e r _ P a c k a g e d ' ]  
- 4 4 3 5   I N F O :   A p p e n d i n g   ' d a t a s '   f r o m   . s p e c  
- 4 4 4 3   I N F O :   c h e c k i n g   A n a l y s i s  
- 4 4 4 3   I N F O :   B u i l d i n g   A n a l y s i s   b e c a u s e   A n a l y s i s - 0 0 . t o c   i s   n o n   e x i s t e n t  
- 4 4 4 3   I N F O :   R u n n i n g   A n a l y s i s   A n a l y s i s - 0 0 . t o c  
- 4 4 4 3   I N F O :   T a r g e t   b y t e c o d e   o p t i m i z a t i o n   l e v e l :   0  
- 4 4 4 3   I N F O :   I n i t i a l i z i n g   m o d u l e   d e p e n d e n c y   g r a p h . . .  
- 4 4 4 6   I N F O :   C a c h i n g   m o d u l e   g r a p h   h o o k s . . .  
- 4 4 7 6   I N F O :   A n a l y z i n g   b a s e _ l i b r a r y . z i p   . . .  
- 5 2 2 8   I N F O :   L o a d i n g   m o d u l e   h o o k   ' h o o k - h e a p q . p y '   f r o m   ' C : \ \ U s e r s \ \ S i d s c r i \ \ D o c u m e n t s \ \ G i t H u b \ \ s i d s c r i - a p p s \ \ K e n p o F l a s h c a r  
+ 4 4 4 9   I N F O :   A p p e n d i n g   ' d a t a s '   f r o m   . s p e c  
+ 4 4 5 6   I N F O :   c h e c k i n g   A n a l y s i s  
+ 4 4 5 6   I N F O :   B u i l d i n g   A n a l y s i s   b e c a u s e   A n a l y s i s - 0 0 . t o c   i s   n o n   e x i s t e n t  
+ 4 4 5 6   I N F O :   R u n n i n g   A n a l y s i s   A n a l y s i s - 0 0 . t o c  
+ 4 4 5 6   I N F O :   T a r g e t   b y t e c o d e   o p t i m i z a t i o n   l e v e l :   0  
+ 4 4 5 6   I N F O :   I n i t i a l i z i n g   m o d u l e   d e p e n d e n c y   g r a p h . . .  
+ 4 4 5 6   I N F O :   C a c h i n g   m o d u l e   g r a p h   h o o k s . . .  
+ 4 4 9 9   I N F O :   A n a l y z i n g   b a s e _ l i b r a r y . z i p   . . .  
+ 5 2 5 7   I N F O :   L o a d i n g   m o d u l e   h o o k   ' h o o k - h e a p q . p y '   f r o m   ' C : \ \ U s e r s \ \ S i d s c r i \ \ D o c u m e n t s \ \ G i t H u b \ \ s i d s c r i - a p p s \ \ K e n p o F l a s h c a r  
  d s W e b S e r v e r _ P a c k a g e d \ \ . v e n v \ \ l i b \ \ s i t e - p a c k a g e s \ \ P y I n s t a l l e r \ \ h o o k s ' . . .  
- 5 5 0 5   I N F O :   L o a d i n g   m o d u l e   h o o k   ' h o o k - e n c o d i n g s . p y '   f r o m   ' C : \ \ U s e r s \ \ S i d s c r i \ \ D o c u m e n t s \ \ G i t H u b \ \ s i d s c r i - a p p s \ \ K e n p o F l a s  
+ 5 5 3 6   I N F O :   L o a d i n g   m o d u l e   h o o k   ' h o o k - e n c o d i n g s . p y '   f r o m   ' C : \ \ U s e r s \ \ S i d s c r i \ \ D o c u m e n t s \ \ G i t H u b \ \ s i d s c r i - a p p s \ \ K e n p o F l a s  
  h c a r d s W e b S e r v e r _ P a c k a g e d \ \ . v e n v \ \ l i b \ \ s i t e - p a c k a g e s \ \ P y I n s t a l l e r \ \ h o o k s ' . . .  
- 6 6 6 9   I N F O :   L o a d i n g   m o d u l e   h o o k   ' h o o k - p i c k l e . p y '   f r o m   ' C : \ \ U s e r s \ \ S i d s c r i \ \ D o c u m e n t s \ \ G i t H u b \ \ s i d s c r i - a p p s \ \ K e n p o F l a s h c a  
+ 6 6 8 8   I N F O :   L o a d i n g   m o d u l e   h o o k   ' h o o k - p i c k l e . p y '   f r o m   ' C : \ \ U s e r s \ \ S i d s c r i \ \ D o c u m e n t s \ \ G i t H u b \ \ s i d s c r i - a p p s \ \ K e n p o F l a s h c a  
  r d s W e b S e r v e r _ P a c k a g e d \ \ . v e n v \ \ l i b \ \ s i t e - p a c k a g e s \ \ P y I n s t a l l e r \ \ h o o k s ' . . .  
- 7 4 5 8   I N F O :   C a c h i n g   m o d u l e   d e p e n d e n c y   g r a p h . . .  
- 7 6 3 9   I N F O :   L o o k i n g   f o r   P y t h o n   s h a r e d   l i b r a r y . . .  
- 7 7 1 1   I N F O :   U s i n g   P y t h o n   s h a r e d   l i b r a r y :   C : \ U s e r s \ S i d s c r i \ A p p D a t a \ L o c a l \ P r o g r a m s \ P y t h o n \ P y t h o n 3 8 \ p y t h o n 3 8 . d l l  
- 7 7 1 1   I N F O :   A n a l y z i n g   C : \ U s e r s \ S i d s c r i \ D o c u m e n t s \ G i t H u b \ s i d s c r i - a p p s \ K e n p o F l a s h c a r d s W e b S e r v e r _ P a c k a g e d \ A d v a n c e d F l a s h c a r d  
+ 7 6 7 1   I N F O :   C a c h i n g   m o d u l e   d e p e n d e n c y   g r a p h . . .  
+ 7 8 5 3   I N F O :   L o o k i n g   f o r   P y t h o n   s h a r e d   l i b r a r y . . .  
+ 7 9 3 9   I N F O :   U s i n g   P y t h o n   s h a r e d   l i b r a r y :   C : \ U s e r s \ S i d s c r i \ A p p D a t a \ L o c a l \ P r o g r a m s \ P y t h o n \ P y t h o n 3 8 \ p y t h o n 3 8 . d l l  
+ 7 9 3 9   I N F O :   A n a l y z i n g   C : \ U s e r s \ S i d s c r i \ D o c u m e n t s \ G i t H u b \ s i d s c r i - a p p s \ K e n p o F l a s h c a r d s W e b S e r v e r _ P a c k a g e d \ A d v a n c e d F l a s h c a r d  
  s W e b A p p S e r v e r L a u n c h e r . p y  
   
  S y n t a x   e r r o r   i n   C : \ U s e r s \ S i d s c r i \ D o c u m e n t s \ G i t H u b \ s i d s c r i - a p p s \ K e n p o F l a s h c a r d s W e b S e r v e r _ P a c k a g e d \ A d v a n c e d F l a s h c a r d s W e b A  
@@ -84,4 +84,4 @@ p i p   2 5 . 0 . 1   f r o m   C : \ U s e r s \ S i d s c r i \ D o c u m e n 
   
  [ I N F O ]   B u n d l i n g   v e r s i o n . j s o n   f r o m :   C : \ U s e r s \ S i d s c r i \ D o c u m e n t s \ G i t H u b \ s i d s c r i - a p p s \ K e n p o F l a s h c a r d s W e b S e r v e r _ P a c k a g e d \ v e r s i o n . j s o n  
  [ I N F O ]   B u n d l i n g   k e n p o _ w o r d s . j s o n   f r o m :   C : \ U s e r s \ S i d s c r i \ D o c u m e n t s \ G i t H u b \ s i d s c r i - a p p s \ K e n p o F l a s h c a r d s W e b S e r v e r _ P a c k a g e d \ p a c k a g i n g \ . . \ d a t a \ k e n p o _ w o r d s . j s o n  
- [Tue 01/27/2026  9:53:08.10] FAIL build_exe
+ [Tue 01/27/2026 10:53:46.53] FAIL build_exe

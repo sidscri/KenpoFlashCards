@@ -15,14 +15,6 @@ The format is simple and practical:
 
 ---
 
-## 7.3.1 (build 45) — 2026-01-25
-
-### Changed
-- **Icons**:
-  - Replaced Kenpo logo and icons with "Advanced Flashcards" logo and icon
-
----
-
 ## 7.3.0 (build 44) — 2026-01-25
 
 ### Added

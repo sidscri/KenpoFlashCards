@@ -178,7 +178,7 @@ def _service_exists(service_name: str) -> bool:
     if sys.platform != "win32":
         return False
     try:
-        r = _run_hidden([\"sc\", \"query\", service_name], capture_output=True, text=True)
+        r = _run_hidden(["sc", "query", service_name], capture_output=True, text=True)
         return r.returncode == 0 and "STATE" in (r.stdout or "")
     except Exception:
         return False
@@ -188,17 +188,17 @@ def _set_service_startup(service_name: str, automatic: bool):
         return
     start_mode = "auto" if automatic else "demand"
     # Note: sc.exe requires "start=" with a trailing space.
-    _run_hidden([\"sc\", \"config\", service_name, f\"start= {start_mode}\"], capture_output=True, text=True)
+    _run_hidden(["sc", "config", service_name, f"start= {start_mode}"], capture_output=True, text=True)
 
 def _start_service(service_name: str):
     if sys.platform != "win32":
         return
-    _run_hidden([\"sc\", \"start\", service_name], capture_output=True, text=True)
+    _run_hidden(["sc", "start", service_name], capture_output=True, text=True)
 
 def _stop_service(service_name: str):
     if sys.platform != "win32":
         return
-    _run_hidden([\"sc\", \"stop\", service_name], capture_output=True, text=True)
+    _run_hidden(["sc", "stop", service_name], capture_output=True, text=True)
 
 def _restart_service(service_name: str):
     if sys.platform != "win32":
