@@ -1,4 +1,4 @@
-START Mon 01/26/2026 17:29:57.54
+START Mon 01/26/2026 19:53:26.48
 BASE=C:\Users\Sidscri\Documents\GitHub\sidscri-apps
 SRC=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v2
 GRADLE=C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v2\app\build.gradle
@@ -17,15 +17,15 @@ Running 7z (from stage)...
 7-Zip 25.01 (x64) : Copyright (c) 1999-2025 Igor Pavlov : 2025-08-03
 
 Scanning the drive:
-35 folders, 68 files, 1911589 bytes (1867 KiB)
+35 folders, 68 files, 1872724 bytes (1829 KiB)
 
 Creating archive: C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v5.3.1 v36.zip
 
-Add new data to archive: 35 folders, 68 files, 1911589 bytes (1867 KiB)
+Add new data to archive: 35 folders, 68 files, 1872724 bytes (1829 KiB)
 
 
 Files read from disk: 68
-Archive size: 1574343 bytes (1538 KiB)
+Archive size: 1534056 bytes (1499 KiB)
 Everything is Ok
 7Z_EXIT_CODE=0
 SUCCESS
