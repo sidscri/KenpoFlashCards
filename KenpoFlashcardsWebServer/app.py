@@ -11,9 +11,10 @@ import requests
 
 from flask import Flask, jsonify, request, send_from_directory, session, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 
 # =========================================================
-# Kenpo Flashcards Web (Multi-user with Username/Password Auth)
+# Advanced Flashcards WebApp Server (Multi-user with Username/Password Auth)
 # - Users create a profile with username/password
 # - Progress + settings are stored per user on the server
 # - Login from any device with the same credentials
@@ -1317,7 +1318,7 @@ def user_guide_pdf():
 
     try:
         v = get_version()
-        title = f"Kenpo Flashcards (Web) — User Guide  (v{v.get('version','')}, build {v.get('build','')})"
+        title = f"Advanced Flashcards WebApp — User Guide  (v{v.get('version','')}, build {v.get('build','')})"
         lines = [
             "Created by Sidney Shelton (Sidscri@yahoo.com)",
             "",
@@ -1353,7 +1354,7 @@ def user_guide_pdf():
 
         x = 0.8 * inch
         y = height - 1.0 * inch
-        c.setTitle("Kenpo Flashcards User Guide")
+        c.setTitle("Advanced Flashcards WebApp User Guide")
         c.setFont("Helvetica-Bold", 14)
         c.drawString(x, y, title)
         y -= 0.4 * inch
@@ -3263,7 +3264,8 @@ def _load_decks(user_id: str = None, include_all: bool = False) -> List[Dict[str
             "sourceFile": "kenpo_words.json",
             "cardCount": 88,
             "createdAt": 0,
-            "updatedAt": 0
+            "updatedAt": 0,
+            "logoPath": "/res/decklogos/kenpo_vocabulary.png"
         }
     }
     
@@ -3416,8 +3418,8 @@ def api_create_deck():
         "cardCount": 0,
         "createdBy": uid,  # Track creator
         "createdAt": int(time.time()),
-        "updatedAt": int(time.time())
-    }
+        "updatedAt": int(time.time()),
+}
     
     decks.append(new_deck)
     _save_decks(decks)
@@ -3458,9 +3460,64 @@ def api_update_deck(deck_id: str):
     deck_to_update["name"] = new_name
     deck_to_update["description"] = new_desc
     
+
+    # Optional logoPath update (user decks only)
+    if "logoPath" in data:
+        deck_to_update["logoPath"] = data.get("logoPath")
     _save_decks(decks)
     
     return jsonify(deck_to_update)
+
+
+
+
+@app.post("/api/decks/<deck_id>/upload_logo")
+def api_upload_deck_logo(deck_id: str):
+    """Upload / set a deck logo image for a user-created deck.
+
+    Accepts multipart/form-data with field name: file
+    Saves the image under static/res/decklogos/user/<user_id>/...
+    """
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+
+    decks = _load_decks(include_all=True)
+    deck = next((d for d in decks if d.get("id") == deck_id), None)
+    if not deck:
+        return jsonify({"error": "Deck not found"}), 404
+
+    # Built-in decks are not editable here (set built-in logos in decks.json)
+    if deck.get("isBuiltIn"):
+        return jsonify({"error": "Cannot upload logo for built-in deck"}), 400
+
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    f = request.files["file"]
+    if not f or not getattr(f, "filename", ""):
+        return jsonify({"error": "Invalid file"}), 400
+
+    filename = secure_filename(f.filename)
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in [".png", ".jpg", ".jpeg", ".webp"]:
+        return jsonify({"error": "Unsupported file type. Use PNG/JPG/WEBP."}), 400
+
+    # Save
+    out_dir = os.path.join("static", "res", "decklogos", "user", uid)
+    os.makedirs(out_dir, exist_ok=True)
+
+    ts = int(time.time())
+    out_name = f"{deck_id}_{ts}{ext}"
+    out_path = os.path.join(out_dir, out_name)
+    f.save(out_path)
+
+    url_path = f"/res/decklogos/user/{uid}/{out_name}"
+    deck["logoPath"] = url_path
+    deck["updatedAt"] = int(time.time())
+    _save_decks(decks)
+
+    return jsonify({"success": True, "deckId": deck_id, "logoPath": url_path})
 
 
 @app.delete("/api/decks/<deck_id>")
@@ -3579,8 +3636,8 @@ def api_add_user_card():
         "deckId": deck_id,
         "isUserCreated": True,
         "createdAt": int(time.time()),
-        "updatedAt": int(time.time())
-    }
+        "updatedAt": int(time.time()),
+}
     
     cards.append(new_card)
     _save_user_cards(uid, cards)
@@ -4076,7 +4133,7 @@ def _parse_ai_cards_response(response: str) -> list:
 # --- Common public files (avoid 404 noise) ---
 @app.get("/favicon.ico")
 def favicon():
-    return send_from_directory("static", "favicon.ico")
+    return send_from_directory("static/res/webappicons", "favicon.ico")
 
 @app.get("/robots.txt")
 def robots():
@@ -4196,7 +4253,8 @@ def api_sync_push_decks():
                 "sourceFile": None,
                 "cardCount": incoming.get("cardCount", 0),
                 "createdAt": incoming.get("createdAt", int(time.time())),
-                "updatedAt": int(time.time())
+                "updatedAt": int(time.time()),
+                "logoPath": incoming.get("logoPath", None),
             }
             existing_decks.append(new_deck)
     
@@ -4285,7 +4343,7 @@ def api_sync_push_user_cards():
                 "deckId": incoming.get("deckId", deck_id or "kenpo"),
                 "isUserCreated": True,
                 "createdAt": incoming.get("createdAt", int(time.time())),
-                "updatedAt": int(time.time())
+                "updatedAt": int(time.time()),
             }
             existing_cards.append(new_card)
             added += 1

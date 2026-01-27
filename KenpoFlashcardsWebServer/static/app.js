@@ -53,6 +53,7 @@ let settingsAll = null;      // global settings
 let settingsGroup = {};      // group overrides (loaded on demand)
 
 const $ = (id) => document.getElementById(id);
+const DEFAULT_DECK_LOGO_URL = "/res/webappicons/advanced_flashcards_logo.png";
 function bind(id, evt, fn){
   const el = $(id);
   if(!el){ console.warn("Missing element:", id); return; }
@@ -87,6 +88,8 @@ async function postLoginInit(){
   try {
     currentDecks = await jget("/api/decks");
     updateHeaderDeckName();
+  updateHeaderDeckLogo();
+    updateHeaderDeckLogo();
   } catch(e){}
   
   // Load breakdown IDs for visual indicator
@@ -390,6 +393,19 @@ function updateHeaderCardCount(total){
 }
 
 // Update header to show current deck name
+function updateHeaderDeckLogo(){
+  const img = $("deckLogoImg");
+  const wrap = $("deckLogoWrap");
+  if(!img || !wrap){
+    return;
+  }
+  const deck = currentDecks.find(d => d.id === activeDeckId);
+  const logo = (deck && deck.logoPath) ? deck.logoPath : DEFAULT_DECK_LOGO_URL;
+  img.src = logo;
+  img.onerror = () => { img.onerror = null; img.src = DEFAULT_DECK_LOGO_URL; };
+  wrap.style.display = "flex";
+}
+
 function updateHeaderDeckName(){
   const el = $("headerDeckName");
   if(!el) return;
@@ -809,7 +825,7 @@ async function openBreakdown(card){
 
   renderBreakdownParts(breakdownCurrentData.parts);
 
-  // Update the Auto-fill button label based on server AI availability
+  // Update the Auto-fill button label based on AI availability
   const autoBtn = $("breakdownAutoBtn");
   if(autoBtn){
     const hasAI = !!(aiStatus && (aiStatus.openai_available || aiStatus.gemini_available));
@@ -822,7 +838,7 @@ async function openBreakdown(card){
       autoBtn.title = `AI provider: ${prov}. ${bits.join(" • ")}`;
     } else {
       autoBtn.textContent = "Auto-fill";
-      autoBtn.title = "Uses built-in suggestions unless server AI is configured";
+      autoBtn.title = "Uses built-in suggestions unless AI is configured";
     }
   }
 
@@ -1646,7 +1662,7 @@ $("setShowGroup").checked = effective.show_group_label !== false;
     const bits = [];
     if(aiStatus && aiStatus.openai_available) bits.push(`OpenAI: ${aiStatus.openai_model || "available"}`);
     if(aiStatus && aiStatus.gemini_available) bits.push(`Gemini: ${aiStatus.gemini_model || "available"}`);
-    provStatus.textContent = bits.length ? (`Available: ${bits.join(" • ")}`) : "No AI keys detected on server (will use built-in suggestions).";
+    provStatus.textContent = bits.length ? (`Available: ${bits.join(" • ")}`) : "No AI keys detected (will use built-in suggestions).";
   }
 }
 
@@ -2566,7 +2582,7 @@ function showEditDecksStatus(message, type = "info"){
   }
 }
 
-// Load decks from server
+// Load decks
 async function loadDecks(){
   try {
     currentDecks = await jget("/api/decks");
@@ -2581,7 +2597,10 @@ async function loadDecks(){
     
     renderDecksList();
     updateDeckDropdown();
-  } catch(e){
+  
+    updateHeaderDeckName();
+    updateHeaderDeckLogo();
+} catch(e){
     showEditDecksStatus("Failed to load decks: " + e.message, "error");
   }
 }
@@ -2810,6 +2829,50 @@ function showEditDeckModal(deck){
 }
 
 // Close edit deck modal
+
+// Upload deck logo from Edit Deck modal
+async function uploadDeckLogo(){
+  const deckId = $("editDeckId").value;
+  const fileInput = $("editDeckLogoFile");
+  if(!deckId || !fileInput || !fileInput.files || !fileInput.files.length){
+    showEditDecksStatus("Please choose an image file to upload", "error");
+    return;
+  }
+  const file = fileInput.files[0];
+  try{
+    const fd = new FormData();
+    fd.append("file", file);
+    const resp = await fetch(`/api/decks/${encodeURIComponent(deckId)}/upload_logo`, { method: "POST", body: fd });
+    const data = await resp.json().catch(() => ({}));
+    if(!resp.ok){
+      throw new Error(data.error || "Upload failed");
+    }
+    showEditDecksStatus("Logo uploaded", "success");
+    fileInput.value = "";
+    await loadDecks();
+    updateHeaderDeckLogo();
+  }catch(e){
+    showEditDecksStatus("Failed to upload logo: " + (e.message || e), "error");
+  }
+}
+
+// Clear deck logo (use default)
+async function clearDeckLogo(){
+  const deckId = $("editDeckId").value;
+  if(!deckId){
+    return;
+  }
+  try{
+    await jpost(`/api/decks/${deckId}`, { logoPath: null, name: $("editDeckName").value.trim(), description: $("editDeckDescription").value.trim() });
+    showEditDecksStatus("Using default logo", "success");
+    await loadDecks();
+    updateHeaderDeckLogo();
+  }catch(e){
+    showEditDecksStatus("Failed to clear logo: " + e.message, "error");
+  }
+}
+
+
 function closeEditDeckModal(){
   const modal = $("editDeckModal");
   if(modal) modal.classList.add("hidden");
@@ -2840,18 +2903,33 @@ async function saveEditDeck(){
 async function createDeck(){
   const name = $("newDeckName").value.trim();
   const description = $("newDeckDescription").value.trim();
-  
+  const logoInput = $("newDeckLogoFile");
+  const logoFile = (logoInput && logoInput.files && logoInput.files.length) ? logoInput.files[0] : null;
+
   if(!name){
     showEditDecksStatus("Please enter a deck name", "error");
     return;
   }
-  
+
   try {
-    await jpost("/api/decks", { name, description });
+    const created = await jpost("/api/decks", { name, description });
+
+    // Optional logo upload
+    if(logoFile && created && created.id){
+      try{
+        const fd = new FormData();
+        fd.append("file", logoFile);
+        await fetch(`/api/decks/${encodeURIComponent(created.id)}/upload_logo`, { method: "POST", body: fd });
+      }catch(e){
+        console.warn("Deck created but logo upload failed:", e);
+      }
+    }
+
     $("newDeckName").value = "";
     $("newDeckDescription").value = "";
+    if(logoInput) logoInput.value = "";
     showEditDecksStatus(`Created deck "${name}"`, "success");
-    loadDecks();
+    await loadDecks();
   } catch(e){
     showEditDecksStatus("Failed to create deck: " + e.message, "error");
   }

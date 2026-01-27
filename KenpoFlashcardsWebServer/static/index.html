@@ -3,8 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Study Flashcards</title>
+  <title>Advanced Flashcards WebApp</title>
   <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/res/webappicons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/res/webappicons/favicon-16.png" />
 </head>
 <body>
   <div class="wrap">
@@ -12,6 +15,9 @@
       <div class="titleRow">
         <h1><span class="appTitle">Study Flashcards</span> <span class="deckTitle" id="headerDeckName"></span></h1>
         <div class="mini" id="healthLine"></div>
+        <div class="deckLogoWrap" id="deckLogoWrap" style="display:none;">
+          <img class="deckLogoImg" id="deckLogoImg" alt="Deck logo" />
+        </div>
         <div class="mini userBtn" id="userLine" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false"></div>
 <div class="userMenu hidden" id="userMenu" role="menu" aria-label="User menu">
   <div class="userMenuRow"><span class="mutedSmall" id="userMenuVersion">Version: …</span></div>
@@ -436,7 +442,7 @@
               </div>
 
               <div class="settingsCardHeader">🔄 Web App Sync</div>
-              <p class="settingDesc">Sync your study progress with the web server</p>
+              <p class="settingDesc">Sync your study progress with the WebApp</p>
               <p class="syncLastTime">Last sync: <span id="syncLastTime">Never</span></p>
 
               <div class="syncInfoBox">
@@ -450,7 +456,7 @@
 
               <div class="syncSection">
                 <div class="syncSectionTitle">Manual Sync</div>
-                <p class="settingDesc">Push sends your progress to server. Pull downloads server progress to device.</p>
+                <p class="settingDesc">Push saves your progress online. Pull downloads your saved progress to this device.</p>
                 <div class="settingsBtnRow">
                   <button id="syncPushBtn" class="appBtn primary">⬆️ Push</button>
                   <button id="syncPullBtn" class="appBtn primary">⬇️ Pull</button>
@@ -461,7 +467,7 @@
 
               <div class="syncSection">
                 <div class="syncSectionTitle">Sync Breakdowns</div>
-                <p class="settingDesc">Download shared breakdowns from server</p>
+                <p class="settingDesc">Download shared breakdowns (online)</p>
                 <button id="syncBreakdownsBtn" class="appBtn primary fullWidth">🧩 Sync Breakdowns</button>
               </div>
 
@@ -837,6 +843,15 @@
           <span>Description</span>
           <input id="editDeckDescription" placeholder="Brief description of the deck subject..." />
         </label>
+        <label class="field">
+          <span>Deck Logo (optional)</span>
+          <input id="editDeckLogoFile" type="file" accept="image/png,image/jpeg,image/webp" />
+          <span class="mini muted">Upload a logo for this deck. If none is set, the default logo is used.</span>
+          <div class="row" style="gap:10px; margin-top:10px;">
+            <button class="secondary" type="button" onclick="clearDeckLogo()">Use default</button>
+            <button class="primary" type="button" onclick="uploadDeckLogo()">Upload</button>
+          </div>
+        </label>
       </div>
       <div class="modalBtns">
         <button class="secondary" onclick="closeEditDeckModal()">Cancel</button>
@@ -975,7 +990,7 @@
   <!-- Auth modal (Login/Register) -->
   <div class="modalOverlay hidden" id="authOverlay">
     <div class="modalCard">
-      <h2 class="modalTitle">Kenpo Flashcards</h2>
+      <h2 class="modalTitle">Advanced Flashcards WebApp</h2>
       <div class="modalText" id="authMessage">Loading…</div>
 
       <!-- Login Form -->

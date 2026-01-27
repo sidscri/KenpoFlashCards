@@ -1,11 +1,11 @@
-# 🌐 Study Flashcards Web Server (formerly KenpoFlashcardsWebServer)
+# 🌐 Advanced Flashcards WebApp Web Server (formerly KenpoFlashcardsWebServer)
 
 > This is the **web server** project inside the `sidscri-apps` monorepo.  
 > Repo root: `../README.md`
 
-Flask-based web application providing sync API and web UI for Study Flashcards.
+Flask-based web application providing sync API and web UI for Advanced Flashcards WebApp.
 
-**Current Version:** v7.3.0 (build 44)  
+**Current Version:** v8.0.0 (build 45)  
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -330,7 +330,7 @@ Interactive page with tabbed sections:
 | **7.2.0** | 42 | Custom Set management modal, server activity logs, settings save prompt |
 | **7.1.0** | 41 | Admin dashboard redesign (tabbed), breakdown indicator on cards, web sync fix, enhanced user stats |
 | **7.0.7** | 40 | Android sync API (/api/vocabulary, /api/sync/decks, /api/sync/user_cards) |
-| **7.0.6** | 39 | Rebranded to "Study Flashcards", header shows deck name, Set Default deck, groups filter fix |
+| **7.0.6** | 39 | Rebranded to "Advanced Flashcards WebApp", header shows deck name, Set Default deck, groups filter fix |
 | **7.0.5** | 38 | AI Deck Generator, Edit Deck, deck switching fix, comprehensive User Guide, interactive About page |
 | **7.0.4** | 37 | AI Deck Generator initial, user cards in study deck |
 | **7.0.3** | 36 | Health check fix, AI key loading, random toggle persistence |

@@ -3,8 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Admin Dashboard • Study Flashcards</title>
+  <title>Admin Dashboard • Advanced Flashcards WebApp</title>
   <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/res/webappicons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/res/webappicons/favicon-16.png" />
   <style>
     .admin-page { max-width: 1400px; margin: 0 auto; padding: 20px; }
     .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
@@ -332,14 +335,14 @@
         <div class="section-card">
           <div class="section-title"><span>📋</span> Server Logs</div>
           <div class="quick-actions" style="margin-bottom:16px;">
-            <button class="btn btn-secondary btn-sm" onclick="loadLogs('server')">Server Logs</button>
+            <button class="btn btn-secondary btn-sm" onclick="loadLogs('server')">App Logs</button>
             <button class="btn btn-secondary btn-sm" onclick="loadLogs('error')">Error Logs</button>
             <button class="btn btn-secondary btn-sm" onclick="loadLogs('user')">User Activity</button>
             <button class="btn btn-secondary btn-sm" onclick="downloadLogs()">⬇️ Download</button>
             <button class="btn btn-danger btn-sm" onclick="clearLogs()">🗑️ Clear Logs</button>
           </div>
           <div class="log-container" id="logContainer">
-            <div class="log-line">No logs available. Logs are generated during server operation.</div>
+            <div class="log-line">No logs available. Logs are generated during app operation.</div>
           </div>
         </div>
       </div>
@@ -499,7 +502,7 @@
           </div>
         `;
       } catch (e) {
-        document.getElementById('serverInfo').innerHTML = '<div class="info-item"><div class="info-value warn">Error loading server info</div></div>';
+        document.getElementById('serverInfo').innerHTML = '<div class="info-item"><div class="info-value warn">Error loading app info</div></div>';
       }
     }
     

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Access Settings - Kenpo Flashcards</title>
+    <title>AI Access Settings - Advanced Flashcards WebApp</title>
     <link rel="stylesheet" href="/styles.css">
     <style>
         .ai-container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -39,7 +39,7 @@
         <p style="color: #888; margin-bottom: 20px;">Manage API keys for AI-powered breakdown autofill</p>
         
         <div class="warning-banner">
-            ⚠️ Admin Only - API keys are encrypted and shared between Android app and web server
+            ⚠️ Admin Only - API keys are encrypted and shared between Android app and WebApp
         </div>
         
         <div id="status-message" class="status"></div>
@@ -92,9 +92,9 @@
         
         <div class="info-text">
             <strong>How it works:</strong><br>
-            • API keys are encrypted using the server's secret key<br>
+            • API keys are encrypted using the app's secret key<br>
             • Stored in <code>data/api_keys.enc</code> (safe for git commits)<br>
-            • Both Android app and web server share the same encrypted keys<br>
+            • Both Android app and WebApp share the same encrypted keys<br>
             • Changes made here will be available in the Android app after "Pull from Server"
         </div>
     </div>

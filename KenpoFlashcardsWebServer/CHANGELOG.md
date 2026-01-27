@@ -348,6 +348,12 @@ The format is simple and practical:
 
 ---
 
+## v8.0.0 (build 45) — 2026-01-27
+
+- **Major rebrand:** internal project name is now **Advanced Flashcards WebAppServer**; browser UI branding is **Advanced Flashcards WebApp** (no visible “Server”).
+- **Deck logos:** support for optional per-deck logos + header logo display; Kenpo deck uses its own logo; other decks fall back to the default Advanced Flashcards logo.
+- **WebApp icons:** new dedicated path `static/res/webappicons/` and updated favicon / browser tab icon.
+
 ## v5.5.1 (build 28) — 2026-01-13
 ### Added
 - **GET /api/sync/apikeys**: New endpoint for all authenticated users to pull API keys

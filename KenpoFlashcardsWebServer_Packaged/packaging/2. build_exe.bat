@@ -2,19 +2,18 @@
 setlocal EnableExtensions EnableDelayedExpansion
 
 REM =============================================================================
-REM Advanced Flashcards WebApp Server - 2. build_exe.bat (STAY-OPEN + FIXED)
+REM Advanced Flashcards WebApp Server - 2. build_exe.bat (VISUAL + SAFE)
 REM
-REM Fixes:
-REM   - Prevents "label specified - ENSURE_VENV" by NOT using subroutine labels
-REM   - Prevents PowerShell '&' / caret escaping issues by using pure PowerShell syntax
-REM   - ALWAYS stays open: if double-clicked, relaunches itself inside `cmd /k`
-REM   - Shows LIVE output (pip + PyInstaller) and appends it to the repo log
-REM   - PAUSE on success/failure (in addition to cmd /k, harmless if run from console)
+REM Goals:
+REM   - Keep the last-known-good build logic (venv + kenpo_words copy + pyinstaller)
+REM   - Write build logs to: <project>\packaging\logs\build_exe_YYYYMMDD_HHMMSS.log
+REM   - Cleaner console output (section-based progress; full details in the log)
+REM   - Auto-close window ONLY on SUCCESS (stay open + show log on FAILURE)
 REM =============================================================================
 
-REM --- Always run inside a persistent console if double-clicked ---
+REM --- If double-clicked, run in a new console that closes on success ---
 if /i "%~1" NEQ "__RUN" (
-  start "Advanced Flashcards WebApp Server - Build EXE" cmd /k ""%~f0" __RUN"
+  start "Advanced Flashcards WebApp Server - Build EXE" cmd /c ""%~f0" __RUN"
   exit /b
 )
 
@@ -45,17 +44,11 @@ if exist "%BUILD_DATA%\" (
   )
 )
 
-REM --- Log path ---
+REM --- Log path (ALWAYS under packaging\logs as requested) ---
 for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set "STAMP=%%i"
-set "REPO_BASE=%PROJ_DIR%\.."
-set "REPO_LOG_BASE=%REPO_BASE%\logs\Install"
-if /i "%MODE%"=="update" (
-  if not exist "%REPO_LOG_BASE%\updates" mkdir "%REPO_LOG_BASE%\updates" >nul 2>nul
-  set "REPO_LOG=%REPO_LOG_BASE%\updates\build_exe_%STAMP%.log"
-) else (
-  if not exist "%REPO_LOG_BASE%\installs" mkdir "%REPO_LOG_BASE%\installs" >nul 2>nul
-  set "REPO_LOG=%REPO_LOG_BASE%\installs\build_exe_%STAMP%.log"
-)
+set "LOG_DIR=%SCRIPT_DIR%logs"
+if not exist "%LOG_DIR%" mkdir "%LOG_DIR%" >nul 2>nul
+set "REPO_LOG=%LOG_DIR%\build_exe_%STAMP%.log"
 
 echo.
 echo ============================================================
@@ -69,7 +62,7 @@ echo [INFO] Spec file    : %SPECFILE%
 echo [INFO] Log          : %REPO_LOG%
 echo.
 
-echo [%date% %time%] PC=%COMPUTERNAME% USER=%USERNAME% VERSION=%APP_VERSION% MODE=%MODE%>>"%REPO_LOG%"
+echo [%date% %time%] PC=%COMPUTERNAME% USER=%USERNAME% VERSION=%APP_VERSION% MODE=%MODE%>"%REPO_LOG%"
 echo [%date% %time%] DATA_DIR=%DATA_DIR%>>"%REPO_LOG%"
 
 REM --- Basic validation ---
@@ -84,12 +77,8 @@ if not exist "%SPECFILE%" (
   goto :FAIL
 )
 
-
-
 REM --- Ensure kenpo_words.json exists in packaged data (auto-copy from Android assets if missing) ---
-REM Source location (Android project assets):
 set "ANDROID_ASSETS=%PROJ_DIR%\..\KenpoFlashcardsProject-v2\app\src\main\assets"
-REM Only copy when missing so we never overwrite a newer packaged copy:
 if not exist "%ROOT_DATA%\kenpo_words.json" (
   if exist "%ANDROID_ASSETS%\kenpo_words.json" (
     echo [INFO] Copying kenpo_words.json from Android assets...
@@ -102,14 +91,14 @@ if not exist "%ROOT_DATA%\kenpo_words.json" (
 )
 
 REM --- Clean build artifacts (leave venv unless you want full rebuild) ---
-echo [INFO] Cleaning build artifacts...
-if exist "%PROJ_DIR%\build" rmdir /s /q "%PROJ_DIR%\build" >nul 2>&1
-if exist "%PROJ_DIR%\dist"  rmdir /s /q "%PROJ_DIR%\dist"  >nul 2>&1
+echo [1/5] Cleaning build artifacts...
+if exist "%PROJ_DIR%\build" rmdir /s /q "%PROJ_DIR%\build" >>"%REPO_LOG%" 2>&1
+if exist "%PROJ_DIR%\dist"  rmdir /s /q "%PROJ_DIR%\dist"  >>"%REPO_LOG%" 2>&1
 
-REM --- Ensure venv (inline) ---
-echo [INFO] Ensuring venv...
+REM --- Ensure venv (inline; no subroutine labels) ---
+echo [2/5] Ensuring venv...
 if not exist "%PY_EXE%" (
-  echo [INFO] Creating venv at: %VENV_DIR%
+  echo       Creating venv at: %VENV_DIR%
   py -3 -m venv "%VENV_DIR%" >>"%REPO_LOG%" 2>&1
   if errorlevel 1 (
     echo [ERROR] Failed to create venv.
@@ -118,35 +107,28 @@ if not exist "%PY_EXE%" (
   )
 )
 
-REM Provide data dir to spec (your spec reads env var in your toolchain)
+REM Provide data dir to spec (your spec/toolchain reads this env var)
 set "AFS_DATA_DIR=%DATA_DIR%"
 
-REM --- Run pip + pyinstaller with LIVE output, logged ---
-echo [INFO] Installing packaging requirements (LIVE output)...
-powershell -NoProfile -Command ^
-  "$ErrorActionPreference='Continue';" ^
-  "& '%PY_EXE%' -m pip --version 2>&1 | Tee-Object -FilePath '%REPO_LOG%' -Append;" ^
-  "& '%PY_EXE%' -m pip install --upgrade pip setuptools wheel 2>&1 | Tee-Object -FilePath '%REPO_LOG%' -Append;" ^
-  "exit $LASTEXITCODE"
+REM --- Install deps (quiet console; full output in log) ---
+echo [3/5] Upgrading pip/setuptools/wheel (details in log)...
+"%PY_EXE%" -m pip --version >>"%REPO_LOG%" 2>&1
+"%PY_EXE%" -m pip install --upgrade pip setuptools wheel >>"%REPO_LOG%" 2>&1
 if errorlevel 1 (
   echo [ERROR] pip upgrade failed. See log: %REPO_LOG%
   goto :FAIL
 )
 
-powershell -NoProfile -Command ^
-  "$ErrorActionPreference='Continue';" ^
-  "& '%PY_EXE%' -m pip install -r '%REQFILE%' 2>&1 | Tee-Object -FilePath '%REPO_LOG%' -Append;" ^
-  "exit $LASTEXITCODE"
+echo [4/5] Installing packaging requirements (details in log)...
+"%PY_EXE%" -m pip install -r "%REQFILE%" >>"%REPO_LOG%" 2>&1
 if errorlevel 1 (
   echo [ERROR] pip install -r failed. See log: %REPO_LOG%
   goto :FAIL
 )
 
-echo [INFO] Building EXE with PyInstaller (LIVE output)...
-powershell -NoProfile -Command ^
-  "$ErrorActionPreference='Continue';" ^
-  "& '%PY_EXE%' -m PyInstaller '%SPECFILE%' --noconfirm --clean 2>&1 | Tee-Object -FilePath '%REPO_LOG%' -Append;" ^
-  "exit $LASTEXITCODE"
+REM --- Build EXE ---
+echo [5/5] Building EXE with PyInstaller (details in log)...
+"%PY_EXE%" -m PyInstaller "%SPECFILE%" --noconfirm --clean >>"%REPO_LOG%" 2>&1
 if errorlevel 1 (
   echo [ERROR] PyInstaller failed. See log: %REPO_LOG%
   goto :FAIL
@@ -156,8 +138,9 @@ echo.
 echo [DONE] Build complete.
 echo       Output: dist\AdvancedFlashcardsWebAppServer\AdvancedFlashcardsWebAppServer.exe
 echo [%date% %time%] OK build_exe complete>>"%REPO_LOG%"
+
 popd
-pause
+REM SUCCESS: close window (no pause)
 exit /b 0
 
 :FAIL
@@ -167,5 +150,6 @@ echo [%date% %time%] FAIL build_exe>>"%REPO_LOG%"
 echo [INFO] Opening log so you can see the error...
 if exist "%REPO_LOG%" start "" notepad "%REPO_LOG%"
 popd
+REM FAILURE: keep window open
 pause
 exit /b 1

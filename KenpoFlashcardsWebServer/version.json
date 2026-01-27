@@ -1,7 +1,7 @@
 {
-  "name": "Study Flashcards",
-  "version": "7.3.0",
-  "build": 44,
-  "released": "2026-01-25",
-  "notes": "Deck access management: built-in deck controls, invite codes, user-specific unlocks, admin dashboard Decks tab."
+  "name": "Advanced Flashcards WebAppServer",
+  "version": "8.0.1",
+  "build": 46,
+  "released": "2026-01-27",
+  "notes": "Major rebrand to Advanced Flashcards + new per-deck logo support (default + Kenpo). | Fix: header now displays per-deck logo (fallback to default)."
 }

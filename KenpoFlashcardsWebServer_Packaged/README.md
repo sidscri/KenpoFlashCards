@@ -23,7 +23,7 @@ This release was built in **steps** while the v3.1.0 cycle is in-progress. Docum
 - **Step 2 (v3.1.0.3)**: Builder stages data from LOCALAPPDATA into `packaging\build_data` (when present) with repo + local logging and safe backups.
 - **Step 3 (v3.1.0.4)**: Adds a build-data source flag; after a successful build, `root\data` is backed up then replaced from flagged `packaging\build_data` so the **next package seeds new installs** with current data. Logs moved to:  
   `%LOCALAPPDATA%\Advanced Flashcards WebApp Server\log\Advanced Flashcards WebApp Server logs\`
-- **Step 4 (v3.1.0.5)**: Update/install behavior: **local data wins**, packaged data seeds missing files; backups on update + on-demand + auto (keep last 10); tray now includes **Start with Windows** (default ON) and restart options: **Restart server**, **Restart service**, or **Restart both**; `packaging\2. build_exe.bat` now shows **live pip + PyInstaller progress** and **pauses on success/failure**..
+- **Step 4 (v3.1.0.5)**: Update/install behavior: **local data wins**, packaged data seeds missing files; backups on update + on-demand + auto (keep last 10); tray now includes **Start with Windows** (default ON) and restart options: **Restart server**, **Restart service**, or **Restart both**; `packaging\2. build_exe.bat` now shows **live pip + PyInstaller progress** and **pauses on failure**; on **success it closes automatically**.
 
 **This package variant:** Windows Service option via WinSW wrapper (advanced)
 
@@ -109,6 +109,8 @@ On first run, a config file is created at:
 ```
 %LOCALAPPDATA%\Advanced Flashcards WebApp Server\server_config.json
 ```
+
+   Build logs: `packaging\logs\build_exe_YYYYMMDD_HHMMSS.log`
 
 Edit this file to configure your server (or right-click the tray icon → "Edit Settings"):
 
@@ -231,7 +233,7 @@ From the project root:
    packaging\1. pre_build.bat
    ```
 
-2. **Build the PyInstaller EXE (shows live progress and pauses at the end):**
+2. **Build the PyInstaller EXE (shows live progress; closes on success, pauses on failure):**
    ```
    packaging\2. build_exe.bat
    ```
