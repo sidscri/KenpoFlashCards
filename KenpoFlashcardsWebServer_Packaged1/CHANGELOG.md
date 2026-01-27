@@ -51,9 +51,6 @@ This release was completed in steps. Documentation stays on **v3.1.0 (build 11)*
   - Start service + tray with Windows (HKCU Run + sets service to Automatic when installed) **default ON**
 
 #### Fixed
-- `packaging\2. build_exe.bat`: shows **live pip + PyInstaller progress** and **pauses on success/failure** so the window doesn’t instantly close.
-  - Also avoids the `ENSURE_VENV` missing-label failure by using a label-free flow.
-- Reduced console-window flicker when starting/restarting by running service-control commands hidden.
 - Tray restart is now a **true restart** (relaunches the tray app so the web server is restarted).
 - Added restart choices: **Restart server**, **Restart Windows Service only** (if installed), or **Restart server + service**.
 

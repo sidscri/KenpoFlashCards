@@ -25,8 +25,8 @@ SetupIconFile=..\Kenpo_Vocabulary_Study_Flashcards.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "Additional icons:"; Flags: unchecked
-Name: "startup"; Description: "Start with Windows (current user)"; Flags: unchecked
+Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "Additional icons:"
+Name: "startup"; Description: "Start with Windows (current user)"
 
 Name: "service_winsw"; Description: "Run server as a Windows Service (WinSW wrapper - advanced)"; Flags: checkedonce
 [Files]
