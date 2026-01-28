@@ -1258,7 +1258,7 @@ def api_groups():
     if uid and not deck_id:
         progress = load_progress(uid)
         settings = progress.get("__settings__", _default_settings())
-        deck_id = settings.get("activeDeckId", "kenpo")
+        deck_id = _get_active_deck_id(settings, "kenpo")
     
     if not deck_id or deck_id == "kenpo":
         # Built-in Kenpo deck
@@ -1392,16 +1392,71 @@ def whoami():
         "time": datetime.datetime.utcnow().isoformat() + "Z",
     })
 
+def _get_active_deck_id(settings_obj: Any, fallback: str = "kenpo") -> str:
+    """Return the active deck id from __settings__ in either the new schema (settings['all']) or legacy flat schema."""
+    try:
+        if isinstance(settings_obj, dict):
+            if isinstance(settings_obj.get("all"), dict):
+                v = (settings_obj.get("all") or {}).get("activeDeckId")
+                if v:
+                    return str(v)
+            v = settings_obj.get("activeDeckId")
+            if v:
+                return str(v)
+    except Exception:
+        pass
+    return fallback
+
+
+def _set_active_deck_id(settings_obj: Dict[str, Any], deck_id: str) -> Dict[str, Any]:
+    """Set activeDeckId in the new schema, preserving other settings."""
+    settings_obj = _migrate_settings(settings_obj or _default_settings())
+    if not isinstance(settings_obj, dict):
+        settings_obj = _default_settings()
+    if "all" not in settings_obj or not isinstance(settings_obj.get("all"), dict):
+        settings_obj = _default_settings()
+    settings_obj["all"]["activeDeckId"] = deck_id
+    # Remove legacy top-level key if present
+    settings_obj.pop("activeDeckId", None)
+    return settings_obj
+
 @app.get("/api/settings")
 def api_settings_get():
     uid, _ = require_user()
     if not uid:
         return jsonify({"error": "login_required"}), 401
+
     progress = load_progress(uid)
     scope = request.args.get("scope", "all")
     settings = _migrate_settings(progress.get("__settings__", _default_settings()))
+
     if scope == "all":
+        # Ensure we always have a valid activeDeckId.
+        # If missing/invalid, fall back to the user's default deck (isDefault) or Kenpo.
+        try:
+            decks = _load_decks(user_id=uid)
+            accessible_ids = {d.get("id") for d in decks if d.get("id")}
+            current_active = None
+            if isinstance(settings, dict) and isinstance(settings.get("all"), dict):
+                current_active = (settings.get("all") or {}).get("activeDeckId")
+
+            if (not current_active) or (accessible_ids and current_active not in accessible_ids):
+                default_id = None
+                for d in decks:
+                    if d.get("isDefault"):
+                        default_id = d.get("id")
+                        break
+                if not default_id:
+                    default_id = "kenpo" if ("kenpo" in accessible_ids or not accessible_ids) else next(iter(accessible_ids))
+                settings = _set_active_deck_id(settings, default_id)
+                progress["__settings__"] = settings
+                save_progress(uid, progress)
+        except Exception:
+            # Never block settings read; just return what we have.
+            pass
+
         return jsonify({"scope": "all", "settings": settings["all"]})
+
     return jsonify({"scope": scope, "settings": settings["groups"].get(scope) or {}})
 
 
@@ -1468,7 +1523,7 @@ def api_counts():
     # Get user's settings to check active deck
     progress = load_progress(uid)
     settings = progress.get("__settings__", _default_settings())
-    active_deck_id = deck_id or settings.get("activeDeckId", "kenpo")
+    active_deck_id = deck_id or _get_active_deck_id(settings, "kenpo")
     
     # Load cards based on deck
     if active_deck_id == "kenpo":
@@ -1693,7 +1748,7 @@ def api_admin_stats():
             try:
                 progress = load_progress(user_id)
                 settings = progress.get("__settings__", {})
-                active_deck_id = settings.get("activeDeckId", "kenpo")
+                active_deck_id = _get_active_deck_id(settings, "kenpo")
                 last_sync = progress.get("__last_sync__", 0)
                 
                 # Count statuses
@@ -2236,7 +2291,7 @@ def api_cards():
     # Get user's settings to check active deck
     progress = load_progress(uid)
     settings = progress.get("__settings__", _default_settings())
-    active_deck_id = deck_id or settings.get("activeDeckId", "kenpo")
+    active_deck_id = deck_id or _get_active_deck_id(settings, "kenpo")
     
     # Load cards based on deck
     if active_deck_id == "kenpo":
@@ -3582,7 +3637,7 @@ def api_set_default_deck(deck_id: str):
     # Also save as the user's active deck preference
     progress = load_progress(uid)
     settings = progress.get("__settings__", _default_settings())
-    settings["activeDeckId"] = deck_id
+    settings = _set_active_deck_id(settings, deck_id)
     progress["__settings__"] = settings
     save_progress(uid, progress)
     
@@ -4199,7 +4254,7 @@ def api_sync_get_decks():
     # Get user's active deck setting
     progress = load_progress(uid)
     settings = progress.get("__settings__", _default_settings())
-    active_deck_id = settings.get("activeDeckId", "kenpo")
+    active_deck_id = _get_active_deck_id(settings, "kenpo")
     
     return jsonify({
         "decks": decks,
@@ -4264,7 +4319,7 @@ def api_sync_push_decks():
     if active_deck_id:
         progress = load_progress(uid)
         settings = progress.get("__settings__", _default_settings())
-        settings["activeDeckId"] = active_deck_id
+        settings = _set_active_deck_id(settings, active_deck_id)
         progress["__settings__"] = settings
         save_progress(uid, progress)
     

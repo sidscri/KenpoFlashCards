@@ -1,0 +1,10 @@
+[Tue 01/27/2026 18:26:56.09] START Build EXE  VERSION=3.1.0.6.4  BUILD=11
+[Tue 01/27/2026 18:26:56.10] =============================================================
+[Tue 01/27/2026 18:26:56.11]  Advanced Flashcards WebApp Server - Build EXE
+[Tue 01/27/2026 18:26:56.12] =============================================================
+[Tue 01/27/2026 18:26:56.13] Project root : C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged
+[Tue 01/27/2026 18:26:56.14] Version      : 3.1.0.6.4
+[Tue 01/27/2026 18:26:56.15] Build        : 11
+[Tue 01/27/2026 18:26:56.16] Venv         : C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\.venv
+[Tue 01/27/2026 18:26:56.17] Spec         : C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\packaging\pyinstaller\kenpo_tray.spec
+[Tue 01/27/2026 18:26:56.18] Log          : C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\packaging\logs\build_exe_27Tue01_182655_v3.1.0.6.4.log

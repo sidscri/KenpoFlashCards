@@ -74,19 +74,38 @@ let appInitialized = false;
 let aiStatus = { openai_available: false, openai_model: "", gemini_available: false, gemini_model: "", selected_provider: "auto" };
 
 async function postLoginInit(){
+  let _activeDeckLoadedFromSettings = false;
   if(appInitialized) return;
   
   // Load saved active deck from settings FIRST
   try {
-    const settings = await jget("/api/settings?scope=all");
-    if(settings.activeDeckId){
+    const settingsResp = await jget("/api/settings?scope=all");
+    const settings = (settingsResp && settingsResp.settings) ? settingsResp.settings : settingsResp;
+    if(settings && settings.activeDeckId){
       activeDeckId = settings.activeDeckId;
+      _activeDeckLoadedFromSettings = true;
     }
   } catch(e){}
   
   // Load decks to get deck names for header
   try {
     currentDecks = await jget("/api/decks");
+
+    // If settings didn't provide a valid active deck (or it no longer exists),
+    // fall back to the deck marked isDefault (or first available) and persist.
+    try {
+      const ids = new Set((currentDecks || []).map(d => (d && d.id) ? d.id : null).filter(Boolean));
+      const defaultDeck = (currentDecks || []).find(d => d && d.isDefault) || (currentDecks || [])[0];
+
+      const shouldUseDefault = (!_activeDeckLoadedFromSettings && defaultDeck && defaultDeck.id && defaultDeck.id !== activeDeckId);
+      const activeMissing = ids.size && !ids.has(activeDeckId);
+
+      if((shouldUseDefault || activeMissing) && defaultDeck && defaultDeck.id){
+        activeDeckId = defaultDeck.id;
+        try { await jpost("/api/settings", { scope: "all", settings: { activeDeckId } }); } catch(e){}
+      }
+    } catch(e){}
+
     updateHeaderDeckName();
   updateHeaderDeckLogo();
     updateHeaderDeckLogo();
@@ -2589,8 +2608,9 @@ async function loadDecks(){
     
     // Load saved active deck from settings
     try {
-      const settings = await jget("/api/settings?scope=all");
-      if(settings.activeDeckId){
+      const settingsResp = await jget("/api/settings?scope=all");
+      const settings = (settingsResp && settingsResp.settings) ? settingsResp.settings : settingsResp;
+      if(settings && settings.activeDeckId){
         activeDeckId = settings.activeDeckId;
       }
     } catch(e){}
@@ -2622,6 +2642,7 @@ function renderDecksList(){
     div.className = "deckItem" + (isActive ? " active" : "");
     div.innerHTML = `
       <div class="deckRadio"></div>
+      <img class="deckMiniLogo" alt="Deck icon" />
       <div class="deckInfo">
         <div class="deckName">
           ${escapeHtml(deck.name)}
@@ -2638,6 +2659,14 @@ function renderDecksList(){
         ${!deck.isBuiltIn ? '<button class="deckDeleteBtn" title="Delete deck">🗑️</button>' : ''}
       </div>
     `;
+    
+    // Deck mini icon
+    const icon = div.querySelector(".deckMiniLogo");
+    if(icon){
+      const url = (deck && deck.logoPath) ? deck.logoPath : DEFAULT_DECK_LOGO_URL;
+      icon.src = url;
+      icon.onerror = () => { icon.onerror = null; icon.src = DEFAULT_DECK_LOGO_URL; };
+    }
     
     const switchBtn = div.querySelector(".deckSwitchBtn");
     if(switchBtn){
@@ -2721,6 +2750,7 @@ async function switchToDeck(deckId){
   
   // Update header deck name
   updateHeaderDeckName();
+  updateHeaderDeckLogo();
   
   // Reload groups for the new deck
   await reloadGroupsForDeck();

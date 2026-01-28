@@ -3,162 +3,207 @@ setlocal EnableExtensions EnableDelayedExpansion
 
 REM =============================================================================
 REM  Advanced Flashcards WebApp Server - 2. build_exe.bat
-REM
-REM  Goals (per Sidney):
-REM    - venv, build, dist live in project ROOT (\KenpoFlashcardsWebServer_Packaged\)
-REM    - kenpo_words.json stays in \data\ (auto-copy from Android assets if missing)
-REM    - version.json stays in repo root
-REM    - Logs always go to: \packaging\logs\build_exe_<timestamp>_v<version>.log
-REM    - Quieter console output (section progress), full details in the log
-REM    - Window closes on SUCCESS; pauses on FAIL
+REM  - Uses ROOT\.venv, ROOT\build, ROOT\dist (always)
+REM  - Logs to ROOT\packaging\logs\build_exe_<timestamp>_v<version>.log
+REM  - Minimal console output (section progress); full details in log
+REM  - Closes on SUCCESS; pauses on FAIL
 REM =============================================================================
 
+title Advanced Flashcards WebApp Server - Build EXE
+
+REM --- Resolve paths ---
 set "SCRIPT_DIR=%~dp0"
-
-REM --- Resolve project root (one level up from /packaging) ---
-pushd "%SCRIPT_DIR%.." >nul || (echo [ERROR] Could not cd to project root. & goto :FAIL_EARLY)
-set "PROJ_DIR=%CD%"
-
-set "VENV_DIR=%PROJ_DIR%\.venv"
+set "ROOT_DIR=%SCRIPT_DIR%.."
+for %%I in ("%ROOT_DIR%") do set "ROOT_DIR=%%~fI"
+set "VENV_DIR=%ROOT_DIR%\.venv"
 set "PY_EXE=%VENV_DIR%\Scripts\python.exe"
-set "REQFILE=%SCRIPT_DIR%requirements_packaging.txt"
-set "SPECFILE=%PROJ_DIR%\packaging\pyinstaller\kenpo_tray.spec"
+set "REQ_FILE=%ROOT_DIR%\packaging\requirements_packaging.txt"
+set "SPEC_FILE=%ROOT_DIR%\packaging\pyinstaller\kenpo_tray.spec"
 
-set "DATA_DIR=%PROJ_DIR%\data"
-set "ANDROID_ASSETS=%PROJ_DIR%\..\KenpoFlashcardsProject-v2\app\src\main\assets"
-
-REM --- Read version/build from version.json (supports either .version or .appVersion) ---
-set "APP_VERSION=unknown"
-set "BUILD_NUM="
-for /f "usebackq tokens=1,2 delims=|" %%A in (`powershell -NoProfile -Command "$p=Join-Path '%PROJ_DIR%' 'version.json'; if(Test-Path $p){try{$j=Get-Content $p -Raw|ConvertFrom-Json; $v=($j.version); if(-not $v){$v=$j.appVersion}; $b=($j.build); if(-not $b){$b=$j.buildNumber}; if($v){Write-Output ($v + '|' + $b)}}catch{}}" 2^>nul`) do (
-  if not "%%A"=="" set "APP_VERSION=%%A"
-  if not "%%B"=="" set "BUILD_NUM=%%B"
-)
-
-REM --- Log file (always) ---
-for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set "STAMP=%%i"
+REM --- Logs (ALWAYS under packaging\logs) ---
 set "LOG_DIR=%SCRIPT_DIR%logs"
 if not exist "%LOG_DIR%" mkdir "%LOG_DIR%" >nul 2>nul
-set "LOG_FILE=%LOG_DIR%\build_exe_%STAMP%_v%APP_VERSION%.log"
 
-call :LOG "============================================================"
+call :GET_TS
+call :READ_VERSION
+
+REM sanitize version for filenames (strip spaces)
+set "SAFE_VER=%APP_VERSION%"
+set "SAFE_VER=%SAFE_VER: =%"
+set "LOG_FILE=%LOG_DIR%\build_exe_%TS%_v%SAFE_VER%.log"
+
+REM Ensure log file exists even if we fail very early
+> "%LOG_FILE%" echo [%date% %time%] START Build EXE  VERSION=%APP_VERSION%  BUILD=%APP_BUILD%
+
+call :LOG "============================================================="
 call :LOG " Advanced Flashcards WebApp Server - Build EXE"
-call :LOG "============================================================"
-call :LOG "Project root : %PROJ_DIR%"
+call :LOG "============================================================="
+call :LOG "Project root : %ROOT_DIR%"
 call :LOG "Version      : %APP_VERSION%"
-if defined BUILD_NUM call :LOG "Build        : %BUILD_NUM%"
-call :LOG "Data dir     : %DATA_DIR%"
-call :LOG "Spec file    : %SPECFILE%"
+call :LOG "Build        : %APP_BUILD%"
+call :LOG "Venv         : %VENV_DIR%"
+call :LOG "Spec         : %SPEC_FILE%"
 call :LOG "Log          : %LOG_FILE%"
-call :LOG ""
-
 echo.
 echo ============================================================
-echo  Build EXE  (v%APP_VERSION% %BUILD_NUM%)
+echo  Advanced Flashcards WebApp Server - Build EXE
 echo ============================================================
-echo [INFO] Log: %LOG_FILE%
+echo [INFO] Project root : %ROOT_DIR%
+echo [INFO] Version      : %APP_VERSION%
+echo [INFO] Build        : %APP_BUILD%
+echo [INFO] Log          : %LOG_FILE%
 echo.
 
-REM --- Preflight ---
-if not exist "%REQFILE%"  (call :FAIL "Missing requirements file: %REQFILE%")
-if not exist "%SPECFILE%" (call :FAIL "Missing spec file: %SPECFILE%")
-if not exist "%DATA_DIR%" (call :FAIL "Missing data directory: %DATA_DIR%")
+REM --- Basic checks ---
+if not exist "%SPEC_FILE%" (
+  call :LOG "[ERROR] Spec file not found: %SPEC_FILE%"
+  echo [ERROR] Spec file not found: "%SPEC_FILE%"
+  goto :FAIL
+)
 
-REM --- Ensure kenpo_words.json is present in \data\ ---
-if not exist "%DATA_DIR%\kenpo_words.json" (
-  if exist "%ANDROID_ASSETS%\kenpo_words.json" (
-    call :LOG "[INFO] kenpo_words.json missing in data - copying from Android assets"
-    copy /y "%ANDROID_ASSETS%\kenpo_words.json" "%DATA_DIR%\kenpo_words.json" >>"%LOG_FILE%" 2>>&1
+if not exist "%REQ_FILE%" (
+  call :LOG "[ERROR] Requirements file not found: %REQ_FILE%"
+  echo [ERROR] Requirements file not found: "%REQ_FILE%"
+  goto :FAIL
+)
+
+REM --- Find a system Python to create the venv (prefers py launcher) ---
+call :FIND_SYS_PY
+if not defined SYS_PY (
+  call :LOG "[ERROR] Could not find a system Python (py/python) on PATH to create venv."
+  echo [ERROR] Could not find Python on PATH (py/python).
+  echo         Install Python 3.x or enable the Python launcher.
+  goto :FAIL
+)
+
+REM --- Ensure venv exists in ROOT\.venv ---
+if not exist "%PY_EXE%" (
+  echo [STEP 1/4] Creating venv in root\.venv ...
+  call :LOG "[STEP] Creating venv: %SYS_PY% -m venv %VENV_DIR%"
+  call %SYS_PY% -m venv "%VENV_DIR%" >> "%LOG_FILE%" 2>&1
+  if errorlevel 1 (
+    call :LOG "[ERROR] venv creation failed."
+    echo [ERROR] venv creation failed. See log:
+    echo         %LOG_FILE%
+    goto :FAIL
   )
 )
-if not exist "%DATA_DIR%\kenpo_words.json" (
-  call :FAIL "kenpo_words.json not found. Expected: %DATA_DIR%\kenpo_words.json"
-)
 
-REM --- Clean build artifacts (ROOT build/dist) ---
-call :STEP "Clean build artifacts (root\\build, root\\dist)"
-if exist "%PROJ_DIR%\build" rmdir /s /q "%PROJ_DIR%\build" >>"%LOG_FILE%" 2>>&1
-if exist "%PROJ_DIR%\dist"  rmdir /s /q "%PROJ_DIR%\dist"  >>"%LOG_FILE%" 2>>&1
-
-REM --- Ensure venv in ROOT ---
-call :STEP "Ensure virtualenv (root\\.venv)"
 if not exist "%PY_EXE%" (
-  call :LOG "[INFO] Creating venv at: %VENV_DIR%"
-  call :FIND_SYS_PY
-  if not defined SYS_PY call :FAIL "No system Python found (py/python). Install Python or enable the py launcher."
-  cmd /c "%SYS_PY% -m venv \"%VENV_DIR%\"" >>"%LOG_FILE%" 2>>&1
-)
-if not exist "%PY_EXE%" (
-  call :FAIL "Virtualenv python not found after venv creation: %PY_EXE%"
+  call :LOG "[ERROR] Virtualenv python not found after creation: %PY_EXE%"
+  echo [ERROR] Virtualenv python not found: "%PY_EXE%"
+  echo         Create venv and install requirements first.
+  goto :FAIL
 )
 
-REM --- Provide data dir to spec (spec reads env var AFS_DATA_DIR) ---
-set "AFS_DATA_DIR=%DATA_DIR%"
+REM --- Install packaging requirements ---
+echo [STEP 2/4] Installing / updating packaging requirements ...
+call :LOG "[STEP] pip install -r %REQ_FILE%"
+set "PIP_DISABLE_PIP_VERSION_CHECK=1"
+set "PYTHONUTF8=1"
+"%PY_EXE%" -m pip install --upgrade pip setuptools wheel >> "%LOG_FILE%" 2>&1
+if errorlevel 1 (
+  call :LOG "[ERROR] pip bootstrap failed."
+  echo [ERROR] pip bootstrap failed. See log:
+  echo         %LOG_FILE%
+  goto :FAIL
+)
 
-REM --- Install packaging deps (quiet console, detailed log) ---
-call :STEP "Upgrade pip/setuptools/wheel"
-cmd /c "\"%PY_EXE%\" -m pip --version" >>"%LOG_FILE%" 2>>&1
-cmd /c "\"%PY_EXE%\" -m pip install --upgrade pip setuptools wheel" >>"%LOG_FILE%" 2>>&1
-if errorlevel 1 call :FAIL "pip upgrade failed (see log)"
+"%PY_EXE%" -m pip install -r "%REQ_FILE%" >> "%LOG_FILE%" 2>&1
+if errorlevel 1 (
+  call :LOG "[ERROR] pip install requirements failed."
+  echo [ERROR] pip install failed. See log:
+  echo         %LOG_FILE%
+  goto :FAIL
+)
 
-call :STEP "Install packaging requirements"
-cmd /c "\"%PY_EXE%\" -m pip install -r \"%REQFILE%\"" >>"%LOG_FILE%" 2>>&1
-if errorlevel 1 call :FAIL "pip install -r requirements_packaging.txt failed (see log)"
+REM --- Clean build/dist in ROOT ---
+echo [STEP 3/4] Cleaning build artifacts (root\build, root\dist) ...
+call :LOG "[STEP] Cleaning build/dist"
+if exist "%ROOT_DIR%\build" rmdir /s /q "%ROOT_DIR%\build" >> "%LOG_FILE%" 2>&1
+if exist "%ROOT_DIR%\dist"  rmdir /s /q "%ROOT_DIR%\dist"  >> "%LOG_FILE%" 2>&1
 
-REM --- Build EXE (ROOT build/dist) ---
-call :STEP "Run PyInstaller"
-cmd /c "\"%PY_EXE%\" -m PyInstaller \"%SPECFILE%\" --noconfirm --clean --distpath \"%PROJ_DIR%\dist\" --workpath \"%PROJ_DIR%\build\"" >>"%LOG_FILE%" 2>>&1
-if errorlevel 1 call :FAIL "PyInstaller failed (see log)"
-
-call :LOG "[OK] build_exe completed"
-call :LOG "Output: %PROJ_DIR%\\dist\\AdvancedFlashcardsWebAppServer\\AdvancedFlashcardsWebAppServer.exe"
-
-echo.
-echo [DONE] Build complete.
-echo        Output: dist\AdvancedFlashcardsWebAppServer\AdvancedFlashcardsWebAppServer.exe
-echo.
-
+REM --- Run PyInstaller ---
+echo [STEP 4/4] Building EXE with PyInstaller (this can take a bit) ...
+call :LOG "[STEP] PyInstaller build"
+pushd "%ROOT_DIR%" >nul
+"%PY_EXE%" -m PyInstaller --noconfirm "%SPEC_FILE%" >> "%LOG_FILE%" 2>&1
+set "RC=%ERRORLEVEL%"
 popd >nul
+
+if not "%RC%"=="0" (
+  call :LOG "[ERROR] PyInstaller failed with code %RC%."
+  echo [ERROR] Build failed with code %RC%.
+  echo         See log: %LOG_FILE%
+  goto :FAIL
+)
+
+REM --- Success ---
+call :LOG "[OK] Build completed successfully."
+echo.
+echo [OK] Build completed successfully.
+echo      Output: %ROOT_DIR%\dist
+echo      Log   : %LOG_FILE%
 exit /b 0
 
-REM ======================= helpers =======================
+:FAIL
+call :LOG "[FAIL] Build did not complete."
+echo.
+echo [FAIL] Build did not complete.
+echo Log: %LOG_FILE%
+echo.
+pause
+exit /b 1
 
-:STEP
-set "_MSG=%~1"
-echo [STEP] %_MSG%
-call :LOG "[STEP] %_MSG%"
-exit /b 0
+REM =============================================================================
+REM Helpers
+REM =============================================================================
 
 :LOG
-set "_L=%~1"
-echo %_L%>>"%LOG_FILE%"
+>> "%LOG_FILE%" echo [%date% %time%] %~1
+exit /b 0
+
+:GET_TS
+for /f "tokens=1-3 delims=/ " %%a in ("%date%") do (
+  set "MM=%%a"
+  set "DD=%%b"
+  set "YY=%%c"
+)
+for /f "tokens=1-3 delims=:." %%a in ("%time%") do (
+  set "HH=%%a"
+  set "MI=%%b"
+  set "SS=%%c"
+)
+if "%HH:~0,1%"==" " set "HH=0%HH:~1,1%"
+set "TS=%YY%%MM%%DD%_%HH%%MI%%SS%"
+exit /b 0
+
+:READ_VERSION
+set "APP_VERSION=unknown"
+set "APP_BUILD=unknown"
+if exist "%ROOT_DIR%\version.json" (
+  for /f "usebackq delims=" %%L in (`powershell -NoProfile -ExecutionPolicy Bypass ^
+    "(Get-Content -Raw '%ROOT_DIR%\version.json' | ConvertFrom-Json | ForEach-Object { $_.version.ToString().Trim() + '|' + $_.build.ToString().Trim() })" 2^>nul`) do (
+      for /f "tokens=1,2 delims=|" %%a in ("%%L") do (
+        if not "%%a"=="" set "APP_VERSION=%%a"
+        if not "%%b"=="" set "APP_BUILD=%%b"
+      )
+  )
+)
 exit /b 0
 
 :FIND_SYS_PY
 set "SYS_PY="
-where py >nul 2>nul && set "SYS_PY=py -3"
-if not defined SYS_PY where python >nul 2>nul && set "SYS_PY=python"
-if not defined SYS_PY where python3 >nul 2>nul && set "SYS_PY=python3"
+REM Prefer Python launcher with a specific major.minor if present
+where py >nul 2>nul && (
+  py -3.8 -V >nul 2>nul && (set "SYS_PY=py -3.8" & exit /b 0)
+  py -3   -V >nul 2>nul && (set "SYS_PY=py -3"   & exit /b 0)
+  py -V        >nul 2>nul && (set "SYS_PY=py"     & exit /b 0)
+)
+
+REM Fallback to python.exe on PATH
+where python >nul 2>nul && (
+  python -V >nul 2>nul && (set "SYS_PY=python" & exit /b 0)
+)
+
 exit /b 0
-
-:FAIL
-set "_E=%~1"
-call :LOG "[FAIL] %_E%"
-call :LOG "Log: %LOG_FILE%"
-
-echo.
-echo [FAIL] Build did not complete.
-echo %_E%
-echo Log: %LOG_FILE%
-echo.
-
-REM Print last ~50 lines for quick view
-powershell -NoProfile -Command "if(Test-Path '%LOG_FILE%'){Get-Content '%LOG_FILE%' -Tail 50}" 2>nul
-
-popd >nul
-pause
-exit /b 1
-
-:FAIL_EARLY
-pause
-exit /b 1

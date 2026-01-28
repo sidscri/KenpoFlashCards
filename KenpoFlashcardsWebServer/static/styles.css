@@ -967,6 +967,15 @@ button.danger{background:#321313;border-color:#6e2222}
   align-items: center;
   justify-content: center;
 }
+
+.deckMiniLogo{
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+}
 .deckItem.active .deckRadio{
   border-color: #1f6feb;
   background: #1f6feb;
@@ -1572,11 +1581,11 @@ button.danger{background:#321313;border-color:#6e2222}
   display:flex;
   align-items:center;
   justify-content:center;
-  margin-left: 14px;
+  margin-left: 16px;
 }
 .deckLogoImg{
-  width: 78px;
-  height: 78px;
+  width: 98px;
+  height: 98px;
   object-fit: contain;
   border-radius: 10px;
   background: rgba(255,255,255,0.03);

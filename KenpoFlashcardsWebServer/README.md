@@ -154,8 +154,14 @@ Decks can optionally have a `logoPath` that points to an image under:
 - `static/res/decklogos/`
 
 Behavior:
+- Each deck stores its **own** `logoPath` (per-deck / per-deck-id). Updating one deck’s logo will not affect other decks.
 - Kenpo deck uses the Kenpo Vocabulary logo by default.
 - Any deck without a logo falls back to `/res/decklogos/advanced_flashcards_logo.png`.
+- The Study page header logo updates on deck switch the same way the header text does (deck name + card count).
+- “Switch Study Subject” now shows a **small icon** next to each deck.
+- After uploading/changing a logo and pressing Save, the UI uses cache-busting so the new image shows immediately.
+- The deck marked ★ **Default** is used as the startup deck on refresh if no saved active deck is available; otherwise the last active deck is restored.
+
 
 ## 🔑 Data & Secrets
 
@@ -301,7 +307,7 @@ Should return JSON with `version`, `term_to_id`, `cards`
 ```
 http://localhost:8009/api/version
 ```
-Should return `{"version": "8.0.1", "build": 38, ...}`
+Should return `{"version": "8.0.1", "build": 46, ...}`
 
 ### 3. Test Admin Users Endpoint
 ```
@@ -344,7 +350,7 @@ Interactive page with tabbed sections:
 
 | Version | Build | Key Changes |
 |---------|-------|-------------|
-| **8.0.1** | 46 | Fixed deck header logos not rendering; logo now refreshes on deck switch/load |
+| **8.0.1** | 46 | Fixed deck logos: per-deck persistence/isolation, refresh correctness, deck list icons, header logo sizing, default deck refresh fix |
 | **8.0.0** | 45 | Major rebrand to Advanced Flashcards WebApp; WebApp favicon/icons path; deck logo support |
 | **7.3.0** | 44 | Deck access management system, invite codes, admin dashboard - decks tab, deck access types displayed, clear default deck |
 | **7.2.1** | 43 | Custom Set modal fixed size, split-pane card management, saved sets switching |

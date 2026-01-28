@@ -1,0 +1,57 @@
+
+ I want logo size and placement on main screen 25% larger, The logo image on deck pages isnt working very well, need to make sure the image is perminantly associated with whichever image i select and it shows.  It needs to change just like "Study Flashcards Basic Spanish Words 3rd Grade Level
+Cards loaded: 95" changes when I switch decks. 
+
+When I change basic spanish deck to default logo, it also changes Kenpo decks logo.  Only Kenpo deck will have kenpo logo, every deck will have a logo on deck page, use defaulted advanced_flashcards_logo when deck has no logo. add smaller icon to each deck in "Switch Study Subject" section.  
+
+When I upload an image to change "basic spanish..." image on deck page. it works after hiting save, but when I change kenpo it is on that page instead of the kenpo image. If i refresh page it always changes back to kenpo with kenpo image even if im on "basic spanish..." deck page with default image and when i refresh page it always changes back to kenpo with kenpo image. Then back on "basic spanish..." deck page kenpo image is there, but if i got to edit the deck, but just press save the "basic spanish..." image apears again. Same goes if I had chosen the default logo image. &&upload "run log when changing images.txt" (logs)&&
+
+##Update these .md keeping existing data the same, but just add these 3.1.0.6 changes to ### Step 5 — (v3.1.0.6)###
+
+I unistalled the program but nothing got uninstalled, the service is still running. tray still present, desktop shortcut still there, still shows up in recently added in start, still shows in program files, but 
+
+Add to tray option to Start service and tray automatically with windows on by default
+
+Restart tray doesnt actually restart the server. just kills it. Once fixed, I want options to Either restart just the server or to also restart the service.
+
+
+Redue doesnt work. Add an auto backup of data folder to %local_user%\...\DataBackups\"Data_Auto_%Date%_%Appversion%\data".zip\ Changes on demand, keeping last 10 per user to be restored, another setting for auto backup: off>every 30min>1 hour>2 hours>6 hours(default)>1 Day>2 days.
+
+Windows icon changes: Create a dedicated location for Icons and logos in KenpoFlashcardsWebServer_Packaged\static\res\webappservericons\. Create new app icon files using the "Advanced Flashcards WebApp Server Icon.png" photo to remap all current kenpo icons that show on a windows system, tray, desktop, add remove programs list, etc. Dont touch any that are being used by the web app in browser or the original windows server project. I will sync those updates later after editing on webserver project. 
+
+
+----Webserver----
+I want kenpo_words.json to live and get mapped from KenpoFlashcardsProject-v2\app\src\main\assets\ to KenpoFlashcardsWebServer\data\ instead  That means KenpoFlashcardsProject needs to also change its grab to KenpoFlashcardsWebServer\data\ if appicable
+
+Change "Kenpo Flashcards" to "Advanced Flashcards"; "Study Flashcards" to "Advanced Flashcards", except for ("Study Flashcards" {Name of current Deck} "Cards loaded: 89") on main pages. Keep as it is.
+
+Other users non built-in decks should not be available by default on new or other profiles.  Sidscri created Basic Spanish Words..., only sidscri should have it in his deck, unless admined to any specific user.
+
+Add a save current Custom Deck to Custom deck saves page, make sure there is a way to chose a saved deck to study when desired, in Custom Set Settings the random number field is still ontop of Add random button, field needs to be way shorter.  Rename "Add Random" to "Add Random Cards"
+
+Change WebApp icon, Now that the apps name has changed to "Advanced Flashcards WebApp Server"
+
+"Invite codes" section No Decks appear in "Select deck..." list. same goes for "User Deck Access"
+
+In "User Deck Access" section, when a user is selected, i.e Sidscri (admin), Built-in is enabled, so only disable option should be avaialble, not sure which one is currently active or not. In this current case no deck is selected, both options should be unavailable.
+
+In "Built-In Deck Management", there isnt a way to add built-in decks by default, there is a "Remove Built-In" button on kenpo (which is great), but how to re-add kenpo if "Remove Built-In" button is pressed on kenpo.
+
+
+
+****DONE****
+
+If successfully pulled from "\%appdataLocal%\Advanced Flashcards WebApp Server\data\", backup current "\root\data\" to "\sidscri-apps\DataBackups\"WebServer_Packaged_Data_%Date%\data".zip\" then replace current "\root\data\" with "\packaging\build_data\" data.  Doing this will keep the next package being built updated with the most up-to-date data, in case it gets installed on a new device. If there isnt \Advanced Flashcards WebApp Server\data folder in %local_user%, which normally means its a fresh install, than skip and use "\root\data\" instead of "\packaging\build_data\".   
+
+Verify when "\packaging\build_data\" is present that "2. build_exe.bat" is pulling from "\packaging\build_data\" when "\packaging\build_data\" files are newer than "\root\data\"., if "\packaging\build_data\" isnt there than default to "\root\data\" Any overwrites needs to be backed up first. Log the upgrade or installed version to version, files touched, files skipped, files replaced, etc in both sidscri-apps\logs\Install\updates<or>installs\log to have pc>user>version>dates and "\%appdataLocal%\Advanced Flashcards WebApp Server\data\logs\log to have version>dates"
+
+
+still needs to after build backup "\sidscri-apps\KenpoFlashcardsWebServer_Packaged\data" and Replace with newer data in KenpoFlashcardsWebServer_Packaged\packaging\build_data\ flagged as being pulled from "C:\Users\Sidscri\AppData\Local\Advanced Flashcards WebApp Server\data".
+
+Change log location in Local\Advanced Flashcards WebApp Server\data\log\ to existing \root\log\ folder
+
+Need a flag to let builder know that data was pulled from Appdatalocal into build_data so build_data will be used in a new install, if flag is negative then use packaged data folder.
+
+During update of app to PC, existing data files win over unpackaged data files. if there is a way to know which specific file is newer and better, than override, but backup data to %local_user%\...\DataBackups\"Data_Updated_%Date%_%Appversion%\data".zip\
+
+deck image feature: I will want an option to add images to study decks as an option when creating or editing decks. For Kenpo, I want "Kenpo Vovabulary Study Flashcards.png" used as its logo on main page as pictured and by default without adding optional image, use "Advanced Flashcards logo.png".

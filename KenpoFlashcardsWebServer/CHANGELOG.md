@@ -17,13 +17,22 @@ The format is simple and practical:
 
 ## 8.0.1 (build 46) — 2026-01-27
 
+### Added
+- **Deck icons in “Switch Study Subject”**: each deck now displays a small logo icon (deck-specific or the default logo).
+
+### Changed
+- **Study page header logo** is ~25% larger and spacing/placement was adjusted to better align with the header text.
+
 ### Fixed
+- **Default deck honored on refresh**: fixed `/api/settings` GET route registration so saved `activeDeckId` loads correctly; if missing/invalid, server falls back to the deck marked ★ default and persists it.
 - **Deck header logos** now render correctly on the Study page (missing header `<img>` elements prevented any logo from showing).
+- **Per-deck logo isolation**: changing a deck’s logo (uploading an image or choosing the default) no longer changes other decks’ logos (Kenpo remains Kenpo only).
+- **Refresh + deck switch correctness**: the active deck and its logo now load consistently on page refresh and when switching decks (no more showing Kenpo’s logo on other decks).
 - Logo refresh now runs on initial load and when switching/loading decks.
 - Decks with no assigned logo now fall back to `/res/decklogos/advanced_flashcards_logo.png` (instead of any Kenpo-specific default).
+- **Immediate logo updates**: added cache-busting on deck logo URLs so newly-uploaded images show right after Save.
 
 ---
-
 ## 8.0.0 (build 45) — 2026-01-27
 
 ### Added
