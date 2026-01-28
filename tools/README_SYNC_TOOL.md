@@ -21,7 +21,7 @@ Place this tool in a `tools` folder alongside your project folders:
 
 - **Smart Defaults**: Automatically finds sibling project folders
 - **Version Bump Prompt**: Choose patch (1), minor (2), or major (3) upgrade
-- **AI-Assisted Docs**: Automatically updates `README.md` and `CHANGELOG.md`
+- **Docs Update**: Automatically updates `README.md` and `CHANGELOG.md`
 - **Safe Backups**: Creates timestamped backups in `tools/sync_backups/`
 - **Dry-Run Mode**: Preview all changes without applying them
 
@@ -216,3 +216,23 @@ The tool generates documentation based on patterns in the web server's CHANGELOG
 - `CHANGELOG.md` - Add or remove bullet points
 
 Always review the generated docs before committing!
+
+
+## Safety rules (what will NOT be touched)
+
+- `KenpoFlashcardsWebServer_Packaged/packaging/`, `windows_tray/`, `windows_service/`, `service/` are never overwritten.
+- `static/res/webappservericons/**` is preserved (Windows EXE/tray/installer icons).
+- `static/res/decklogos/user/**` is preserved (user-uploaded deck logos).
+- `Version-WebServerPackaged-*.txt` is **renamed only** when bumping version; contents are preserved.
+
+
+## Output modes
+
+By default the tool syncs **in place** into your Packaged folder.
+
+- `--output inplace` (default)
+- `--output synced` to create a sibling folder named `<Packaged>-synced` and write results there
+
+Short flags:
+- `--synced`
+- `--inplace`

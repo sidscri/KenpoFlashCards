@@ -30,7 +30,7 @@ PROTECTED FILES (never overwritten):
 - Version-WebServerPackaged-*.txt
 
 SYNCED FILES:
-- app.py, static/, requirements.txt, LICENSE, BRANDING_NOTE.md, ic_launcher.png
+- app.py, static/ (mirrored with safe excludes), requirements.txt, LICENSE, BRANDING_NOTE.md
 - data/ folder (merged, not replaced)
 
 AI-UPDATED FILES:
@@ -355,30 +355,32 @@ class DocumentationUpdater:
     
     def update_version_txt(self, new_version: str, new_build: int, 
                            old_version: str, old_build: int) -> bool:
-        """Rename and update the Version-WebServerPackaged-*.txt file."""
-        
-        # Find existing version file
+        """Rename the Version-WebServerPackaged-*.txt file WITHOUT changing its contents."""
+
+        # Find existing version file (keep contents)
+        old_file = None
         for f in self.packaged_dir.glob("Version-WebServerPackaged-*.txt"):
             old_file = f
             break
-        else:
-            old_file = None
-        
+
+        if old_file is None:
+            print("  ⏭️  No Version-WebServerPackaged-*.txt found (skipping)")
+            return True
+
         new_filename = f"Version-WebServerPackaged-v{new_version} v{new_build}.txt"
         new_path = self.packaged_dir / new_filename
-        
+
         if self.dry_run:
-            print(f"  📝 Would rename version file to {new_filename}")
+            print(f"  📝 Would rename version file: {old_file.name} → {new_filename}")
             return True
-        
-        # Remove old file if it exists
-        if old_file and old_file.exists():
-            old_file.unlink()
-        
-        # Create new empty version file
-        new_path.touch()
-        
-        print(f"  ✅ Created {new_filename}")
+
+        # If target exists, remove it so rename succeeds on Windows
+        if new_path.exists():
+            new_path.unlink()
+
+        old_file.rename(new_path)
+
+        print(f"  ✅ Renamed version file to {new_filename} (contents preserved)")
         return True
 
 
@@ -394,16 +396,26 @@ class WebServerSyncer:
     
     PROTECTED_PATTERNS = ['*.lnk', 'Version-WebServerPackaged-*.txt']
     
-    SYNC_FILES = ['app.py', 'requirements.txt', 'LICENSE', 'BRANDING_NOTE.md', 
-                  'ic_launcher.png', '.gitattributes']
+    SYNC_FILES = ['app.py', 'requirements.txt', 'LICENSE', 'BRANDING_NOTE.md', '.gitattributes']
     
     SYNC_FOLDERS = ['static']
+
+    # Static sync rules:
+    # - Mirror WebServer/static into Packaged/static (overwrite from source)
+    # - Preserve Packaged-only Windows assets and user-uploaded content:
+    #   * static/res/webappservericons/**   (Windows EXE/tray/icons)
+    #   * static/res/decklogos/user/**      (user-uploaded deck logos)
+    STATIC_EXCLUDE_SUBDIRS = [
+        Path('res') / 'webappservericons',
+        Path('res') / 'decklogos' / 'user',
+    ]
     
-    def __init__(self, ws_source: Path, pkg_dest: Path, tools_dir: Path, dry_run: bool = False):
+    def __init__(self, ws_source: Path, pkg_dest: Path, tools_dir: Path, dry_run: bool = False, upgrade_level: Optional[int] = None):
         self.ws_source = Path(ws_source)
         self.pkg_dest = Path(pkg_dest)
         self.tools_dir = Path(tools_dir)
         self.dry_run = dry_run
+        self.upgrade_level = upgrade_level
         self.backup_dir = None
         self.changes = []
         
@@ -485,24 +497,99 @@ class WebServerSyncer:
         return True
     
     def sync_folder(self, foldername: str) -> bool:
-        """Sync entire folder from web server."""
+        """Sync an entire folder from web server."""
+        if foldername == 'static':
+            return self.sync_static_folder()
+
         src = self.ws_source / foldername
         dst = self.pkg_dest / foldername
-        
+
         if not src.exists():
             self.log(f"Source folder not found: {foldername}", "WARN")
             return False
-            
+
         if self.dry_run:
             self.log(f"Would sync folder: {foldername}/")
             return True
-            
+
         if dst.exists():
             shutil.rmtree(dst)
         shutil.copytree(src, dst)
         self.changes.append(f"Synced folder: {foldername}/")
         self.log(f"Synced folder: {foldername}/", "SUCCESS")
         return True
+
+    def sync_static_folder(self) -> bool:
+        """Mirror static/ from web server into packaged, preserving certain Packaged-only subfolders."""
+        src_static = self.ws_source / 'static'
+        dst_static = self.pkg_dest / 'static'
+
+        if not src_static.exists():
+            self.log('Source folder not found: static', 'WARN')
+            return False
+
+        if self.dry_run:
+            self.log('Would mirror folder: static/ (with safe excludes)')
+            self.log('Static excludes (preserved in destination):', 'INFO')
+            for ex in self.STATIC_EXCLUDE_SUBDIRS:
+                self.log(f"  - static/{ex.as_posix()}/**", 'INFO')
+            return True
+
+        dst_static.mkdir(parents=True, exist_ok=True)
+
+        # 1) Copy/update everything from source → destination
+        for src_file in src_static.rglob('*'):
+            if src_file.is_dir():
+                continue
+            rel = src_file.relative_to(src_static)
+            if self._is_static_excluded(rel):
+                continue
+            dst_file = dst_static / rel
+            dst_file.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src_file, dst_file)
+
+        # 2) Remove destination files/dirs not present in source (mirror), BUT preserve excluded subtrees
+        src_set = {p.relative_to(src_static) for p in src_static.rglob('*')}
+
+        # Remove files first
+        for dst_file in sorted([p for p in dst_static.rglob('*') if p.is_file()], reverse=True):
+            rel = dst_file.relative_to(dst_static)
+            if self._is_static_excluded(rel):
+                continue
+            if rel not in src_set:
+                try:
+                    dst_file.unlink()
+                except Exception as e:
+                    self.log(f"Failed to remove extra file static/{rel}: {e}", 'WARN')
+
+        # Then remove empty dirs (excluding preserved dirs)
+        for dst_dir in sorted([p for p in dst_static.rglob('*') if p.is_dir()], reverse=True):
+            rel = dst_dir.relative_to(dst_static)
+            if self._is_static_excluded(rel):
+                continue
+            try:
+                if not any(dst_dir.iterdir()):
+                    dst_dir.rmdir()
+            except Exception:
+                pass
+
+        self.changes.append('Mirrored folder: static/ (safe excludes preserved)')
+        self.log('Mirrored folder: static/ (safe excludes preserved)', 'SUCCESS')
+        return True
+
+    def _is_static_excluded(self, rel_path: Path) -> bool:
+        """Return True if rel_path (relative to static/) should be preserved in destination.
+
+        IMPORTANT: must be separator- and case-insensitive on Windows.
+        """
+        # Normalize both the candidate path and exclude prefixes to forward-slash, lowercase strings
+        rp = str(rel_path).replace('\\', '/').lstrip('/').lower()
+        for ex in self.STATIC_EXCLUDE_SUBDIRS:
+            exs = str(ex).replace('\\', '/').lstrip('/').lower()
+            if rp == exs or rp.startswith(exs + '/'):
+                return True
+        return False
+
     
     def sync_data_folder(self) -> bool:
         """Merge data folder (preserve user data)."""
@@ -577,7 +664,7 @@ class WebServerSyncer:
         print()
         
         # Prompt for upgrade level
-        upgrade_level = self.prompt_upgrade_level()
+        upgrade_level = self.upgrade_level if self.upgrade_level in (1,2,3) else self.prompt_upgrade_level()
         
         # Calculate new version
         new_version = VersionBumper.bump_version(old_pkg_version, upgrade_level)
@@ -700,6 +787,10 @@ Examples:
     parser.add_argument('destination', help='Packaged project folder')
     parser.add_argument('--dry-run', '-n', action='store_true',
                         help='Preview changes without applying')
+    parser.add_argument('--level', type=int, choices=[1,2,3],
+                        help='Upgrade level: 1=patch, 2=minor, 3=major (skips interactive prompt)')
+    parser.add_argument('--output', choices=['inplace','synced'], default='inplace',
+                        help='Where to write results: inplace=modify destination folder; synced=create sibling <destination>-synced and write there')
     
     args = parser.parse_args()
     
@@ -708,9 +799,35 @@ Examples:
     
     # Tools dir is where this script is located
     tools_dir = Path(__file__).parent.resolve()
-    
+
+    # Optional output mode: create sibling "<destination>-synced" and write there
+    if args.output == 'synced':
+        base_destination = destination
+        destination = base_destination.parent / (base_destination.name + '-synced')
+
+        if args.dry_run:
+            print(f"[DRY-RUN] Output mode: synced -> would write into: {destination}")
+        else:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            backup_root = tools_dir / 'sync_backups' / 'synced_outputs'
+            backup_root.mkdir(parents=True, exist_ok=True)
+
+            if destination.exists():
+                backup_path = backup_root / f"{destination.name}_{timestamp}"
+                print(f"[INFO] Existing synced folder found. Moving to backup: {backup_path}")
+                shutil.move(str(destination), str(backup_path))
+
+            print(f"[INFO] Creating fresh output folder from base Packaged: {base_destination} -> {destination}")
+            # Copy base Packaged folder into the new output folder; ignore caches/backups
+            shutil.copytree(
+                str(base_destination),
+                str(destination),
+                ignore=shutil.ignore_patterns('__pycache__', '*.pyc', 'sync_backups'),
+                dirs_exist_ok=False
+            )
+
     # Run sync
-    syncer = WebServerSyncer(source, destination, tools_dir, dry_run=args.dry_run)
+    syncer = WebServerSyncer(source, destination, tools_dir, dry_run=args.dry_run, upgrade_level=args.level)
     success = syncer.run()
     
     sys.exit(0 if success else 1)

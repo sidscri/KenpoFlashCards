@@ -77,6 +77,19 @@ set "APPEXENAME=AdvancedFlashcardsWebAppServer.exe"
 set "APPPUBLISHER=Sidscri"
 set "APPURL=https://github.com/sidscri-apps"
 
+REM ---------------- LOGGING (requested) ----------------
+set "LOGDIR=%~dp0logs"
+if not exist "%LOGDIR%" mkdir "%LOGDIR%" >nul 2>&1
+set "DATESTAMP=%DATE%"
+set "DATESTAMP=%DATESTAMP:/=-%"
+set "DATESTAMP=%DATESTAMP:\=-%"
+set "DATESTAMP=%DATESTAMP::=-%"
+set "DATESTAMP=%DATESTAMP:,=%"
+set "DATESTAMP=%DATESTAMP: =_%"
+set "LOGFILE=%LOGDIR%\build_installer_inno_%DATESTAMP%_%APPVER%.log"
+echo [INFO] Log file : %LOGFILE%
+REM -----------------------------------------------------
+
 "%ISCC%" ^
   /DMyAppVersion="%APPVER%" ^
   /DMyAppBuild="%APPBUILD%" ^
@@ -84,7 +97,7 @@ set "APPURL=https://github.com/sidscri-apps"
   /DMyAppExeName="%APPEXENAME%" ^
   /DMyAppPublisher="%APPPUBLISHER%" ^
   /DMyAppURL="%APPURL%" ^
-  "installer_inno.iss"
+  "installer_inno.iss" > "%LOGFILE%" 2>&1
 
 if errorlevel 1 (
   echo [ERROR] Inno Setup build failed.

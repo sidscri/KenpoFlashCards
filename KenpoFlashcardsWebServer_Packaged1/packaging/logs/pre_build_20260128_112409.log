@@ -1,0 +1,11 @@
+============================================================
+PRE BUILD started: Wed 01/28/2026 11:24:09.24
+Project root : C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged
+Packaging    : C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\packaging
+Build data   : C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\packaging\build_data
+Local data   : C:\Users\Sidscri\AppData\Local\Advanced Flashcards WebApp Server\data
+Log file     : C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\packaging\logs\pre_build_20260128_112409.log
+============================================================
+[INFO] Using LOCALAPPDATA data
+[INFO] robocopy "C:\Users\Sidscri\AppData\Local\Advanced Flashcards WebApp Server\data" "C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\packaging\build_data" /MIR
+

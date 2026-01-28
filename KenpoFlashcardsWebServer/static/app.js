@@ -2635,8 +2635,9 @@ function renderDecksList(){
   for(const deck of currentDecks){
     const isActive = deck.id === activeDeckId;
     const accessType = deck.accessType || (deck.isBuiltIn ? "built-in" : "owned");
-    const accessBadge = accessType === "unlocked" ? '<span class="deckBadge unlocked">🔓 Unlocked</span>' : 
-                        (accessType === "built-in" ? '<span class="deckBadge builtin">📦 Built-in</span>' : '');
+    const accessBadge = accessType === "shared" ? '<span class="deckBadge shared">👥 Shared</span>' : 
+                        (accessType === "unlocked" ? '<span class="deckBadge unlocked">🔓 Unlocked</span>' : 
+                        (accessType === "built-in" ? '<span class="deckBadge builtin">📦 Built-in</span>' : ''));
     
     const div = document.createElement("div");
     div.className = "deckItem" + (isActive ? " active" : "");
@@ -2655,8 +2656,8 @@ function renderDecksList(){
       <div class="deckActions">
         ${!isActive ? '<button class="deckSwitchBtn appBtn primary small" title="Switch to this deck">Switch</button>' : '<span class="deckActiveLabel">✓ Active</span>'}
         ${!deck.isDefault ? '<button class="deckDefaultBtn" title="Set as default startup deck">★</button>' : '<button class="deckClearDefaultBtn" title="Clear default (no startup deck)">★</button>'}
-        ${!deck.isBuiltIn ? '<button class="deckEditBtn" title="Edit deck">✏️</button>' : ''}
-        ${!deck.isBuiltIn ? '<button class="deckDeleteBtn" title="Delete deck">🗑️</button>' : ''}
+        ${deck.canEdit ? '<button class="deckEditBtn" title="Edit deck">✏️</button>' : ''}
+        ${deck.canDelete ? '<button class="deckDeleteBtn" title="Delete deck">🗑️</button>' : ''}
       </div>
     `;
     

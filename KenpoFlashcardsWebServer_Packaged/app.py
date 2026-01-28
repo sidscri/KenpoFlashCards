@@ -1,5 +1,4 @@
 import os
-import shutil
 import json
 import time
 import hashlib
@@ -12,9 +11,10 @@ import requests
 
 from flask import Flask, jsonify, request, send_from_directory, session, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 
 # =========================================================
-# Advanced Flashcards WebApp Server Web (Multi-user with Username/Password Auth)
+# Advanced Flashcards WebApp Server (Multi-user with Username/Password Auth)
 # - Users create a profile with username/password
 # - Progress + settings are stored per user on the server
 # - Login from any device with the same credentials
@@ -22,7 +22,34 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 DEFAULT_KENPO_ROOT = r"C:\Users\Sidscri\Documents\GitHub\sidscri-apps"
 # Fallback (only used if auto-discovery fails)
-DEFAULT_KENPO_JSON_FALLBACK = r"C:\Users\Sidscri\Documents\GitHub\sidscri-apps\StudyFlashcardsProject-v2\app\src\main\assets\kenpo_words.json"
+DEFAULT_KENPO_JSON_FALLBACK = r"C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsProject-v2\app\src\main\assets\kenpo_words.json"
+
+
+def _safe_int(value, default=0):
+    """Best-effort int() conversion for sync timestamps (prevents 500s on bad data)."""
+    try:
+        if value is None:
+            return default
+        if isinstance(value, bool):
+            return int(value)
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float):
+            return int(value)
+        if isinstance(value, str):
+            s = value.strip()
+            if not s or s.lower() in ('none', 'null', 'nan'):
+                return default
+            try:
+                return int(s)
+            except Exception:
+                try:
+                    return int(float(s))
+                except Exception:
+                    return default
+        return int(value)
+    except Exception:
+        return default
 
 def _resolve_kenpo_json_path() -> str:
     """Resolve the kenpo_words.json path.
@@ -57,45 +84,7 @@ KENPO_JSON_PATH = _resolve_kenpo_json_path()
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# ---------------------------------------------------------------------------
-# Advanced Flashcards WebApp Server — Per-user data directory
-#   Seed data is bundled alongside the app in APP_DIR\data.
-#   Runtime data lives in: %LOCALAPPDATA%\Advanced Flashcards WebApp Server\data
-# ---------------------------------------------------------------------------
-APP_DISPLAY_NAME = "Advanced Flashcards WebApp Server"
-
-def _get_user_data_dir() -> str:
-    base = (os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA") or os.path.expanduser("~"))
-    return os.path.join(base, APP_DISPLAY_NAME, "data")
-
-def _ensure_user_data_dir(seed_dir: str) -> str:
-    user_dir = _get_user_data_dir()
-    os.makedirs(user_dir, exist_ok=True)
-
-    # If user data is empty, seed it from bundled data (fresh install / first run)
-    try:
-        is_empty = (not os.listdir(user_dir))
-    except FileNotFoundError:
-        is_empty = True
-
-    if is_empty and os.path.isdir(seed_dir):
-        for name in os.listdir(seed_dir):
-            src = os.path.join(seed_dir, name)
-            dst = os.path.join(user_dir, name)
-            if os.path.isdir(src):
-                if not os.path.exists(dst):
-                    shutil.copytree(src, dst)
-            else:
-                if not os.path.exists(dst):
-                    shutil.copy2(src, dst)
-
-    return user_dir
-
-# Bundled seed data (inside the app folder / _internal when packaged)
-_BUNDLED_DATA_DIR = os.path.join(APP_DIR, "data")
-
-# Runtime data (per-user)
-DATA_DIR = _ensure_user_data_dir(_BUNDLED_DATA_DIR)
+DATA_DIR = os.path.join(APP_DIR, "data")
 
 BREAKDOWNS_PATH = os.path.join(DATA_DIR, "breakdowns.json")
 
@@ -693,8 +682,8 @@ def get_version():
                 _VERSION_CACHE = json.load(f)
             _VERSION_MTIME = st.st_mtime
     except Exception:
-        return {"name": "StudyFlashcardsWebServer", "version": "unknown", "build": "unknown"}
-    return _VERSION_CACHE or {"name": "StudyFlashcardsWebServer", "version": "unknown", "build": "unknown"}
+        return {"name": "KenpoFlashcardsWebServer", "version": "unknown", "build": "unknown"}
+    return _VERSION_CACHE or {"name": "KenpoFlashcardsWebServer", "version": "unknown", "build": "unknown"}
 
 # Optional allowlist: set env var KENPO_ALLOWED_IPS="1.2.3.4,5.6.7.8"
 ALLOWED_IPS = {ip.strip() for ip in os.environ.get("KENPO_ALLOWED_IPS", "").split(",") if ip.strip()}
@@ -1296,7 +1285,7 @@ def api_groups():
     if uid and not deck_id:
         progress = load_progress(uid)
         settings = progress.get("__settings__", _default_settings())
-        deck_id = settings.get("activeDeckId", "kenpo")
+        deck_id = _get_active_deck_id(settings, "kenpo")
     
     if not deck_id or deck_id == "kenpo":
         # Built-in Kenpo deck
@@ -1356,7 +1345,7 @@ def user_guide_pdf():
 
     try:
         v = get_version()
-        title = f"Advanced Flashcards WebApp Server (Web) — User Guide  (v{v.get('version','')}, build {v.get('build','')})"
+        title = f"Advanced Flashcards WebApp — User Guide  (v{v.get('version','')}, build {v.get('build','')})"
         lines = [
             "Created by Sidney Shelton (Sidscri@yahoo.com)",
             "",
@@ -1392,7 +1381,7 @@ def user_guide_pdf():
 
         x = 0.8 * inch
         y = height - 1.0 * inch
-        c.setTitle("Advanced Flashcards WebApp Server User Guide")
+        c.setTitle("Advanced Flashcards WebApp User Guide")
         c.setFont("Helvetica-Bold", 14)
         c.drawString(x, y, title)
         y -= 0.4 * inch
@@ -1410,7 +1399,7 @@ def user_guide_pdf():
         c.save()
         buf.seek(0)
 
-        return send_file(buf, mimetype="application/pdf", as_attachment=True, download_name="StudyFlashcards_User_Guide.pdf")
+        return send_file(buf, mimetype="application/pdf", as_attachment=True, download_name="KenpoFlashcards_User_Guide.pdf")
     except Exception as e:
         return f"""
         <html><body style="font-family: sans-serif; padding: 40px; background: #1a1f2e; color: #fff;">
@@ -1430,16 +1419,71 @@ def whoami():
         "time": datetime.datetime.utcnow().isoformat() + "Z",
     })
 
+def _get_active_deck_id(settings_obj: Any, fallback: str = "kenpo") -> str:
+    """Return the active deck id from __settings__ in either the new schema (settings['all']) or legacy flat schema."""
+    try:
+        if isinstance(settings_obj, dict):
+            if isinstance(settings_obj.get("all"), dict):
+                v = (settings_obj.get("all") or {}).get("activeDeckId")
+                if v:
+                    return str(v)
+            v = settings_obj.get("activeDeckId")
+            if v:
+                return str(v)
+    except Exception:
+        pass
+    return fallback
+
+
+def _set_active_deck_id(settings_obj: Dict[str, Any], deck_id: str) -> Dict[str, Any]:
+    """Set activeDeckId in the new schema, preserving other settings."""
+    settings_obj = _migrate_settings(settings_obj or _default_settings())
+    if not isinstance(settings_obj, dict):
+        settings_obj = _default_settings()
+    if "all" not in settings_obj or not isinstance(settings_obj.get("all"), dict):
+        settings_obj = _default_settings()
+    settings_obj["all"]["activeDeckId"] = deck_id
+    # Remove legacy top-level key if present
+    settings_obj.pop("activeDeckId", None)
+    return settings_obj
+
 @app.get("/api/settings")
 def api_settings_get():
     uid, _ = require_user()
     if not uid:
         return jsonify({"error": "login_required"}), 401
+
     progress = load_progress(uid)
     scope = request.args.get("scope", "all")
     settings = _migrate_settings(progress.get("__settings__", _default_settings()))
+
     if scope == "all":
+        # Ensure we always have a valid activeDeckId.
+        # If missing/invalid, fall back to the user's default deck (isDefault) or Kenpo.
+        try:
+            decks = _load_decks(user_id=uid)
+            accessible_ids = {d.get("id") for d in decks if d.get("id")}
+            current_active = None
+            if isinstance(settings, dict) and isinstance(settings.get("all"), dict):
+                current_active = (settings.get("all") or {}).get("activeDeckId")
+
+            if (not current_active) or (accessible_ids and current_active not in accessible_ids):
+                default_id = None
+                for d in decks:
+                    if d.get("isDefault"):
+                        default_id = d.get("id")
+                        break
+                if not default_id:
+                    default_id = "kenpo" if ("kenpo" in accessible_ids or not accessible_ids) else next(iter(accessible_ids))
+                settings = _set_active_deck_id(settings, default_id)
+                progress["__settings__"] = settings
+                save_progress(uid, progress)
+        except Exception:
+            # Never block settings read; just return what we have.
+            pass
+
         return jsonify({"scope": "all", "settings": settings["all"]})
+
     return jsonify({"scope": scope, "settings": settings["groups"].get(scope) or {}})
 
 
@@ -1506,7 +1550,7 @@ def api_counts():
     # Get user's settings to check active deck
     progress = load_progress(uid)
     settings = progress.get("__settings__", _default_settings())
-    active_deck_id = deck_id or settings.get("activeDeckId", "kenpo")
+    active_deck_id = deck_id or _get_active_deck_id(settings, "kenpo")
     
     # Load cards based on deck
     if active_deck_id == "kenpo":
@@ -1516,13 +1560,25 @@ def api_counts():
             return jsonify({"error": status}), 500
         all_cards = list(cards)
         # Also add any user cards assigned to kenpo deck
+        _migrate_user_deck_cards(uid)
         user_cards = _load_user_cards(uid)
         kenpo_user_cards = [c for c in user_cards if c.get("deckId", "kenpo") == "kenpo"]
         all_cards = all_cards + kenpo_user_cards
     else:
-        # User-created deck - only show user cards for this deck
-        user_cards = _load_user_cards(uid)
-        all_cards = [c for c in user_cards if c.get("deckId") == active_deck_id]
+        # Non-built-in deck (owned or shared)
+        _migrate_user_deck_cards(uid)
+        if not _user_can_access_deck(uid, active_deck_id):
+            return jsonify({"error": "deck_not_accessible"}), 403
+
+        deck = _get_deck_by_id(active_deck_id)
+        owner_id = _deck_owner_id(deck)
+
+        if not owner_id:
+            # Legacy deck (no owner stored yet): cards are still per-user
+            user_cards = _load_user_cards(uid)
+            all_cards = [c for c in user_cards if c.get("deckId") == active_deck_id]
+        else:
+            all_cards = _load_deck_cards(active_deck_id)
 
     counts = {"active": 0, "unsure": 0, "learned": 0, "deleted": 0, "total": 0}
     for c in all_cards:
@@ -1715,7 +1771,7 @@ def api_admin_stats():
     cards, status = load_cards_cached()
     profiles = _load_profiles()
     breakdowns = _load_breakdowns()
-    decks = _load_decks()
+    decks = _load_decks(include_all=True)  # Admin sees all decks
     
     # User stats with detailed progress
     users = profiles.get("users", {})
@@ -1731,7 +1787,7 @@ def api_admin_stats():
             try:
                 progress = load_progress(user_id)
                 settings = progress.get("__settings__", {})
-                active_deck_id = settings.get("activeDeckId", "kenpo")
+                active_deck_id = _get_active_deck_id(settings, "kenpo")
                 last_sync = progress.get("__last_sync__", 0)
                 
                 # Count statuses
@@ -2016,6 +2072,342 @@ def api_admin_user_reset_password():
     return jsonify({"success": True})
 
 
+# ============ ADMIN DECK ACCESS MANAGEMENT ============
+
+@app.get("/api/admin/deck-config")
+def api_admin_get_deck_config():
+    """Get global deck configuration (admin only)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    if not _is_admin_user(username):
+        return jsonify({"error": "admin_required"}), 403
+    
+    config = _load_deck_config()
+    access = _load_deck_access()
+    
+    return jsonify({
+        "config": config,
+        "inviteCodes": access.get("inviteCodes", {}),
+        "userUnlocks": access.get("userUnlocks", {}),
+        "userBuiltInDisabled": access.get("userBuiltInDisabled", [])
+    })
+
+
+@app.post("/api/admin/deck-config")
+def api_admin_update_deck_config():
+    """Update global deck configuration (admin only)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    if not _is_admin_user(username):
+        return jsonify({"error": "admin_required"}), 403
+    
+    data = request.get_json() or {}
+    config = _load_deck_config()
+    
+    if "newUsersGetBuiltInDecks" in data:
+        config["newUsersGetBuiltInDecks"] = bool(data["newUsersGetBuiltInDecks"])
+    if "allowNonAdminDeckEdits" in data:
+        config["allowNonAdminDeckEdits"] = bool(data["allowNonAdminDeckEdits"])
+    if "builtInDecks" in data and isinstance(data["builtInDecks"], list):
+        config["builtInDecks"] = data["builtInDecks"]
+    
+    _save_deck_config(config)
+    log_activity("info", f"Deck config updated by {username}", username)
+    
+    return jsonify({"success": True, "config": config})
+
+
+
+
+@app.get("/api/admin/user/<target_user_id>/deck-access")
+def api_admin_get_user_deck_access(target_user_id: str):
+    """Get a user's owned decks and which of the ADMIN's decks they can access (admin only)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    if not _is_admin_user(username):
+        return jsonify({"error": "admin_required"}), 403
+
+    profiles = _load_profiles()
+    if target_user_id not in profiles.get("users", {}):
+        return jsonify({"error": "user not found"}), 404
+
+    decks_all = _load_decks(include_all=True)
+
+    # Decks owned by the target user
+    owned = []
+    for d in decks_all:
+        if d.get("isBuiltIn"):
+            continue
+        if _deck_owner_id(d) == target_user_id:
+            owned.append({"id": d.get("id"), "name": d.get("name", d.get("id"))})
+
+    # Decks owned by the current admin (shareable)
+    shareable = []
+    for d in decks_all:
+        if d.get("isBuiltIn"):
+            continue
+        if _deck_owner_id(d) == uid:
+            shareable.append({"id": d.get("id"), "name": d.get("name", d.get("id"))})
+
+    access = _load_deck_access()
+    current_unlocks = set(access.get("userUnlocks", {}).get(target_user_id, []) or [])
+    granted = [d["id"] for d in shareable if d["id"] in current_unlocks]
+
+    return jsonify({
+        "userId": target_user_id,
+        "ownedDecks": owned,
+        "adminDecks": shareable,
+        "grantedAdminDecks": granted
+    })
+
+
+@app.post("/api/admin/user/<target_user_id>/deck-access")
+def api_admin_set_user_deck_access(target_user_id: str):
+    """Set which of the ADMIN's decks the target user can access (admin only)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    if not _is_admin_user(username):
+        return jsonify({"error": "admin_required"}), 403
+
+    profiles = _load_profiles()
+    if target_user_id not in profiles.get("users", {}):
+        return jsonify({"error": "user not found"}), 404
+
+    data = request.get_json() or {}
+    desired = data.get("grantedAdminDecks", [])
+    if not isinstance(desired, list):
+        return jsonify({"error": "grantedAdminDecks must be a list"}), 400
+    desired = [str(x) for x in desired if str(x).strip()]
+
+    decks_all = _load_decks(include_all=True)
+    admin_deck_ids = set(
+        d.get("id") for d in decks_all
+        if (not d.get("isBuiltIn")) and (_deck_owner_id(d) == uid)
+    )
+
+    # Only allow granting decks owned by this admin
+    desired = [d for d in desired if d in admin_deck_ids]
+
+    access = _load_deck_access()
+    unlocks = access.setdefault("userUnlocks", {})
+    existing = set(unlocks.get(target_user_id, []) or [])
+
+    # Preserve non-admin-owned unlocks; only manage the admin-owned subset
+    preserved = set([d for d in existing if d not in admin_deck_ids])
+    unlocks[target_user_id] = sorted(list(preserved.union(set(desired))))
+
+    _save_deck_access(access)
+
+    target_username = profiles.get("users", {}).get(target_user_id, {}).get("username", "")
+    log_activity("info", f"Admin {username} updated deck access for {target_username}", username)
+
+    return jsonify({"success": True, "grantedAdminDecks": desired})
+
+@app.post("/api/admin/deck-invite-code")
+def api_admin_create_invite_code():
+    """Create an invite code for a deck (admin only)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    if not _is_admin_user(username):
+        return jsonify({"error": "admin_required"}), 403
+    
+    data = request.get_json() or {}
+    deck_id = data.get("deckId", "")
+    
+    if not deck_id:
+        return jsonify({"error": "deckId required"}), 400
+    
+    access = _load_deck_access()
+    
+    # Generate unique code
+    code = _generate_invite_code()
+    while code in access.get("inviteCodes", {}):
+        code = _generate_invite_code()
+    
+    access.setdefault("inviteCodes", {})[code] = {
+        "deckId": deck_id,
+        "createdAt": int(time.time()),
+        "createdBy": username,
+        "uses": 0
+    }
+    
+    _save_deck_access(access)
+    log_activity("info", f"Invite code {code} created for deck {deck_id} by {username}", username)
+    
+    return jsonify({"success": True, "code": code})
+
+
+@app.delete("/api/admin/deck-invite-code/<code>")
+def api_admin_delete_invite_code(code: str):
+    """Delete an invite code (admin only)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    if not _is_admin_user(username):
+        return jsonify({"error": "admin_required"}), 403
+    
+    access = _load_deck_access()
+    
+    if code in access.get("inviteCodes", {}):
+        del access["inviteCodes"][code]
+        _save_deck_access(access)
+        log_activity("info", f"Invite code {code} deleted by {username}", username)
+    
+    return jsonify({"success": True})
+
+
+@app.post("/api/admin/user-deck-access")
+def api_admin_update_user_deck_access():
+    """Update a user's deck access (admin only)."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    if not _is_admin_user(username):
+        return jsonify({"error": "admin_required"}), 403
+    
+    data = request.get_json() or {}
+    target_user_id = data.get("userId", "")
+    action = data.get("action", "")  # "unlock", "lock", "enableBuiltIn", "disableBuiltIn"
+    deck_id = data.get("deckId", "")
+    
+    if not target_user_id:
+        return jsonify({"error": "userId required"}), 400
+    
+    access = _load_deck_access()
+    
+    if action == "unlock" and deck_id:
+        # Add deck to user's unlocked list
+        access.setdefault("userUnlocks", {}).setdefault(target_user_id, [])
+        if deck_id not in access["userUnlocks"][target_user_id]:
+            access["userUnlocks"][target_user_id].append(deck_id)
+            log_activity("info", f"Deck {deck_id} unlocked for user {target_user_id} by {username}", username)
+    
+    elif action == "lock" and deck_id:
+        # Remove deck from user's unlocked list
+        if target_user_id in access.get("userUnlocks", {}):
+            access["userUnlocks"][target_user_id] = [
+                d for d in access["userUnlocks"][target_user_id] if d != deck_id
+            ]
+            log_activity("info", f"Deck {deck_id} locked for user {target_user_id} by {username}", username)
+    
+    elif action == "disableBuiltIn":
+        # Disable built-in decks for user
+        access.setdefault("userBuiltInDisabled", [])
+        if target_user_id not in access["userBuiltInDisabled"]:
+            access["userBuiltInDisabled"].append(target_user_id)
+            log_activity("info", f"Built-in decks disabled for user {target_user_id} by {username}", username)
+    
+    elif action == "enableBuiltIn":
+        # Re-enable built-in decks for user
+        access["userBuiltInDisabled"] = [
+            u for u in access.get("userBuiltInDisabled", []) if u != target_user_id
+        ]
+        log_activity("info", f"Built-in decks enabled for user {target_user_id} by {username}", username)
+    
+    _save_deck_access(access)
+    
+    return jsonify({"success": True})
+
+
+@app.post("/api/redeem-invite-code")
+def api_redeem_invite_code():
+    """Redeem an invite code to unlock a deck."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+    
+    data = request.get_json() or {}
+    code = str(data.get("code", "")).strip()
+    
+    if not code:
+        return jsonify({"error": "code required"}), 400
+    
+    access = _load_deck_access()
+    
+    if code not in access.get("inviteCodes", {}):
+        return jsonify({"error": "Invalid invite code"}), 404
+    
+    code_data = access["inviteCodes"][code]
+    deck_id = code_data.get("deckId")
+    
+    if not deck_id:
+        return jsonify({"error": "Invalid invite code"}), 400
+    
+    # Check if already unlocked
+    user_unlocks = access.get("userUnlocks", {}).get(uid, [])
+    if deck_id in user_unlocks:
+        return jsonify({"error": "Deck already unlocked"}), 400
+    
+    # Unlock the deck
+    access.setdefault("userUnlocks", {}).setdefault(uid, [])
+    access["userUnlocks"][uid].append(deck_id)
+    
+    # Increment use count
+    access["inviteCodes"][code]["uses"] = code_data.get("uses", 0) + 1
+    
+    _save_deck_access(access)
+    
+    # Get deck name for response
+    decks = _load_decks(include_all=True)
+    deck_name = deck_id
+    for d in decks:
+        if d.get("id") == deck_id:
+            deck_name = d.get("name", deck_id)
+            break
+    
+    user = _get_user(uid)
+    username = user.get("username", "") if user else ""
+    log_activity("info", f"User {username} redeemed code {code} for deck {deck_name}", username)
+    
+    return jsonify({"success": True, "deckId": deck_id, "deckName": deck_name})
+
+
+@app.post("/api/decks/<deck_id>/clear_default")
+def api_clear_default_deck(deck_id: str):
+    """Clear the default flag from a deck."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    decks = _load_decks(include_all=True)
+    
+    # Clear default flag from specified deck
+    for d in decks:
+        if d.get("id") == deck_id:
+            d["isDefault"] = False
+            break
+    
+    _save_decks(decks)
+    
+    return jsonify({"success": True})
+
+
 @app.get("/api/cards")
 def api_cards():
     uid, _ = require_user()
@@ -2032,7 +2424,7 @@ def api_cards():
     # Get user's settings to check active deck
     progress = load_progress(uid)
     settings = progress.get("__settings__", _default_settings())
-    active_deck_id = deck_id or settings.get("activeDeckId", "kenpo")
+    active_deck_id = deck_id or _get_active_deck_id(settings, "kenpo")
     
     # Load cards based on deck
     if active_deck_id == "kenpo":
@@ -2042,13 +2434,25 @@ def api_cards():
             return jsonify({"error": status}), 500
         all_cards = list(cards)
         # Also add any user cards assigned to kenpo deck
+        _migrate_user_deck_cards(uid)
         user_cards = _load_user_cards(uid)
         kenpo_user_cards = [c for c in user_cards if c.get("deckId", "kenpo") == "kenpo"]
         all_cards = all_cards + kenpo_user_cards
     else:
-        # User-created deck - only show user cards for this deck
-        user_cards = _load_user_cards(uid)
-        all_cards = [c for c in user_cards if c.get("deckId") == active_deck_id]
+        # Non-built-in deck (owned or shared)
+        _migrate_user_deck_cards(uid)
+        if not _user_can_access_deck(uid, active_deck_id):
+            return jsonify({"error": "deck_not_accessible"}), 403
+
+        deck = _get_deck_by_id(active_deck_id)
+        owner_id = _deck_owner_id(deck)
+
+        if not owner_id:
+            # Legacy deck (no owner stored yet): cards are still per-user
+            user_cards = _load_user_cards(uid)
+            all_cards = [c for c in user_cards if c.get("deckId") == active_deck_id]
+        else:
+            all_cards = _load_deck_cards(active_deck_id)
     
     # Get custom set IDs for this user
     custom_set_ids = set(settings.get("custom_set", []))
@@ -2344,7 +2748,7 @@ def api_breakdowns_list():
         items.append(v)
 
     # newest first
-    items.sort(key=lambda x: int(x.get("updated_at") or 0), reverse=True)
+    items.sort(key=lambda x: _safe_int(x.get("updated_at"), 0), reverse=True)
     return jsonify({"ok": True, "items": items})
 
 
@@ -2557,7 +2961,7 @@ def api_web_sync_pull():
             status = str(value.get('status') or '').lower().strip()
             if status not in ('active', 'unsure', 'learned', 'deleted'):
                 continue
-            updated_at = int(value.get('updated_at') or 0)
+            updated_at = _safe_int(value.get('updated_at'), 0)
             entries[key] = {'status': status, 'updated_at': updated_at}
         elif isinstance(value, str):
             status = value.lower().strip()
@@ -2592,7 +2996,7 @@ def api_sync_pull():
             status = str(value.get('status') or '').lower().strip()
             if status not in ('active', 'unsure', 'learned', 'deleted'):
                 continue
-            updated_at = int(value.get('updated_at') or 0)
+            updated_at = _safe_int(value.get('updated_at'), 0)
             entries[key] = {'status': status, 'updated_at': updated_at}
         elif isinstance(value, str):
             # Legacy server data (unlikely)
@@ -2642,7 +3046,7 @@ def api_sync_push():
             if st not in ('active', 'unsure', 'learned', 'deleted'):
                 return None, None
             try:
-                ua = int(v.get('updated_at') or 0)
+                ua = _safe_int(v.get('updated_at'), 0)
             except Exception:
                 ua = 0
             if ua <= 0:
@@ -2670,7 +3074,7 @@ def api_sync_push():
         if isinstance(cur, dict) and 'status' in cur:
             cur_status = str(cur.get('status') or '').lower().strip()
             try:
-                cur_updated = int(cur.get('updated_at') or 0)
+                cur_updated = _safe_int(cur.get('updated_at'), 0)
             except Exception:
                 cur_updated = 0
         elif isinstance(cur, str):
@@ -2956,42 +3360,179 @@ def web_admin_save_apikeys():
 # Paths for deck and user cards storage
 DECKS_PATH = os.path.join(DATA_DIR, "decks.json")
 USER_CARDS_DIR = os.path.join(DATA_DIR, "user_cards")
+DECK_CARDS_DIR = os.path.join(DATA_DIR, "deck_cards")
+DECK_ACCESS_PATH = os.path.join(DATA_DIR, "deck_access.json")
+DECK_CONFIG_PATH = os.path.join(DATA_DIR, "deck_config.json")
 
-def _load_decks() -> List[Dict[str, Any]]:
-    """Load deck definitions. Always includes the built-in Kenpo deck."""
-    kenpo_deck = {
-        "id": "kenpo",
-        "name": "Kenpo Vocabulary",
-        "description": "Korean martial arts terminology for Kenpo students",
-        "isDefault": True,
-        "isBuiltIn": True,
-        "sourceFile": "kenpo_words.json",
-        "cardCount": 88,
-        "createdAt": 0,
-        "updatedAt": 0
+
+def _load_deck_config() -> Dict[str, Any]:
+    """Load global deck configuration."""
+    if not os.path.exists(DECK_CONFIG_PATH):
+        return {
+            "newUsersGetBuiltInDecks": True,  # New users get built-in decks by default
+            "allowNonAdminDeckEdits": True,   # Non-admins can edit built-in/unlocked decks
+            "builtInDecks": ["kenpo"]          # List of built-in deck IDs
+        }
+    try:
+        with open(DECK_CONFIG_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {"newUsersGetBuiltInDecks": True, "allowNonAdminDeckEdits": True, "builtInDecks": ["kenpo"]}
+
+
+def _save_deck_config(config: Dict[str, Any]) -> None:
+    """Save global deck configuration."""
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(DECK_CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(config, f, ensure_ascii=False, indent=2)
+
+
+def _load_deck_access() -> Dict[str, Any]:
+    """Load deck access data (invite codes, user unlocks, user overrides)."""
+    if not os.path.exists(DECK_ACCESS_PATH):
+        return {
+            "inviteCodes": {},      # code -> {deckId, createdAt, uses}
+            "userUnlocks": {},      # userId -> [deckIds...]
+            "userOverrides": {},    # userId -> {deckId -> {cards added/removed, settings}}
+            "userBuiltInDisabled": []  # userIds who have built-in decks disabled
+        }
+    try:
+        with open(DECK_ACCESS_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        # Ensure all keys exist
+        data.setdefault("inviteCodes", {})
+        data.setdefault("userUnlocks", {})
+        data.setdefault("userOverrides", {})
+        data.setdefault("userBuiltInDisabled", [])
+        return data
+    except Exception:
+        return {"inviteCodes": {}, "userUnlocks": {}, "userOverrides": {}, "userBuiltInDisabled": []}
+
+
+def _save_deck_access(data: Dict[str, Any]) -> None:
+    """Save deck access data."""
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(DECK_ACCESS_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _generate_invite_code() -> str:
+    """Generate a simple invite code like 'KenpoStudy409'."""
+    import random
+    words = ["Study", "Learn", "Flash", "Card", "Deck", "Quiz", "Train", "Vocab", "Word", "Smart"]
+    word = random.choice(words)
+    num = random.randint(100, 999)
+    return f"Kenpo{word}{num}"
+
+
+def _get_user_accessible_decks(user_id: str) -> List[str]:
+    """Get list of deck IDs accessible to a user (built-in + unlocked)."""
+    config = _load_deck_config()
+    access = _load_deck_access()
+    
+    accessible = []
+    
+    # Check if user has built-in decks disabled
+    if user_id not in access.get("userBuiltInDisabled", []):
+        # Add built-in decks
+        accessible.extend(config.get("builtInDecks", ["kenpo"]))
+    
+    # Add unlocked decks
+    user_unlocks = access.get("userUnlocks", {}).get(user_id, [])
+    accessible.extend(user_unlocks)
+    
+    return list(set(accessible))  # Dedupe
+
+def _load_decks(user_id: str = None, include_all: bool = False) -> List[Dict[str, Any]]:
+    """Load deck definitions.
+    
+    Args:
+        user_id: If provided, filter to decks accessible by this user
+        include_all: If True (admin mode), return all decks regardless of access
+    """
+    config = _load_deck_config()
+    access = _load_deck_access()
+    built_in_deck_ids = config.get("builtInDecks", ["kenpo"])
+    
+    # Define built-in decks
+    built_in_decks = {
+        "kenpo": {
+            "id": "kenpo",
+            "name": "Kenpo Vocabulary",
+            "description": "Korean martial arts terminology for Kenpo students",
+            "isDefault": False,
+            "isBuiltIn": True,
+            "sourceFile": "kenpo_words.json",
+            "cardCount": 88,
+            "createdAt": 0,
+            "updatedAt": 0,
+            "logoPath": "/res/decklogos/kenpo_vocabulary.png"
+        }
     }
     
-    if not os.path.exists(DECKS_PATH):
-        return [kenpo_deck]
+    all_decks = []
     
-    try:
-        with open(DECKS_PATH, "r", encoding="utf-8") as f:
-            decks = json.load(f)
-        if not isinstance(decks, list):
-            decks = []
-        # Ensure kenpo deck is always first
-        deck_ids = [d.get("id") for d in decks]
-        if "kenpo" not in deck_ids:
-            decks.insert(0, kenpo_deck)
-        else:
-            # Update kenpo deck to ensure it has correct properties
-            for i, d in enumerate(decks):
-                if d.get("id") == "kenpo":
-                    decks[i] = kenpo_deck
-                    break
-        return decks
-    except Exception:
-        return [kenpo_deck]
+    # Load saved decks from file
+    if os.path.exists(DECKS_PATH):
+        try:
+            with open(DECKS_PATH, "r", encoding="utf-8") as f:
+                saved_decks = json.load(f)
+            if isinstance(saved_decks, list):
+                all_decks = saved_decks
+        except Exception:
+            pass
+    
+    # Ensure built-in decks are in the list with correct properties
+    deck_ids = [d.get("id") for d in all_decks]
+    for bid in built_in_deck_ids:
+        if bid in built_in_decks:
+            if bid not in deck_ids:
+                all_decks.insert(0, built_in_decks[bid])
+            else:
+                # Update existing to ensure built-in properties
+                for i, d in enumerate(all_decks):
+                    if d.get("id") == bid:
+                        all_decks[i] = {**built_in_decks[bid], **{"isDefault": d.get("isDefault", False)}}
+                        break
+    
+    # If include_all (admin), return everything
+    if include_all:
+        return all_decks
+    
+    # If no user, return just built-in decks
+    if not user_id:
+        return [d for d in all_decks if d.get("id") in built_in_deck_ids]
+    
+    # Get user's accessible decks
+    accessible_ids = _get_user_accessible_decks(user_id)
+    
+    # Also include user-created decks (those not in built-in list and not locked)
+    # User can see: their unlocked decks + decks they created
+    result = []
+    for d in all_decks:
+        did = d.get("id")
+        # Built-in deck that user has access to
+        if did in accessible_ids:
+            # Mark as unlocked if not in original built-in list for this user
+            d_copy = dict(d)
+            user_has_built_in = user_id not in access.get("userBuiltInDisabled", [])
+            if did in built_in_deck_ids and user_has_built_in:
+                d_copy["accessType"] = "built-in"
+            else:
+                d_copy["accessType"] = "unlocked"
+            result.append(d_copy)
+        # Non-built-in deck (user created or shared)
+        elif not d.get("isBuiltIn"):
+            # Non-built-in deck: only include if owned by user.
+            owner_id = d.get("ownerId") or d.get("createdBy")
+            if owner_id == user_id or (not owner_id and _user_has_legacy_cards_for_deck(user_id, d.get("id"))):
+                d_copy = dict(d)
+                d_copy["accessType"] = "owned"
+                if not owner_id:
+                    d_copy["accessType"] = "owned_legacy"
+                result.append(d_copy)
+    
+    return result
 
 
 def _save_decks(decks: List[Dict[str, Any]]) -> None:
@@ -3029,6 +3570,188 @@ def _save_user_cards(user_id: str, cards: List[Dict[str, Any]]) -> None:
         json.dump(cards, f, ensure_ascii=False, indent=2)
 
 
+
+
+# ----------------------------
+# Deck-scoped card storage
+# ----------------------------
+
+def _deck_cards_path(deck_id: str) -> str:
+    """Get path to a deck's card file."""
+    ddir = os.path.join(DECK_CARDS_DIR, deck_id)
+    os.makedirs(ddir, exist_ok=True)
+    return os.path.join(ddir, "cards.json")
+
+
+def _load_deck_cards(deck_id: str) -> List[Dict[str, Any]]:
+    path = _deck_cards_path(deck_id)
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            cards = json.load(f)
+        return cards if isinstance(cards, list) else []
+    except Exception:
+        return []
+
+
+def _save_deck_cards(deck_id: str, cards: List[Dict[str, Any]]) -> None:
+    path = _deck_cards_path(deck_id)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(cards, f, ensure_ascii=False, indent=2)
+
+
+def _get_deck_by_id(deck_id: str) -> Optional[Dict[str, Any]]:
+    decks = _load_decks(include_all=True)
+    for d in decks:
+        if d.get("id") == deck_id:
+            return d
+    return None
+
+
+def _deck_owner_id(deck: Optional[Dict[str, Any]]) -> str:
+    if not deck:
+        return ""
+    return str(deck.get("ownerId") or deck.get("createdBy") or "").strip()
+
+
+def _user_has_legacy_cards_for_deck(user_id: str, deck_id: str) -> bool:
+    """Legacy support: before deck ownership existed, non-built-in deck cards were stored per-user.
+    If a deck has no ownerId/createdBy, we treat it as 'legacy' and allow access/edit for users who have cards for it.
+    """
+    try:
+        cards = _load_user_cards(user_id)
+        for c in cards:
+            if str(c.get("deckId", "")).strip() == deck_id:
+                return True
+        return False
+    except Exception:
+        return False
+
+
+
+def _is_admin_uid(user_id: str) -> bool:
+    user = _get_user(user_id)
+    username = user.get("username", "") if user else ""
+    return _is_admin_user(username)
+
+
+def _user_can_access_deck(user_id: str, deck_id: str) -> bool:
+    if not user_id or not deck_id:
+        return False
+
+    config = _load_deck_config()
+    access = _load_deck_access()
+    built_in = set(config.get("builtInDecks", ["kenpo"]))
+
+    # Built-in decks
+    if deck_id in built_in:
+        # userBuiltInDisabled disables built-ins entirely for that user
+        return user_id not in access.get("userBuiltInDisabled", [])
+
+    deck = _get_deck_by_id(deck_id)
+    if not deck or deck.get("isBuiltIn"):
+        return False
+
+    owner_id = _deck_owner_id(deck)
+    if owner_id == user_id:
+        return True
+
+    # Legacy (no owner stored yet): allow access if this user has cards for it
+    if not owner_id and _user_has_legacy_cards_for_deck(user_id, deck_id):
+        return True
+
+    # Shared / unlocked via admin grant or invite code
+    unlocked = set(access.get("userUnlocks", {}).get(user_id, []) or [])
+    return deck_id in unlocked
+
+
+def _user_can_edit_deck(user_id: str, deck_id: str) -> bool:
+    """Whether this user can edit a non-built-in deck (metadata + cards)."""
+    deck = _get_deck_by_id(deck_id)
+    if not deck or deck.get("isBuiltIn"):
+        return False
+    owner_id = _deck_owner_id(deck)
+    if owner_id == user_id:
+        return True
+
+    # Legacy (no owner stored yet): allow edit if this user has cards for it
+    if not owner_id and _user_has_legacy_cards_for_deck(user_id, deck_id):
+        return True
+
+    # Admin override (useful for support)
+    return _is_admin_uid(user_id)
+
+
+def _migrate_user_deck_cards(user_id: str) -> None:
+    """One-way migration: move non-kenpo cards from per-user storage to per-deck storage for decks owned by user."""
+    try:
+        cards = _load_user_cards(user_id)
+        if not cards:
+            return
+
+        keep = []
+        moved_by_deck: Dict[str, List[Dict[str, Any]]] = {}
+        for c in cards:
+            did = str(c.get("deckId", "kenpo")).strip() or "kenpo"
+            if did == "kenpo":
+                keep.append(c)
+                continue
+
+            deck = _get_deck_by_id(did)
+            if _deck_owner_id(deck) == user_id:
+                moved_by_deck.setdefault(did, []).append(c)
+            else:
+                # If deck isn't owned by this user, keep it in per-user file to avoid data loss.
+                keep.append(c)
+
+        # Merge into deck files
+        for did, moved in moved_by_deck.items():
+            existing = _load_deck_cards(did)
+            existing_ids = set(str(x.get("id")) for x in existing)
+            for c in moved:
+                if str(c.get("id")) not in existing_ids:
+                    existing.append(c)
+            _save_deck_cards(did, existing)
+
+        if len(keep) != len(cards):
+            _save_user_cards(user_id, keep)
+    except Exception:
+        # Don't block app operation on migration issues
+        return
+
+
+def _owned_decks_for_user(user_id: str) -> List[Dict[str, Any]]:
+    decks = _load_decks(include_all=True)
+    out = []
+    for d in decks:
+        if d.get("isBuiltIn"):
+            continue
+        if _deck_owner_id(d) == user_id:
+            out.append(d)
+    return out
+
+
+def _find_editable_card(user_id: str, card_id: str) -> Tuple[Optional[str], Optional[str], List[Dict[str, Any]], int]:
+    """Find a user-editable card. Returns (storage, deck_id, cards_list, index).
+    storage: 'user' for kenpo personal cards, 'deck' for deck-scoped cards.
+    """
+    # 1) Search personal user_cards
+    ucards = _load_user_cards(user_id)
+    for i, c in enumerate(ucards):
+        if c.get("id") == card_id:
+            return "user", str(c.get("deckId", "kenpo")) or "kenpo", ucards, i
+
+    # 2) Search owned deck cards
+    for d in _owned_decks_for_user(user_id):
+        did = d.get("id")
+        dcards = _load_deck_cards(did)
+        for i, c in enumerate(dcards):
+            if c.get("id") == card_id:
+                return "deck", did, dcards, i
+
+    return None, None, [], -1
 def _generate_card_id() -> str:
     """Generate a unique 16-character hex ID for a new card."""
     return uuid.uuid4().hex[:16]
@@ -3036,18 +3759,26 @@ def _generate_card_id() -> str:
 
 @app.get("/api/decks")
 def api_get_decks():
-    """Get all available decks."""
+    """Get all available decks for the current user."""
     uid = current_user_id()
     if not uid:
         return jsonify({"error": "Not logged in"}), 401
     
-    decks = _load_decks()
-    
-    # Update card counts for user-created decks
-    user_cards = _load_user_cards(uid)
+    _migrate_user_deck_cards(uid)
+
+    decks = _load_decks(user_id=uid)
+
+    # Update card counts for non-built-in decks (deck-scoped)
     for deck in decks:
         if not deck.get("isBuiltIn"):
-            deck["cardCount"] = len([c for c in user_cards if c.get("deckId") == deck.get("id")])
+            did = deck.get("id")
+            dmeta = _get_deck_by_id(did)
+            if not _deck_owner_id(dmeta):
+                # Legacy: still stored per-user
+                uc = _load_user_cards(uid)
+                deck["cardCount"] = len([c for c in uc if c.get("deckId") == did])
+            else:
+                deck["cardCount"] = len(_load_deck_cards(did))
     
     return jsonify(decks)
 
@@ -3066,12 +3797,19 @@ def api_create_deck():
     if not name:
         return jsonify({"error": "Deck name is required"}), 400
     
-    decks = _load_decks()
-    
-    # Check for duplicate name
+    decks = _load_decks(include_all=True)
+
+    # Enforce per-user uniqueness for user-created decks (case-insensitive).
+    # Also prevent collisions with built-in deck names.
+    lower_name = name.lower()
     for d in decks:
-        if d.get("name", "").lower() == name.lower():
-            return jsonify({"error": "A deck with this name already exists"}), 400
+        dname = str(d.get("name", "")).strip().lower()
+        if not dname:
+            continue
+        if d.get("isBuiltIn") and dname == lower_name:
+            return jsonify({"error": "This deck name is reserved"}), 400
+        if (not d.get("isBuiltIn")) and (_deck_owner_id(d) == uid) and dname == lower_name:
+            return jsonify({"error": "You already have a deck with this name"}), 400
     
     new_deck = {
         "id": f"deck_{uuid.uuid4().hex[:8]}",
@@ -3081,9 +3819,11 @@ def api_create_deck():
         "isBuiltIn": False,
         "sourceFile": None,
         "cardCount": 0,
+        "ownerId": uid,
+        "createdBy": uid,  # Back-compat
         "createdAt": int(time.time()),
-        "updatedAt": int(time.time())
-    }
+        "updatedAt": int(time.time()),
+}
     
     decks.append(new_deck)
     _save_decks(decks)
@@ -3105,7 +3845,7 @@ def api_update_deck(deck_id: str):
     if not new_name:
         return jsonify({"error": "Deck name is required"}), 400
     
-    decks = _load_decks()
+    decks = _load_decks(include_all=True)
     
     # Find deck
     deck_to_update = None
@@ -3119,14 +3859,100 @@ def api_update_deck(deck_id: str):
     
     if deck_to_update.get("isBuiltIn"):
         return jsonify({"error": "Cannot edit built-in deck"}), 400
-    
+
+    if not _user_can_edit_deck(uid, deck_id):
+        return jsonify({"error": "not_owner"}), 403
+
+    # If this is a legacy deck with no owner stored yet, claim it for this user on first edit.
+    if not _deck_owner_id(deck_to_update):
+        deck_to_update["ownerId"] = uid
+        deck_to_update["createdBy"] = uid
+
+    # Enforce per-owner uniqueness (case-insensitive), and avoid built-in collisions
+    decks_all = _load_decks(include_all=True)
+    lower_name = new_name.lower()
+    for d in decks_all:
+        if d.get("id") == deck_id:
+            continue
+        dname = str(d.get("name", "")).strip().lower()
+        if not dname:
+            continue
+        if d.get("isBuiltIn") and dname == lower_name:
+            return jsonify({"error": "This deck name is reserved"}), 400
+        if (not d.get("isBuiltIn")) and (_deck_owner_id(d) == uid) and dname == lower_name:
+            return jsonify({"error": "You already have a deck with this name"}), 400
+
     # Update fields
     deck_to_update["name"] = new_name
     deck_to_update["description"] = new_desc
     
+
+    # Optional logoPath update (user decks only)
+    if "logoPath" in data:
+        deck_to_update["logoPath"] = data.get("logoPath")
     _save_decks(decks)
     
     return jsonify(deck_to_update)
+
+
+
+
+@app.post("/api/decks/<deck_id>/upload_logo")
+def api_upload_deck_logo(deck_id: str):
+    """Upload / set a deck logo image for a user-created deck.
+
+    Accepts multipart/form-data with field name: file
+    Saves the image under static/res/decklogos/user/<user_id>/...
+    """
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "Not logged in"}), 401
+
+    decks = _load_decks(include_all=True)
+    deck = next((d for d in decks if d.get("id") == deck_id), None)
+    if not deck:
+        return jsonify({"error": "Deck not found"}), 404
+
+    # Built-in decks are not editable here (set built-in logos in decks.json)
+    if deck.get("isBuiltIn"):
+        return jsonify({"error": "Cannot upload logo for built-in deck"}), 400
+
+    if not _user_can_edit_deck(uid, deck_id):
+        return jsonify({"error": "not_owner"}), 403
+
+    # Legacy deck: claim ownership on first edit action
+    if not _deck_owner_id(deck):
+        deck["ownerId"] = uid
+        deck["createdBy"] = uid
+        _save_decks(decks)
+
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    f = request.files["file"]
+    if not f or not getattr(f, "filename", ""):
+        return jsonify({"error": "Invalid file"}), 400
+
+    filename = secure_filename(f.filename)
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in [".png", ".jpg", ".jpeg", ".webp"]:
+        return jsonify({"error": "Unsupported file type. Use PNG/JPG/WEBP."}), 400
+
+    # Save
+    out_dir = os.path.join("static", "res", "decklogos", "user", uid)
+    os.makedirs(out_dir, exist_ok=True)
+
+    ts = int(time.time())
+    out_name = f"{deck_id}_{ts}{ext}"
+    out_path = os.path.join(out_dir, out_name)
+    f.save(out_path)
+
+    url_path = f"/res/decklogos/user/{uid}/{out_name}"
+    deck["logoPath"] = url_path
+    deck["updatedAt"] = int(time.time())
+    _save_decks(decks)
+
+    return jsonify({"success": True, "deckId": deck_id, "logoPath": url_path})
 
 
 @app.delete("/api/decks/<deck_id>")
@@ -3136,7 +3962,7 @@ def api_delete_deck(deck_id: str):
     if not uid:
         return jsonify({"error": "Not logged in"}), 401
     
-    decks = _load_decks()
+    decks = _load_decks(include_all=True)
     
     # Find and validate deck
     deck_to_delete = None
@@ -3150,16 +3976,50 @@ def api_delete_deck(deck_id: str):
     
     if deck_to_delete.get("isBuiltIn"):
         return jsonify({"error": "Cannot delete built-in deck"}), 400
-    
-    # Remove deck
+
+    if not _user_can_edit_deck(uid, deck_id):
+        return jsonify({"error": "not_owner"}), 403
+
+    # Remove deck definition
     decks = [d for d in decks if d.get("id") != deck_id]
     _save_decks(decks)
-    
-    # Also remove user cards from this deck
+
+    # Remove deck-scoped cards on disk
+    try:
+        ddir = os.path.join(DECK_CARDS_DIR, deck_id)
+        if os.path.isdir(ddir):
+            import shutil
+            shutil.rmtree(ddir, ignore_errors=True)
+    except Exception:
+        pass
+
+    # Clean up access grants & invite codes referencing this deck
+    try:
+        access = _load_deck_access()
+        # Remove invite codes for this deck
+        inv = access.get("inviteCodes", {}) or {}
+        for code in list(inv.keys()):
+            if inv.get(code, {}).get("deckId") == deck_id:
+                inv.pop(code, None)
+        access["inviteCodes"] = inv
+
+        # Remove unlocks for this deck from all users
+        unlocks = access.get("userUnlocks", {}) or {}
+        for uid2 in list(unlocks.keys()):
+            if isinstance(unlocks.get(uid2), list) and deck_id in unlocks[uid2]:
+                unlocks[uid2] = [x for x in unlocks[uid2] if x != deck_id]
+        access["userUnlocks"] = unlocks
+
+        _save_deck_access(access)
+    except Exception:
+        pass
+
+    # Remove any leftover per-user cards pointing at this deck (legacy)
+    _migrate_user_deck_cards(uid)
     user_cards = _load_user_cards(uid)
     user_cards = [c for c in user_cards if c.get("deckId") != deck_id]
     _save_user_cards(uid, user_cards)
-    
+
     return jsonify({"success": True, "deleted": deck_id})
 
 
@@ -3170,7 +4030,7 @@ def api_set_default_deck(deck_id: str):
     if not uid:
         return jsonify({"error": "Not logged in"}), 401
     
-    decks = _load_decks()
+    decks = _load_decks(include_all=True)
     
     # Check deck exists
     deck_found = False
@@ -3181,7 +4041,10 @@ def api_set_default_deck(deck_id: str):
     
     if not deck_found:
         return jsonify({"error": "Deck not found"}), 404
-    
+
+    if not _user_can_access_deck(uid, deck_id):
+        return jsonify({"error": "deck_not_accessible"}), 403
+
     # Clear all isDefault flags, then set the new one
     for d in decks:
         d["isDefault"] = (d.get("id") == deck_id)
@@ -3191,7 +4054,7 @@ def api_set_default_deck(deck_id: str):
     # Also save as the user's active deck preference
     progress = load_progress(uid)
     settings = progress.get("__settings__", _default_settings())
-    settings["activeDeckId"] = deck_id
+    settings = _set_active_deck_id(settings, deck_id)
     progress["__settings__"] = settings
     save_progress(uid, progress)
     
@@ -3200,18 +4063,47 @@ def api_set_default_deck(deck_id: str):
 
 @app.get("/api/user_cards")
 def api_get_user_cards():
-    """Get all user-created cards."""
+    """Get user-editable cards.
+
+    - deck_id=kenpo: returns this user's personal cards attached to built-in kenpo deck.
+    - deck_id=<user deck>: returns deck-scoped cards (owner/admin only).
+    - no deck_id: returns kenpo personal + all cards for decks owned by this user.
+    """
     uid = current_user_id()
     if not uid:
         return jsonify({"error": "Not logged in"}), 401
-    
-    deck_id = request.args.get("deck_id", "")
-    cards = _load_user_cards(uid)
-    
+
+    deck_id = str(request.args.get("deck_id", "") or "").strip()
+    _migrate_user_deck_cards(uid)
+
     if deck_id:
-        cards = [c for c in cards if c.get("deckId") == deck_id]
-    
-    return jsonify(cards)
+        if deck_id == "kenpo":
+            cards = _load_user_cards(uid)
+            cards = [c for c in cards if (c.get("deckId", "kenpo") == "kenpo")]
+            return jsonify(cards)
+
+        if not _user_can_edit_deck(uid, deck_id):
+            return jsonify({"error": "not_owner"}), 403
+
+        deck_meta = _get_deck_by_id(deck_id)
+        if not _deck_owner_id(deck_meta):
+            # Legacy: still per-user
+            cards = _load_user_cards(uid)
+            cards = [c for c in cards if c.get("deckId") == deck_id]
+            return jsonify(cards)
+
+        return jsonify(_load_deck_cards(deck_id))
+
+    # No deck filter: return everything this user can edit (kenpo personal + owned decks)
+    out = []
+    u_cards = _load_user_cards(uid)
+    out.extend([c for c in u_cards if (c.get("deckId", "kenpo") == "kenpo")])
+
+    for d in _owned_decks_for_user(uid):
+        did = d.get("id")
+        out.extend(_load_deck_cards(did))
+
+    return jsonify(out)
 
 
 @app.post("/api/user_cards")
@@ -3233,8 +4125,6 @@ def api_add_user_card():
     if not meaning:
         return jsonify({"error": "Definition is required"}), 400
     
-    cards = _load_user_cards(uid)
-    
     new_card = {
         "id": _generate_card_id(),
         "term": term,
@@ -3245,65 +4135,126 @@ def api_add_user_card():
         "deckId": deck_id,
         "isUserCreated": True,
         "createdAt": int(time.time()),
-        "updatedAt": int(time.time())
-    }
-    
+        "updatedAt": int(time.time()),
+}
+
+    _migrate_user_deck_cards(uid)
+
+    if deck_id == "kenpo":
+        cards = _load_user_cards(uid)
+        cards.append(new_card)
+        _save_user_cards(uid, cards)
+        return jsonify(new_card)
+
+    # Non-built-in deck: cards are stored per-deck once ownership is established.
+    if not _user_can_edit_deck(uid, deck_id):
+        return jsonify({"error": "not_owner"}), 403
+
+    deck_meta = _get_deck_by_id(deck_id)
+    if not _deck_owner_id(deck_meta):
+        # Legacy: still stored per-user until a deck owner is set
+        cards = _load_user_cards(uid)
+        cards.append(new_card)
+        _save_user_cards(uid, cards)
+        return jsonify(new_card)
+
+    cards = _load_deck_cards(deck_id)
     cards.append(new_card)
-    _save_user_cards(uid, cards)
-    
+    _save_deck_cards(deck_id, cards)
+
     return jsonify(new_card)
 
 
 @app.put("/api/user_cards/<card_id>")
 def api_update_user_card(card_id: str):
-    """Update a user-created card."""
+    """Update a user-editable card (kenpo personal or owned deck cards)."""
     uid = current_user_id()
     if not uid:
         return jsonify({"error": "Not logged in"}), 401
-    
+
     data = request.get_json() or {}
-    cards = _load_user_cards(uid)
-    
-    card_found = False
-    for i, c in enumerate(cards):
-        if c.get("id") == card_id:
-            card_found = True
-            # Update fields
-            if "term" in data:
-                cards[i]["term"] = str(data["term"]).strip()
-            if "meaning" in data:
-                cards[i]["meaning"] = str(data["meaning"]).strip()
-            if "pron" in data:
-                cards[i]["pron"] = str(data["pron"]).strip()
-            if "group" in data:
-                cards[i]["group"] = str(data["group"]).strip()
-            if "deckId" in data:
-                cards[i]["deckId"] = str(data["deckId"]).strip()
-            cards[i]["updatedAt"] = int(time.time())
-            break
-    
-    if not card_found:
+    _migrate_user_deck_cards(uid)
+
+    storage, current_deck_id, cards, idx = _find_editable_card(uid, card_id)
+    if storage is None or idx < 0:
         return jsonify({"error": "Card not found"}), 404
-    
-    _save_user_cards(uid, cards)
-    return jsonify(cards[i])
+
+    card = dict(cards[idx])
+    target_deck_id = str(data.get("deckId", current_deck_id) or current_deck_id).strip() or "kenpo"
+
+    # Validate move target
+    if target_deck_id != "kenpo" and not _user_can_edit_deck(uid, target_deck_id):
+        return jsonify({"error": "not_owner"}), 403
+
+    # Update fields
+    if "term" in data:
+        card["term"] = str(data["term"]).strip()
+    if "meaning" in data:
+        card["meaning"] = str(data["meaning"]).strip()
+    if "pron" in data:
+        card["pron"] = str(data["pron"]).strip()
+    if "group" in data:
+        card["group"] = str(data["group"]).strip()
+    card["deckId"] = target_deck_id
+    card["updatedAt"] = int(time.time())
+
+    # If deck changed, move between stores
+    if target_deck_id != current_deck_id:
+        # Remove from old store
+        del cards[idx]
+        if storage == "user":
+            _save_user_cards(uid, cards)
+        else:
+            _save_deck_cards(current_deck_id, cards)
+
+        # Add to new store
+        if target_deck_id == "kenpo":
+            new_store = _load_user_cards(uid)
+            new_store.append(card)
+            _save_user_cards(uid, new_store)
+        else:
+            tmeta = _get_deck_by_id(target_deck_id)
+            if not _deck_owner_id(tmeta):
+                # Legacy target deck: keep per-user
+                new_store = _load_user_cards(uid)
+                new_store.append(card)
+                _save_user_cards(uid, new_store)
+            else:
+                new_store = _load_deck_cards(target_deck_id)
+                new_store.append(card)
+                _save_deck_cards(target_deck_id, new_store)
+
+        return jsonify(card)
+
+    # Same deck: update in place
+    cards[idx] = card
+    if storage == "user":
+        _save_user_cards(uid, cards)
+    else:
+        _save_deck_cards(current_deck_id, cards)
+
+    return jsonify(card)
 
 
 @app.delete("/api/user_cards/<card_id>")
 def api_delete_user_card(card_id: str):
-    """Delete a user-created card."""
+    """Delete a user-editable card (kenpo personal or owned deck cards)."""
     uid = current_user_id()
     if not uid:
         return jsonify({"error": "Not logged in"}), 401
-    
-    cards = _load_user_cards(uid)
-    original_count = len(cards)
-    cards = [c for c in cards if c.get("id") != card_id]
-    
-    if len(cards) == original_count:
+
+    _migrate_user_deck_cards(uid)
+
+    storage, deck_id, cards, idx = _find_editable_card(uid, card_id)
+    if storage is None or idx < 0:
         return jsonify({"error": "Card not found"}), 404
-    
-    _save_user_cards(uid, cards)
+
+    del cards[idx]
+    if storage == "user":
+        _save_user_cards(uid, cards)
+    else:
+        _save_deck_cards(deck_id, cards)
+
     return jsonify({"success": True, "deleted": card_id})
 
 
@@ -3742,7 +4693,7 @@ def _parse_ai_cards_response(response: str) -> list:
 # --- Common public files (avoid 404 noise) ---
 @app.get("/favicon.ico")
 def favicon():
-    return send_from_directory("static", "favicon.ico")
+    return send_from_directory("static/res/webappicons", "favicon.ico")
 
 @app.get("/robots.txt")
 def robots():
@@ -3797,18 +4748,26 @@ def api_sync_get_decks():
     if not uid:
         return jsonify({"error": "Not logged in"}), 401
     
-    decks = _load_decks()
-    
-    # Update card counts for user-created decks
-    user_cards = _load_user_cards(uid)
+    _migrate_user_deck_cards(uid)
+
+    decks = _load_decks(user_id=uid)
+
+    # Update card counts for non-built-in decks (deck-scoped)
     for deck in decks:
         if not deck.get("isBuiltIn"):
-            deck["cardCount"] = len([c for c in user_cards if c.get("deckId") == deck.get("id")])
+            did = deck.get("id")
+            dmeta = _get_deck_by_id(did)
+            if not _deck_owner_id(dmeta):
+                # Legacy: still stored per-user
+                uc = _load_user_cards(uid)
+                deck["cardCount"] = len([c for c in uc if c.get("deckId") == did])
+            else:
+                deck["cardCount"] = len(_load_deck_cards(did))
     
     # Get user's active deck setting
     progress = load_progress(uid)
     settings = progress.get("__settings__", _default_settings())
-    active_deck_id = settings.get("activeDeckId", "kenpo")
+    active_deck_id = _get_active_deck_id(settings, "kenpo")
     
     return jsonify({
         "decks": decks,
@@ -3831,7 +4790,7 @@ def api_sync_push_decks():
         return jsonify({"error": "No decks provided"}), 400
     
     # Load existing decks
-    existing_decks = _load_decks()
+    existing_decks = _load_decks(include_all=True)
     existing_by_id = {d["id"]: d for d in existing_decks}
     
     # Merge incoming decks (Android wins for non-built-in decks)
@@ -3862,7 +4821,8 @@ def api_sync_push_decks():
                 "sourceFile": None,
                 "cardCount": incoming.get("cardCount", 0),
                 "createdAt": incoming.get("createdAt", int(time.time())),
-                "updatedAt": int(time.time())
+                "updatedAt": int(time.time()),
+                "logoPath": incoming.get("logoPath", None),
             }
             existing_decks.append(new_deck)
     
@@ -3872,7 +4832,7 @@ def api_sync_push_decks():
     if active_deck_id:
         progress = load_progress(uid)
         settings = progress.get("__settings__", _default_settings())
-        settings["activeDeckId"] = active_deck_id
+        settings = _set_active_deck_id(settings, active_deck_id)
         progress["__settings__"] = settings
         save_progress(uid, progress)
     
@@ -3951,7 +4911,7 @@ def api_sync_push_user_cards():
                 "deckId": incoming.get("deckId", deck_id or "kenpo"),
                 "isUserCreated": True,
                 "createdAt": incoming.get("createdAt", int(time.time())),
-                "updatedAt": int(time.time())
+                "updatedAt": int(time.time()),
             }
             existing_cards.append(new_card)
             added += 1

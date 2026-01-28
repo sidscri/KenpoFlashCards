@@ -2,8 +2,8 @@
 
 A Windows **installer** build of the Advanced Flashcards WebApp Server + Tray Launcher.
 
-- **Packaged Version:** **v3.1.0 (build 11)**
-- **Bundled Web Server:** **v7.2.0 (build 42)**
+- **Packaged Version:** **v4.0.0 (build 12)**
+- **Bundled Web Server:** **v8.0.1 (build 46)**
 
 ## What you get
 
@@ -13,6 +13,19 @@ A Windows **installer** build of the Advanced Flashcards WebApp Server + Tray La
 - **Configurable network binding** - access from localhost, LAN, or Tailscale.
 - **Upgrade Tool** to safely sync future web server updates without damaging packaging files.
 
+
+## What's new in v4.0.0 (build 12)
+
+- **Bundled Web Server updated to v8.0.1 (build 46)** (from v7.2.0 build 42), bringing:
+  - **Deck icons in “Switch Study Subject”** — specific or the default logo).
+  - **Major rebrand** — visible “Server”).
+  - **WebApp icons**
+  - **Deck logos (optional)** — deck logos with default fallback to the Advanced Flashcards logo; Kenpo deck use
+  - **Deck Access Management System**
+  - **Admin Dashboard - Decks Tab**
+  - **Deck Access Types Displayed**
+  - **Clear Default Deck**
+  - **Invite Code Redemption**
 
 ## What's new in v3.1.0 (build 11)
 
@@ -24,6 +37,7 @@ This release was built in **steps** while the v3.1.0 cycle is in-progress. Docum
 - **Step 3 (v3.1.0.4)**: Adds a build-data source flag; after a successful build, `root\data` is backed up then replaced from flagged `packaging\build_data` so the **next package seeds new installs** with current data. Logs moved to:  
   `%LOCALAPPDATA%\Advanced Flashcards WebApp Server\log\Advanced Flashcards WebApp Server logs\`
 - **Step 4 (v3.1.0.5)**: Update/install behavior: **local data wins**, packaged data seeds missing files; backups on update + on-demand + auto (keep last 10); tray now includes **Start with Windows** (default ON) and restart options: **Restart server**, **Restart service**, or **Restart both**; `packaging\2. build_exe.bat` now shows **live pip + PyInstaller progress** and **pauses on failure**; on **success it closes automatically**.
+- **Step 5 (v3.1.0.6)**: Windows icon remap for the **EXE, tray, installer, and shortcuts** using assets in `static\res\webappservericons\` (no changes to browser UI assets). Removes legacy Kenpo icon files previously used by the EXE build. `packaging\2. build_exe.bat` no longer pulls `kenpo_words.json` from Android assets; it must exist in `data\kenpo_words.json`.
 
 **This package variant:** Windows Service option via WinSW wrapper (advanced)
 

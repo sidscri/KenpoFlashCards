@@ -3,8 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Admin Dashboard • Study Flashcards</title>
+  <title>Admin Dashboard • Advanced Flashcards WebApp</title>
   <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/res/webappicons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/res/webappicons/favicon-16.png" />
   <style>
     .admin-page { max-width: 1400px; margin: 0 auto; padding: 20px; }
     .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
@@ -95,6 +98,27 @@
     /* Quick actions */
     .quick-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
     
+    /* Deck Management */
+    .settings-group { display: flex; flex-direction: column; gap: 12px; }
+    .setting-row { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 8px; border-radius: 6px; transition: background 0.2s; }
+    .setting-row:hover { background: rgba(255,255,255,0.05); }
+    .setting-row input[type="checkbox"] { width: 18px; height: 18px; }
+    .section-desc { font-size: 13px; color: #888; margin-bottom: 12px; }
+    .danger-section { border-color: rgba(239, 68, 68, 0.3); }
+    .danger-section .section-title { color: #f87171; }
+    .built-in-list { display: flex; flex-direction: column; gap: 8px; }
+    .built-in-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px; }
+    .built-in-item .deck-name { font-weight: 500; color: #fff; }
+    .built-in-item .deck-id { font-size: 11px; color: #666; }
+    .invite-code-form, .user-access-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+    .invite-code-form .form-select, .user-access-form .form-select { width: 200px; }
+    .invite-codes-list { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; }
+    .invite-code-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: rgba(0,0,0,0.2); border-radius: 6px; }
+    .invite-code { font-family: monospace; font-size: 14px; color: #60a5fa; background: rgba(96, 165, 250, 0.1); padding: 4px 8px; border-radius: 4px; }
+    .invite-meta { font-size: 11px; color: #888; }
+    .empty-state { text-align: center; padding: 20px; color: #666; font-size: 13px; }
+    .user-access-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    
     /* Modal */
     .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; }
     .modal-overlay.hidden { display: none; }
@@ -113,7 +137,20 @@
     /* Loading */
     #loading { text-align: center; padding: 60px; color: #888; }
     #dashboard { display: none; }
-  </style>
+  
+
+/* Edit user deck access */
+.deck-access-grid{ display:flex; gap:16px; align-items:flex-start; }
+.deck-access-col{ flex:1; min-width: 220px; }
+.deck-access-title{ font-size: 12px; color:#aaa; margin: 6px 0 8px; text-transform: uppercase; letter-spacing: .04em; }
+.deckAccessList{ border:1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 10px; background: rgba(0,0,0,0.15); max-height: 220px; overflow:auto; }
+.deckAccessRow{ display:flex; justify-content: space-between; align-items:center; gap:10px; padding: 8px 6px; border-bottom:1px solid rgba(255,255,255,0.06); }
+.deckAccessRow:last-child{ border-bottom:none; }
+.deckAccessName{ font-size: 14px; color:#e5e7eb; }
+.deckAccessMeta{ font-size: 11px; color:#9ca3af; margin-top:2px; }
+.deckAccessToggle{ display:flex; align-items:center; gap:8px; }
+.toggleLabel{ font-size: 12px; color:#cbd5e1; }
+</style>
 </head>
 <body>
   <div class="admin-page">
@@ -128,6 +165,7 @@
       <div class="admin-tabs">
         <button class="admin-tab active" data-tab="overview"><span>📊</span> Overview</button>
         <button class="admin-tab" data-tab="users"><span>👥</span> Users</button>
+        <button class="admin-tab" data-tab="decks"><span>📁</span> Decks</button>
         <button class="admin-tab" data-tab="system"><span>🖥️</span> System</button>
         <button class="admin-tab" data-tab="logs"><span>📋</span> Logs</button>
       </div>
@@ -224,6 +262,65 @@
         </div>
       </div>
       
+      <!-- Decks Tab -->
+      <div class="tab-content" id="tab-decks">
+        <div class="section-card">
+          <div class="section-title"><span>⚙️</span> Global Deck Settings</div>
+          <div class="settings-group">
+            <label class="setting-row">
+              <input type="checkbox" id="cfgNewUsersGetBuiltIn" onchange="saveDeckConfig()">
+              <span>New users get built-in decks by default</span>
+            </label>
+            <label class="setting-row">
+              <input type="checkbox" id="cfgAllowNonAdminEdits" onchange="saveDeckConfig()">
+              <span>Allow non-admins to edit built-in/unlocked decks</span>
+            </label>
+          </div>
+        </div>
+        
+        <div class="section-card danger-section">
+          <div class="section-title"><span>⚠️</span> Built-In Deck Management</div>
+          <p class="section-desc">Manage which decks are considered "built-in" and available to all users by default.</p>
+          <div class="built-in-list" id="builtInDecksList">
+            <div class="loading">Loading...</div>
+          </div>
+        </div>
+        
+        <div class="section-card">
+          <div class="section-title"><span>🎟️</span> Invite Codes</div>
+          <p class="section-desc">Generate invite codes to unlock decks for users.</p>
+          <div class="invite-code-form">
+            <select id="inviteDeckSelect" class="form-select">
+              <option value="">Select deck...</option>
+            </select>
+            <button class="btn btn-primary" onclick="generateInviteCode()">🎲 Generate Code</button>
+          </div>
+          <div class="invite-codes-list" id="inviteCodesList">
+            <div style="color:#9ca3af;font-size:13px;padding:8px;">No invite codes yet.</div>
+          </div>
+        </div>
+        
+        <div class="section-card">
+          <div class="section-title"><span>👤</span> User Deck Access</div>
+          <p class="section-desc">Manually manage deck access for specific users.</p>
+          <div class="user-access-form">
+            <select id="userAccessSelect" class="form-select">
+              <option value="">Select user...</option>
+            </select>
+            <select id="userDeckSelect" class="form-select">
+              <option value="">Select deck...</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="unlockDeckForUser()">Unlock</button>
+            <button class="btn btn-danger btn-sm" onclick="lockDeckForUser()">Lock</button>
+          </div>
+          <div class="user-access-actions" style="margin-top:12px;">
+            <button class="btn btn-warning btn-sm" onclick="disableBuiltInForUser()">Disable Built-In for User</button>
+            <button class="btn btn-secondary btn-sm" onclick="enableBuiltInForUser()">Enable Built-In for User</button>
+          </div>
+          <div id="userAccessStatus" style="margin-top:12px;"></div>
+        </div>
+      </div>
+      
       <!-- System Tab -->
       <div class="tab-content" id="tab-system">
         <div class="section-card">
@@ -251,14 +348,14 @@
         <div class="section-card">
           <div class="section-title"><span>📋</span> Server Logs</div>
           <div class="quick-actions" style="margin-bottom:16px;">
-            <button class="btn btn-secondary btn-sm" onclick="loadLogs('server')">Server Logs</button>
+            <button class="btn btn-secondary btn-sm" onclick="loadLogs('server')">App Logs</button>
             <button class="btn btn-secondary btn-sm" onclick="loadLogs('error')">Error Logs</button>
             <button class="btn btn-secondary btn-sm" onclick="loadLogs('user')">User Activity</button>
             <button class="btn btn-secondary btn-sm" onclick="downloadLogs()">⬇️ Download</button>
             <button class="btn btn-danger btn-sm" onclick="clearLogs()">🗑️ Clear Logs</button>
           </div>
           <div class="log-container" id="logContainer">
-            <div class="log-line">No logs available. Logs are generated during server operation.</div>
+            <div class="log-line">No logs available. Logs are generated during app operation.</div>
           </div>
         </div>
       </div>
@@ -283,6 +380,26 @@
             <option value="1">Administrator</option>
           </select>
         </div>
+
+<div class="form-group" style="margin-top:18px;">
+  <label class="form-label">Deck Access</label>
+  <div class="deck-access-grid">
+    <div class="deck-access-col">
+      <div class="deck-access-title">Their decks (owned)</div>
+      <div id="editUserOwnedDecks" class="deckAccessList">
+        <div style="color:#9ca3af;font-size:13px;padding:8px;">Loading...</div>
+      </div>
+    </div>
+    <div class="deck-access-col">
+      <div class="deck-access-title">Your decks (grant/revoke access)</div>
+      <div id="editUserAdminDecks" class="deckAccessList">
+        <div style="color:#9ca3af;font-size:13px;padding:8px;">Loading...</div>
+      </div>
+    </div>
+  </div>
+  <div id="editUserDeckAccessStatus" style="margin-top:10px;"></div>
+</div>
+
         <div class="quick-actions" style="margin-top:20px;">
           <button class="btn btn-primary" onclick="saveUserChanges()">💾 Save Changes</button>
           <button class="btn btn-danger" onclick="resetPassword()">🔑 Reset Password</button>
@@ -418,7 +535,7 @@
           </div>
         `;
       } catch (e) {
-        document.getElementById('serverInfo').innerHTML = '<div class="info-item"><div class="info-value warn">Error loading server info</div></div>';
+        document.getElementById('serverInfo').innerHTML = '<div class="info-item"><div class="info-value warn">Error loading app info</div></div>';
       }
     }
     
@@ -470,6 +587,7 @@
       document.getElementById('editUsername').value = name;
       document.getElementById('editIsAdmin').value = isAdmin ? '1' : '0';
       document.getElementById('editUserModal').classList.remove('hidden');
+      loadEditUserDeckAccess(id);
     }
     
     function closeEditModal() {
@@ -503,6 +621,97 @@
       }
     }
     
+        function escapeHtml(s){
+      return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\'/g,'&#39;');
+    }
+
+
+
+function setEditUserDeckAccessStatus(msg, type){
+  const el = document.getElementById('editUserDeckAccessStatus');
+  if(!el) return;
+  const color = type === 'success' ? '#4ade80' : (type === 'error' ? '#f87171' : '#cbd5e1');
+  el.innerHTML = `<div style="padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(0,0,0,0.2);color:${color};font-size:13px;">${msg}</div>`;
+  setTimeout(()=>{ if(el) el.innerHTML=''; }, 2200);
+}
+
+async function loadEditUserDeckAccess(userId){
+  const ownedEl = document.getElementById('editUserOwnedDecks');
+  const adminEl = document.getElementById('editUserAdminDecks');
+  if(ownedEl) ownedEl.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px;">Loading...</div>';
+  if(adminEl) adminEl.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px;">Loading...</div>';
+  try{
+    const data = await jget(`/api/admin/user/deck_access?user_id=${encodeURIComponent(userId)}`);
+    const userDecks = data.userDecks || [];
+    const adminDecks = data.adminDecks || [];
+    const granted = new Set(data.grantedAdminDeckIds || []);
+
+    if(ownedEl){
+      if(userDecks.length === 0){
+        ownedEl.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px;">No user-created decks.</div>';
+      }else{
+        ownedEl.innerHTML = '';
+        userDecks.forEach(d=>{
+          const row = document.createElement('div');
+          row.className='deckAccessRow';
+          row.innerHTML = `
+            <div>
+              <div class="deckAccessName">${escapeHtml(d.name || d.id)}</div>
+              <div class="deckAccessMeta">${(d.cardCount||0)} cards</div>
+            </div>
+            <div class="deckAccessToggle"><span class="toggleLabel">Owned</span></div>
+          `;
+          ownedEl.appendChild(row);
+        });
+      }
+    }
+
+    if(adminEl){
+      if(adminDecks.length === 0){
+        adminEl.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px;">You have no shareable decks yet.</div>';
+      }else{
+        adminEl.innerHTML = '';
+        adminDecks.forEach(d=>{
+          const row = document.createElement('div');
+          row.className='deckAccessRow';
+          const isOn = granted.has(d.id);
+          row.innerHTML = `
+            <div>
+              <div class="deckAccessName">${escapeHtml(d.name || d.id)}</div>
+              <div class="deckAccessMeta">${(d.cardCount||0)} cards</div>
+            </div>
+            <div class="deckAccessToggle">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" ${isOn ? 'checked' : ''} />
+                <span class="toggleLabel">${isOn ? 'Granted' : 'Not granted'}</span>
+              </label>
+            </div>
+          `;
+          const cb = row.querySelector('input[type="checkbox"]');
+          const lbl = row.querySelector('.toggleLabel');
+          if(cb){
+            cb.addEventListener('change', async ()=>{
+              try{
+                await jpost('/api/admin/user/deck_access', { user_id: userId, deck_id: d.id, enabled: cb.checked });
+                if(lbl) lbl.textContent = cb.checked ? 'Granted' : 'Not granted';
+                setEditUserDeckAccessStatus(cb.checked ? 'Access granted' : 'Access revoked', 'success');
+              }catch(e){
+                cb.checked = !cb.checked;
+                setEditUserDeckAccessStatus('Failed: ' + e.message, 'error');
+              }
+            });
+          }
+          adminEl.appendChild(row);
+        });
+      }
+    }
+  }catch(e){
+    if(ownedEl) ownedEl.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px;">Failed to load.</div>';
+    if(adminEl) adminEl.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px;">Failed to load.</div>';
+    setEditUserDeckAccessStatus('Failed to load deck access: ' + e.message, 'error');
+  }
+}
+
     let currentLogType = 'all';
     
     async function loadLogs(type) {
@@ -560,8 +769,218 @@
       }
     }
     
+    // ============ DECK MANAGEMENT ============
+    
+    let deckConfig = null;
+    let allDecks = [];
+    let allUsers = [];
+    
+    async function loadDeckConfig() {
+      try {
+        const data = await jget('/api/admin/deck-config');
+        deckConfig = data.config || {};
+        
+        // Update checkboxes
+        document.getElementById('cfgNewUsersGetBuiltIn').checked = deckConfig.newUsersGetBuiltInDecks !== false;
+        document.getElementById('cfgAllowNonAdminEdits').checked = deckConfig.allowNonAdminDeckEdits !== false;
+        
+        // Update built-in decks list
+        renderBuiltInDecks(deckConfig.builtInDecks || ['kenpo']);
+        
+        // Update invite codes
+        renderInviteCodes(data.inviteCodes || {});
+        
+        // Populate deck selects
+        allDecks = statsData?.decks?.list || [];
+        populateDeckSelects();
+        
+        // Populate user selects
+        allUsers = statsData?.users?.list || [];
+        populateUserSelect();
+        
+      } catch (e) {
+        console.error('Failed to load deck config:', e);
+      }
+    }
+    
+    async function saveDeckConfig() {
+      try {
+        await jpost('/api/admin/deck-config', {
+          newUsersGetBuiltInDecks: document.getElementById('cfgNewUsersGetBuiltIn').checked,
+          allowNonAdminDeckEdits: document.getElementById('cfgAllowNonAdminEdits').checked
+        });
+      } catch (e) {
+        alert('Error saving config: ' + e.message);
+      }
+    }
+    
+    function renderBuiltInDecks(builtInIds) {
+      const container = document.getElementById('builtInDecksList');
+      if (!builtInIds || builtInIds.length === 0) {
+        container.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px;">No built-in decks configured.</div>';
+        return;
+      }
+      
+      container.innerHTML = builtInIds.map(id => {
+        const deck = allDecks.find(d => d.id === id) || { id, name: id };
+        return `
+          <div class="built-in-item">
+            <div>
+              <div class="deck-name">${deck.name || id}</div>
+              <div class="deck-id">ID: ${id}</div>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="removeBuiltInDeck('${id}')">Remove Built-In</button>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    async function removeBuiltInDeck(deckId) {
+      if (!confirm(`Remove "${deckId}" from built-in decks? Users will need invite codes to access it.`)) return;
+      
+      try {
+        const newBuiltIn = (deckConfig.builtInDecks || []).filter(id => id !== deckId);
+        await jpost('/api/admin/deck-config', { builtInDecks: newBuiltIn });
+        await loadDeckConfig();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+    
+    function populateDeckSelects() {
+      const inviteSelect = document.getElementById('inviteDeckSelect');
+      const userDeckSelect = document.getElementById('userDeckSelect');
+      
+      const options = allDecks.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+      
+      inviteSelect.innerHTML = '<option value="">Select deck...</option>' + options;
+      userDeckSelect.innerHTML = '<option value="">Select deck...</option>' + options;
+    }
+    
+    function populateUserSelect() {
+      const select = document.getElementById('userAccessSelect');
+      const options = allUsers.map(u => `<option value="${u.user_id}">${u.username}${u.is_admin ? ' 👑' : ''}</option>`).join('');
+      select.innerHTML = '<option value="">Select user...</option>' + options;
+    }
+    
+    function renderInviteCodes(codes) {
+      const container = document.getElementById('inviteCodesList');
+      const entries = Object.entries(codes);
+      
+      if (entries.length === 0) {
+        container.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px;">No invite codes yet.</div>';
+        return;
+      }
+      
+      container.innerHTML = entries.map(([code, data]) => {
+        const deck = allDecks.find(d => d.id === data.deckId) || { name: data.deckId };
+        const date = new Date(data.createdAt * 1000).toLocaleDateString();
+        return `
+          <div class="invite-code-item">
+            <div>
+              <div class="invite-code">${code}</div>
+              <div class="invite-meta">${deck.name} • ${data.uses || 0} uses • Created ${date}</div>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="deleteInviteCode('${code}')">🗑️</button>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    async function generateInviteCode() {
+      const deckId = document.getElementById('inviteDeckSelect').value;
+      if (!deckId) {
+        alert('Please select a deck');
+        return;
+      }
+      
+      try {
+        const result = await jpost('/api/admin/deck-invite-code', { deckId });
+        alert(`Invite code created: ${result.code}`);
+        await loadDeckConfig();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+    
+    async function deleteInviteCode(code) {
+      if (!confirm(`Delete invite code "${code}"?`)) return;
+      
+      try {
+        await fetch(`/api/admin/deck-invite-code/${code}`, { method: 'DELETE', credentials: 'include' });
+        await loadDeckConfig();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+    
+    async function unlockDeckForUser() {
+      const userId = document.getElementById('userAccessSelect').value;
+      const deckId = document.getElementById('userDeckSelect').value;
+      
+      if (!userId || !deckId) {
+        alert('Please select both user and deck');
+        return;
+      }
+      
+      try {
+        await jpost('/api/admin/user-deck-access', { userId, deckId, action: 'unlock' });
+        document.getElementById('userAccessStatus').innerHTML = '<span style="color:#4ade80;">✓ Deck unlocked for user</span>';
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+    
+    async function lockDeckForUser() {
+      const userId = document.getElementById('userAccessSelect').value;
+      const deckId = document.getElementById('userDeckSelect').value;
+      
+      if (!userId || !deckId) {
+        alert('Please select both user and deck');
+        return;
+      }
+      
+      try {
+        await jpost('/api/admin/user-deck-access', { userId, deckId, action: 'lock' });
+        document.getElementById('userAccessStatus').innerHTML = '<span style="color:#f87171;">✓ Deck locked for user</span>';
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+    
+    async function disableBuiltInForUser() {
+      const userId = document.getElementById('userAccessSelect').value;
+      if (!userId) {
+        alert('Please select a user');
+        return;
+      }
+      
+      try {
+        await jpost('/api/admin/user-deck-access', { userId, action: 'disableBuiltIn' });
+        document.getElementById('userAccessStatus').innerHTML = '<span style="color:#fbbf24;">✓ Built-in decks disabled for user</span>';
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+    
+    async function enableBuiltInForUser() {
+      const userId = document.getElementById('userAccessSelect').value;
+      if (!userId) {
+        alert('Please select a user');
+        return;
+      }
+      
+      try {
+        await jpost('/api/admin/user-deck-access', { userId, action: 'enableBuiltIn' });
+        document.getElementById('userAccessStatus').innerHTML = '<span style="color:#4ade80;">✓ Built-in decks enabled for user</span>';
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+    
     document.addEventListener('DOMContentLoaded', async () => {
       await loadStats();
+      await loadDeckConfig();
       document.getElementById('loading').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
     });

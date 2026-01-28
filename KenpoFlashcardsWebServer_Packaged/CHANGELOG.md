@@ -2,6 +2,27 @@
 
 All notable changes to the Windows packaged/installer distribution are documented here.
 
+## v4.0.0 (build 12) — 2026-01-28
+
+### Changed
+- **Updated bundled Web Server to v8.0.2 (build 47)** (from v7.2.0 build 42), including:
+  - **Admin per-user sharing controls**
+  - **Deck icons in “Switch Study Subject”**
+  - **Major rebrand**
+  - **WebApp icons**
+  - **Deck logos (optional)**
+  - Updated user-facing text from “Kenpo Flashcards” → “Advanced Flashcards WebApp” across the Web UI (while keeping the main Study page header line `Study Flashcards • {Deck} • Cards loaded: {#}` unchanged).
+  - **Deck Access Management System**
+  - **Admin Dashboard - Decks Tab**
+  - **Deck Access Types Displayed**
+  - **Clear Default Deck**
+  - **Invite Code Redemption**
+  - `_load_decks()` now respects user access permissions
+  - Deck list shows access type badges
+  - Admin stats use `include_all=True` to see all decks
+  - Fixed modal size (700px width, 500px min-height) - no more resizing between tabs
+  - Split-pane Manage Cards tab: "In Custom Set" on left, "Available Cards" on right
+
 ## v3.1.0 (build 11) — 2026-01-25
 
 This release was completed in steps. Documentation stays on **v3.1.0 (build 11)** while the step work is in progress.

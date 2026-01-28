@@ -2,8 +2,8 @@
 
 A Windows **installer** build of the Advanced Flashcards WebApp Server + Tray Launcher.
 
-- **Packaged Version:** **v3.1.0 (build 11)**
-- **Bundled Web Server:** **v7.2.0 (build 42)**
+- **Packaged Version:** **v4.0.0 (build 12)**
+- **Bundled Web Server:** **v8.0.2 (build 47)**
 
 ## What you get
 
@@ -13,6 +13,20 @@ A Windows **installer** build of the Advanced Flashcards WebApp Server + Tray La
 - **Configurable network binding** - access from localhost, LAN, or Tailscale.
 - **Upgrade Tool** to safely sync future web server updates without damaging packaging files.
 
+
+## What's new in v4.0.0 (build 12)
+
+- **Bundled Web Server updated to v8.0.2 (build 47)** (from v7.2.0 build 42), bringing:
+  - **Admin per-user sharing controls**
+  - **Deck icons in “Switch Study Subject”** — specific or the default logo).
+  - **Major rebrand** — visible “Server”).
+  - **WebApp icons**
+  - **Deck logos (optional)** — deck logos with default fallback to the Advanced Flashcards logo; Kenpo deck use
+  - **Deck Access Management System**
+  - **Admin Dashboard - Decks Tab**
+  - **Deck Access Types Displayed**
+  - **Clear Default Deck**
+  - **Invite Code Redemption**
 
 ## What's new in v3.1.0 (build 11)
 

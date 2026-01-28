@@ -1,0 +1,14 @@
+{
+  "__settings__": {
+    "all": {
+      "randomize": false,
+      "show_group_label": true,
+      "show_subgroup_label": false,
+      "reverse_faces": false,
+      "all_mode": "flat",
+      "group_order": "alpha",
+      "card_order": "json"
+    },
+    "groups": {}
+  }
+}

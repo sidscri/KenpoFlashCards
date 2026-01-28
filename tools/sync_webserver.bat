@@ -27,6 +27,7 @@ REM Parse arguments
 set WEBSERVER_FOLDER=
 set PACKAGED_FOLDER=
 set DRY_RUN=
+set OUTPUT_MODE=
 
 :parse_args
 if "%~1"=="" goto done_parsing
@@ -37,6 +38,23 @@ if "%~1"=="--dry-run" (
 )
 if "%~1"=="-n" (
     set DRY_RUN=--dry-run
+    shift
+    goto parse_args
+)
+if "%~1"=="--synced" (
+    set OUTPUT_MODE=--output synced
+    shift
+    goto parse_args
+)
+if "%~1"=="--inplace" (
+    set OUTPUT_MODE=--output inplace
+    shift
+    goto parse_args
+)
+if "%~1"=="--output" (
+    if "%~2"=="" goto done_parsing
+    set OUTPUT_MODE=--output %~2
+    shift
     shift
     goto parse_args
 )
@@ -97,7 +115,7 @@ echo  Source:      %WEBSERVER_FOLDER%
 echo  Destination: %PACKAGED_FOLDER%
 echo  Backups:     %TOOLS_DIR%\sync_backups\
 echo.
-python "%TOOLS_DIR%\sync_webserver_to_packaged.py" "%WEBSERVER_FOLDER%" "%PACKAGED_FOLDER%" %DRY_RUN%
+python "%TOOLS_DIR%\sync_webserver_to_packaged.py" "%WEBSERVER_FOLDER%" "%PACKAGED_FOLDER%" %DRY_RUN% %OUTPUT_MODE%
 
 if %errorlevel% neq 0 (
     echo.

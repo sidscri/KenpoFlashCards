@@ -137,7 +137,20 @@
     /* Loading */
     #loading { text-align: center; padding: 60px; color: #888; }
     #dashboard { display: none; }
-  </style>
+  
+
+/* Edit user deck access */
+.deck-access-grid{ display:flex; gap:16px; align-items:flex-start; }
+.deck-access-col{ flex:1; min-width: 220px; }
+.deck-access-title{ font-size: 12px; color:#aaa; margin: 6px 0 8px; text-transform: uppercase; letter-spacing: .04em; }
+.deckAccessList{ border:1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 10px; background: rgba(0,0,0,0.15); max-height: 220px; overflow:auto; }
+.deckAccessRow{ display:flex; justify-content: space-between; align-items:center; gap:10px; padding: 8px 6px; border-bottom:1px solid rgba(255,255,255,0.06); }
+.deckAccessRow:last-child{ border-bottom:none; }
+.deckAccessName{ font-size: 14px; color:#e5e7eb; }
+.deckAccessMeta{ font-size: 11px; color:#9ca3af; margin-top:2px; }
+.deckAccessToggle{ display:flex; align-items:center; gap:8px; }
+.toggleLabel{ font-size: 12px; color:#cbd5e1; }
+</style>
 </head>
 <body>
   <div class="admin-page">
@@ -283,7 +296,7 @@
             <button class="btn btn-primary" onclick="generateInviteCode()">🎲 Generate Code</button>
           </div>
           <div class="invite-codes-list" id="inviteCodesList">
-            <div class="empty-state">No invite codes yet.</div>
+            <div style="color:#9ca3af;font-size:13px;padding:8px;">No invite codes yet.</div>
           </div>
         </div>
         
@@ -367,6 +380,26 @@
             <option value="1">Administrator</option>
           </select>
         </div>
+
+<div class="form-group" style="margin-top:18px;">
+  <label class="form-label">Deck Access</label>
+  <div class="deck-access-grid">
+    <div class="deck-access-col">
+      <div class="deck-access-title">Their decks (owned)</div>
+      <div id="editUserOwnedDecks" class="deckAccessList">
+        <div style="color:#9ca3af;font-size:13px;padding:8px;">Loading...</div>
+      </div>
+    </div>
+    <div class="deck-access-col">
+      <div class="deck-access-title">Your decks (grant/revoke access)</div>
+      <div id="editUserAdminDecks" class="deckAccessList">
+        <div style="color:#9ca3af;font-size:13px;padding:8px;">Loading...</div>
+      </div>
+    </div>
+  </div>
+  <div id="editUserDeckAccessStatus" style="margin-top:10px;"></div>
+</div>
+
         <div class="quick-actions" style="margin-top:20px;">
           <button class="btn btn-primary" onclick="saveUserChanges()">💾 Save Changes</button>
           <button class="btn btn-danger" onclick="resetPassword()">🔑 Reset Password</button>
@@ -554,6 +587,7 @@
       document.getElementById('editUsername').value = name;
       document.getElementById('editIsAdmin').value = isAdmin ? '1' : '0';
       document.getElementById('editUserModal').classList.remove('hidden');
+      loadEditUserDeckAccess(id);
     }
     
     function closeEditModal() {
@@ -587,6 +621,97 @@
       }
     }
     
+        function escapeHtml(s){
+      return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\'/g,'&#39;');
+    }
+
+
+
+function setEditUserDeckAccessStatus(msg, type){
+  const el = document.getElementById('editUserDeckAccessStatus');
+  if(!el) return;
+  const color = type === 'success' ? '#4ade80' : (type === 'error' ? '#f87171' : '#cbd5e1');
+  el.innerHTML = `<div style="padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(0,0,0,0.2);color:${color};font-size:13px;">${msg}</div>`;
+  setTimeout(()=>{ if(el) el.innerHTML=''; }, 2200);
+}
+
+async function loadEditUserDeckAccess(userId){
+  const ownedEl = document.getElementById('editUserOwnedDecks');
+  const adminEl = document.getElementById('editUserAdminDecks');
+  if(ownedEl) ownedEl.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px;">Loading...</div>';
+  if(adminEl) adminEl.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px;">Loading...</div>';
+  try{
+    const data = await jget(`/api/admin/user/deck_access?user_id=${encodeURIComponent(userId)}`);
+    const userDecks = data.userDecks || [];
+    const adminDecks = data.adminDecks || [];
+    const granted = new Set(data.grantedAdminDeckIds || []);
+
+    if(ownedEl){
+      if(userDecks.length === 0){
+        ownedEl.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px;">No user-created decks.</div>';
+      }else{
+        ownedEl.innerHTML = '';
+        userDecks.forEach(d=>{
+          const row = document.createElement('div');
+          row.className='deckAccessRow';
+          row.innerHTML = `
+            <div>
+              <div class="deckAccessName">${escapeHtml(d.name || d.id)}</div>
+              <div class="deckAccessMeta">${(d.cardCount||0)} cards</div>
+            </div>
+            <div class="deckAccessToggle"><span class="toggleLabel">Owned</span></div>
+          `;
+          ownedEl.appendChild(row);
+        });
+      }
+    }
+
+    if(adminEl){
+      if(adminDecks.length === 0){
+        adminEl.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px;">You have no shareable decks yet.</div>';
+      }else{
+        adminEl.innerHTML = '';
+        adminDecks.forEach(d=>{
+          const row = document.createElement('div');
+          row.className='deckAccessRow';
+          const isOn = granted.has(d.id);
+          row.innerHTML = `
+            <div>
+              <div class="deckAccessName">${escapeHtml(d.name || d.id)}</div>
+              <div class="deckAccessMeta">${(d.cardCount||0)} cards</div>
+            </div>
+            <div class="deckAccessToggle">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" ${isOn ? 'checked' : ''} />
+                <span class="toggleLabel">${isOn ? 'Granted' : 'Not granted'}</span>
+              </label>
+            </div>
+          `;
+          const cb = row.querySelector('input[type="checkbox"]');
+          const lbl = row.querySelector('.toggleLabel');
+          if(cb){
+            cb.addEventListener('change', async ()=>{
+              try{
+                await jpost('/api/admin/user/deck_access', { user_id: userId, deck_id: d.id, enabled: cb.checked });
+                if(lbl) lbl.textContent = cb.checked ? 'Granted' : 'Not granted';
+                setEditUserDeckAccessStatus(cb.checked ? 'Access granted' : 'Access revoked', 'success');
+              }catch(e){
+                cb.checked = !cb.checked;
+                setEditUserDeckAccessStatus('Failed: ' + e.message, 'error');
+              }
+            });
+          }
+          adminEl.appendChild(row);
+        });
+      }
+    }
+  }catch(e){
+    if(ownedEl) ownedEl.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px;">Failed to load.</div>';
+    if(adminEl) adminEl.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px;">Failed to load.</div>';
+    setEditUserDeckAccessStatus('Failed to load deck access: ' + e.message, 'error');
+  }
+}
+
     let currentLogType = 'all';
     
     async function loadLogs(type) {
@@ -692,7 +817,7 @@
     function renderBuiltInDecks(builtInIds) {
       const container = document.getElementById('builtInDecksList');
       if (!builtInIds || builtInIds.length === 0) {
-        container.innerHTML = '<div class="empty-state">No built-in decks configured.</div>';
+        container.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px;">No built-in decks configured.</div>';
         return;
       }
       
@@ -743,7 +868,7 @@
       const entries = Object.entries(codes);
       
       if (entries.length === 0) {
-        container.innerHTML = '<div class="empty-state">No invite codes yet.</div>';
+        container.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px;">No invite codes yet.</div>';
         return;
       }
       

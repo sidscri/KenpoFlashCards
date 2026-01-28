@@ -1,3 +1,7 @@
+admin force of password refresh didnt actually change to 123456789.  I tested using test user, in admin I rset test password.  I logged out as admin then logged in as test and 123456789, but kept saying incorrect password.
+
+Wish the new updated KenpoFlashcardsWebServer_Packaged changelog and readme more closely resembled the add, fix, changes, simular to what in the KenpoFlashcardsWebServer changelog add, fix, changes were.
+
 
 I unistalled the program but nothing got uninstalled, the service is still running. tray still present, desktop shortcut still there, still shows up in recently added in start, still shows in program files, but 
 

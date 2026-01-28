@@ -2,6 +2,26 @@
 
 All notable changes to the Windows packaged/installer distribution are documented here.
 
+## v4.0.0 (build 12) — 2026-01-28
+
+### Changed
+- **Updated bundled Web Server to v8.0.1 (build 46)** (from v7.2.0 build 42), including:
+  - **Deck icons in “Switch Study Subject”**
+  - **Major rebrand**
+  - **WebApp icons**
+  - **Deck logos (optional)**
+  - Updated user-facing text from “Kenpo Flashcards” → “Advanced Flashcards WebApp” across the Web UI (while keeping the main Study page header line `Study Flashcards • {Deck} • Cards loaded: {#}` unchanged).
+  - **Deck Access Management System**
+  - **Admin Dashboard - Decks Tab**
+  - **Deck Access Types Displayed**
+  - **Clear Default Deck**
+  - **Invite Code Redemption**
+  - `_load_decks()` now respects user access permissions
+  - Deck list shows access type badges
+  - Admin stats use `include_all=True` to see all decks
+  - Fixed modal size (700px width, 500px min-height) - no more resizing between tabs
+  - Split-pane Manage Cards tab: "In Custom Set" on left, "Available Cards" on right
+
 ## v3.1.0 (build 11) — 2026-01-25
 
 This release was completed in steps. Documentation stays on **v3.1.0 (build 11)** while the step work is in progress.
@@ -57,6 +77,23 @@ This release was completed in steps. Documentation stays on **v3.1.0 (build 11)*
 - Reduced console-window flicker when starting/restarting by running service-control commands hidden.
 - Tray restart is now a **true restart** (relaunches the tray app so the web server is restarted).
 - Added restart choices: **Restart server**, **Restart Windows Service only** (if installed), or **Restart server + service**.
+
+
+### Step 5 — Windows icon remap + kenpo_words mapping (v3.1.0.6)
+
+#### Changed
+- Created/used a dedicated icon folder: `static\res\webappservericons\`.
+- Updated PyInstaller specs and Inno Setup installer to use the new **Advanced Flashcards WebApp Server** icon for:
+  - EXE icon (Windows shell / Apps & Features icon comes from EXE)
+  - Installer icon
+  - Tray icon
+- Replaced the tray runtime icon (`windows_tray\icon.png`) to match.
+
+#### Removed
+- Removed legacy Kenpo icon assets previously used by the EXE build (`Kenpo_Vocabulary_Study_Flashcards.ico`, `ic_launcher.png`).
+
+#### Fixed
+- `packaging\2. build_exe.bat`: no longer references the Android project assets path for `kenpo_words.json`. The build now requires `data\kenpo_words.json` to be present.
 
 
 ### Package variant
