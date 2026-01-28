@@ -1,21 +1,7 @@
 
- I want logo size and placement on main screen 25% larger, The logo image on deck pages isnt working very well, need to make sure the image is perminantly associated with whichever image i select and it shows.  It needs to change just like "Study Flashcards Basic Spanish Words 3rd Grade Level
-Cards loaded: 95" changes when I switch decks. 
-
-When I change basic spanish deck to default logo, it also changes Kenpo decks logo.  Only Kenpo deck will have kenpo logo, every deck will have a logo on deck page, use defaulted advanced_flashcards_logo when deck has no logo. add smaller icon to each deck in "Switch Study Subject" section.  
-
-When I upload an image to change "basic spanish..." image on deck page. it works after hiting save, but when I change kenpo it is on that page instead of the kenpo image. If i refresh page it always changes back to kenpo with kenpo image even if im on "basic spanish..." deck page with default image and when i refresh page it always changes back to kenpo with kenpo image. Then back on "basic spanish..." deck page kenpo image is there, but if i got to edit the deck, but just press save the "basic spanish..." image apears again. Same goes if I had chosen the default logo image. &&upload "run log when changing images.txt" (logs)&&
-
-##Update these .md keeping existing data the same, but just add these 3.1.0.6 changes to ### Step 5 — (v3.1.0.6)###
-
 I unistalled the program but nothing got uninstalled, the service is still running. tray still present, desktop shortcut still there, still shows up in recently added in start, still shows in program files, but 
 
-Add to tray option to Start service and tray automatically with windows on by default
-
-Restart tray doesnt actually restart the server. just kills it. Once fixed, I want options to Either restart just the server or to also restart the service.
-
-
-Redue doesnt work. Add an auto backup of data folder to %local_user%\...\DataBackups\"Data_Auto_%Date%_%Appversion%\data".zip\ Changes on demand, keeping last 10 per user to be restored, another setting for auto backup: off>every 30min>1 hour>2 hours>6 hours(default)>1 Day>2 days.
+Add an auto backup of data folder to %local_user%\...\DataBackups\"Data_Auto_%Date%_%Appversion%\data".zip\ Changes on demand, keeping last 10 per user to be restored, another setting for auto backup: off>every 30min>1 hour>2 hours>6 hours(default)>1 Day>2 days.
 
 Windows icon changes: Create a dedicated location for Icons and logos in KenpoFlashcardsWebServer_Packaged\static\res\webappservericons\. Create new app icon files using the "Advanced Flashcards WebApp Server Icon.png" photo to remap all current kenpo icons that show on a windows system, tray, desktop, add remove programs list, etc. Dont touch any that are being used by the web app in browser or the original windows server project. I will sync those updates later after editing on webserver project. 
 
@@ -55,3 +41,5 @@ Need a flag to let builder know that data was pulled from Appdatalocal into buil
 During update of app to PC, existing data files win over unpackaged data files. if there is a way to know which specific file is newer and better, than override, but backup data to %local_user%\...\DataBackups\"Data_Updated_%Date%_%Appversion%\data".zip\
 
 deck image feature: I will want an option to add images to study decks as an option when creating or editing decks. For Kenpo, I want "Kenpo Vovabulary Study Flashcards.png" used as its logo on main page as pictured and by default without adding optional image, use "Advanced Flashcards logo.png".
+
+When i refresh page it always changes back to kenpo with kenpo image.  I dont think default deck actually makes defaulted deck stay default after refresh.

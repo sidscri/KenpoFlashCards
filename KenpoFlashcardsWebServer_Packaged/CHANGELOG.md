@@ -58,16 +58,22 @@ This release was completed in steps. Documentation stays on **v3.1.0 (build 11)*
 - Tray restart is now a **true restart** (relaunches the tray app so the web server is restarted).
 - Added restart choices: **Restart server**, **Restart Windows Service only** (if installed), or **Restart server + service**.
 
-### Step 5 — EXE build stability + icon swap (v3.1.0.6)
+
+### Step 5 — Windows icon remap + kenpo_words mapping (v3.1.0.6)
 
 #### Changed
-- Packaging icon update: the EXE uses a generated `.ico` under `static\\res\\webappservericons\\`.
-- `packaging\\2. build_exe.bat` now reads the version from `version.json` via the `version` field (with fallback support), always writes build output to `packaging\\logs\\build_exe_<timestamp>_v<version>.log`, and keeps `venv`, `build`, and `dist` in the project root.
-- Console output is now cleaner (section progress messages); full command output is captured in the log.
+- Created/used a dedicated icon folder: `static\res\webappservericons\`.
+- Updated PyInstaller specs and Inno Setup installer to use the new **Advanced Flashcards WebApp Server** icon for:
+  - EXE icon (Windows shell / Apps & Features icon comes from EXE)
+  - Installer icon
+  - Tray icon
+- Replaced the tray runtime icon (`windows_tray\icon.png`) to match.
+
+#### Removed
+- Removed legacy Kenpo icon assets previously used by the EXE build (`Kenpo_Vocabulary_Study_Flashcards.ico`, `ic_launcher.png`).
 
 #### Fixed
-- Version detection no longer reports `vunknown` when `version.json` uses `version` instead of `appVersion`.
-- If `data\\kenpo_words.json` is missing, the build script can optionally pull it from `..\\KenpoFlashcardsProject-v2\\app\\src\\main\\assets\\kenpo_words.json`.
+- `packaging\2. build_exe.bat`: no longer references the Android project assets path for `kenpo_words.json`. The build now requires `data\kenpo_words.json` to be present.
 
 
 ### Package variant

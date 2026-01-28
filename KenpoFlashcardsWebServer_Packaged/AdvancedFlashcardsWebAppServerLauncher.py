@@ -16,6 +16,16 @@ import traceback
 import logging
 import json
 import subprocess
+
+# Prevent console window flashes when launching console tools (sc.exe) from a tray (GUI) app.
+CREATE_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
+
+def _run_hidden(args, **kwargs):
+    """Run a subprocess without flashing a console window on Windows."""
+    if sys.platform == "win32":
+        kwargs.setdefault("creationflags", CREATE_NO_WINDOW)
+    return subprocess.run(args, **kwargs)
+
 from pathlib import Path
 from urllib.request import urlopen
 
@@ -125,6 +135,154 @@ def _log(msg):
     except Exception:
         pass
 
+
+# ---------------------------------------------------------------------------
+# Startup (Run at login) + optional Service (WinSW) helpers
+# ---------------------------------------------------------------------------
+
+SERVICE_NAME_DEFAULT = "AdvancedFlashcardsWebAppServer"
+RUN_KEY_PATH = r"Software\Microsoft\Windows\CurrentVersion\Run"
+RUN_VALUE_NAME = "AdvancedFlashcardsWebAppServer"
+
+def _get_launcher_settings_path():
+    base = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "Advanced Flashcards WebApp Server"
+    try:
+        base.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+    return base / "launcher_settings.json"
+
+def _load_launcher_settings():
+    p = _get_launcher_settings_path()
+    if p.exists():
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+    return {}
+
+def _save_launcher_settings(d: dict):
+    p = _get_launcher_settings_path()
+    try:
+        p.write_text(json.dumps(d, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+def _get_self_command():
+    """Return the command list to relaunch this tray app."""
+    if getattr(sys, "frozen", False):
+        return [sys.executable]
+    return [sys.executable, os.path.abspath(__file__)]
+
+def _service_exists(service_name: str) -> bool:
+    if sys.platform != "win32":
+        return False
+    try:
+        r = _run_hidden(["sc", "query", service_name], capture_output=True, text=True)
+        return r.returncode == 0 and "STATE" in (r.stdout or "")
+    except Exception:
+        return False
+
+def _set_service_startup(service_name: str, automatic: bool):
+    if sys.platform != "win32":
+        return
+    start_mode = "auto" if automatic else "demand"
+    # Note: sc.exe requires "start=" with a trailing space.
+    _run_hidden(["sc", "config", service_name, f"start= {start_mode}"], capture_output=True, text=True)
+
+def _start_service(service_name: str):
+    if sys.platform != "win32":
+        return
+    _run_hidden(["sc", "start", service_name], capture_output=True, text=True)
+
+def _stop_service(service_name: str):
+    if sys.platform != "win32":
+        return
+    _run_hidden(["sc", "stop", service_name], capture_output=True, text=True)
+
+def _restart_service(service_name: str):
+    if sys.platform != "win32":
+        return
+    _stop_service(service_name)
+    time.sleep(1.0)
+    _start_service(service_name)
+
+def _is_run_at_login_enabled() -> bool:
+    if sys.platform != "win32":
+        return False
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY_PATH, 0, winreg.KEY_READ) as k:
+            try:
+                v, _ = winreg.QueryValueEx(k, RUN_VALUE_NAME)
+                return bool(v)
+            except FileNotFoundError:
+                return False
+    except Exception:
+        return False
+
+def _set_run_at_login(enabled: bool):
+    if sys.platform != "win32":
+        return
+    try:
+        import winreg
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, RUN_KEY_PATH) as k:
+            if enabled:
+                exe = _get_self_command()[0]
+                winreg.SetValueEx(k, RUN_VALUE_NAME, 0, winreg.REG_SZ, f"\"{exe}\"")
+            else:
+                try:
+                    winreg.DeleteValue(k, RUN_VALUE_NAME)
+                except FileNotFoundError:
+                    pass
+    except Exception as e:
+        _log(f"Run-at-login registry update failed: {e}")
+
+def _apply_autostart_state(enabled: bool, service_name: str):
+    """Enable/disable tray run-at-login and (if present) set service startup automatic/manual."""
+    _set_run_at_login(enabled)
+    if _service_exists(service_name):
+        try:
+            _set_service_startup(service_name, automatic=enabled)
+            if enabled:
+                _start_service(service_name)
+        except Exception as e:
+            _log(f"Service startup update failed: {e}")
+
+def _ensure_default_autostart(service_name: str):
+    """Default behavior: ON (first run only), but respect user choice afterwards."""
+    s = _load_launcher_settings()
+    if not s.get("autostart_initialized", False):
+        s["autostart_initialized"] = True
+        s["autostart_enabled"] = True
+        _save_launcher_settings(s)
+        _apply_autostart_state(True, service_name)
+    else:
+        # Keep system state in sync with the user's preference
+        desired = bool(s.get("autostart_enabled", False))
+        _apply_autostart_state(desired, service_name)
+
+def _set_autostart_enabled(enabled: bool, service_name: str):
+    s = _load_launcher_settings()
+    s["autostart_initialized"] = True
+    s["autostart_enabled"] = bool(enabled)
+    _save_launcher_settings(s)
+    _apply_autostart_state(bool(enabled), service_name)
+
+def _get_autostart_enabled() -> bool:
+    s = _load_launcher_settings()
+    if not s.get("autostart_initialized", False):
+        return True
+    return bool(s.get("autostart_enabled", False))
+
+def _relaunch_and_exit():
+    """Relaunch the tray app and exit this instance (used for true restart)."""
+    try:
+        cmd = _get_self_command()
+        subprocess.Popen(cmd, cwd=BASE_DIR)
+    except Exception as e:
+        _log(f"Failed to relaunch: {e}")
+    os._exit(0)
 def _popup(title, message):
     try:
         import ctypes
@@ -212,6 +370,9 @@ def _open_config_folder():
         _log(f"Error opening config folder: {e}")
 
 def main():
+    # Default: enable autostart on first run
+    _ensure_default_autostart(SERVICE_NAME_DEFAULT)
+
     # Start server thread
     server_thread = threading.Thread(target=_run_server, daemon=True)
     server_thread.start()
@@ -231,12 +392,10 @@ def main():
 
     # Try multiple icon locations
     icon_paths = [
-        os.path.join(BASE_DIR, "assets", "ic_launcher.png"),
+        os.path.join(BASE_DIR, "assets", "AdvancedFlashcardsWebAppServer_tray.png"),
         os.path.join(BASE_DIR, "windows_tray", "icon.png"),
-        os.path.join(BASE_DIR, "ic_launcher.png"),
-        os.path.join(BASE_DIR, "Kenpo Vovabulary Advanced Flashcards WebApp Server.png"),
+        os.path.join(BASE_DIR, "static", "res", "webappservericons", "AdvancedFlashcardsWebAppServer_tray.png"),
     ]
-    
     image = None
     for icon_path in icon_paths:
         try:
@@ -261,9 +420,23 @@ def main():
     def open_data_folder(_icon=None, _item=None):
         _open_config_folder()
 
-    def restart(_icon=None, _item=None):
-        # Best-effort restart: exit; Windows Service / tray manager can relaunch
-        os._exit(0)
+    def restart_server(_icon=None, _item=None):
+        # True restart: relaunch this tray app (which restarts the embedded server)
+        _relaunch_and_exit()
+
+    def restart_service_only(_icon=None, _item=None):
+        svc = SERVICE_NAME_DEFAULT
+        if _service_exists(svc):
+            _restart_service(svc)
+            _popup("Advanced Flashcards WebApp Server", f"Service restarted: {svc}")
+        else:
+            _popup("Advanced Flashcards WebApp Server", "No Windows Service found to restart.")
+
+    def restart_server_and_service(_icon=None, _item=None):
+        svc = SERVICE_NAME_DEFAULT
+        if _service_exists(svc):
+            _restart_service(svc)
+        _relaunch_and_exit()
 
     def quit_app(_icon=None, _item=None):
         os._exit(0)
@@ -279,7 +452,16 @@ def main():
         pystray.MenuItem("Edit Settings", edit_settings),
         pystray.MenuItem("Open Data Folder", open_data_folder),
         pystray.Menu.SEPARATOR,
-        pystray.MenuItem("Restart", restart),
+        pystray.MenuItem(
+            "Start service + tray with Windows",
+            lambda _i=None, _m=None: _set_autostart_enabled(not _get_autostart_enabled(), SERVICE_NAME_DEFAULT),
+            checked=lambda _i=None: _get_autostart_enabled()
+        ),
+        pystray.Menu.SEPARATOR,
+        pystray.MenuItem("Restart server (tray + web server)", restart_server),
+        pystray.MenuItem("Restart Windows Service only", restart_service_only),
+        pystray.MenuItem("Restart server + service", restart_server_and_service),
+        pystray.Menu.SEPARATOR,
         pystray.MenuItem("Exit", quit_app),
     )
 

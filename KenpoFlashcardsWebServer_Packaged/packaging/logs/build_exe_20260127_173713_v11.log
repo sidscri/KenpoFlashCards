@@ -1,8 +1,0 @@
-        1 file(s) copied.
-[STEP] Clean build artifacts (root\\build, root\\dist)
-[STEP] Ensure virtualenv (root\\.venv)
-[INFO] Creating venv at: C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\.venv
-'-m' is not recognized as an internal or external command,
-operable program or batch file.
-[FAIL] Virtualenv python not found after venv creation: C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\.venv\Scripts\python.exe
-Log: C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsWebServer_Packaged\packaging\logs\build_exe_20260127_173713_v11.log

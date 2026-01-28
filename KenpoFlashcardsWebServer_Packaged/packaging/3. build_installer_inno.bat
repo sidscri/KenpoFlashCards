@@ -47,7 +47,7 @@ for /f "usebackq delims=" %%B in (`
 
 if "%APPVER%"=="" (
   echo [ERROR] Could not read .version from ..\version.json
-  echo         Make sure it contains:  "version": "3.1.0.6"
+  echo         Make sure it contains:  "version": "3.1.0.5"
   goto :FAIL
 )
 

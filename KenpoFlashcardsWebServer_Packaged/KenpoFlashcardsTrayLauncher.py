@@ -578,12 +578,10 @@ def main():
 
     # Try multiple icon locations
     icon_paths = [
-        os.path.join(BASE_DIR, "assets", "ic_launcher.png"),
+        os.path.join(BASE_DIR, "assets", "AdvancedFlashcardsWebAppServer_tray.png"),
         os.path.join(BASE_DIR, "windows_tray", "icon.png"),
-        os.path.join(BASE_DIR, "ic_launcher.png"),
-        os.path.join(BASE_DIR, "Kenpo Vovabulary Advanced Flashcards WebApp Server.png"),
+        os.path.join(BASE_DIR, "static", "res", "webappservericons", "AdvancedFlashcardsWebAppServer_tray.png"),
     ]
-    
     image = None
     for icon_path in icon_paths:
         try:
