@@ -22,7 +22,8 @@
       "all_mode": "flat",
       "group_order": "alpha",
       "card_order": "json",
-      "breakdown_ai_provider": "openai"
+      "breakdown_ai_provider": "openai",
+      "activeDeckId": "kenpo"
     },
     "groups": {}
   }

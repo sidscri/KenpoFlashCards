@@ -14,3 +14,14 @@ Master log     : C:\Users\Sidscri\Documents\GitHub\sidscri-apps\KenpoFlashcardsW
 [PROGRESS] 40% - STEP 2/3: Build EXE
 
 [STEP 2] Build EXE started: Wed 01/28/2026 13:53:06.97
+[STEP 2] ExitCode=0
+[STEP 2] Build EXE complete: Wed 01/28/2026 13:55:49.88
+[PROGRESS] 66% - Build EXE complete
+[PROGRESS] 75% - STEP 3/3: Build Installer (Inno)
+
+[STEP 3] Build Installer started: Wed 01/28/2026 13:55:49.93
+[STEP 3] ExitCode=0
+[STEP 3] Build Installer complete: Wed 01/28/2026 13:56:12.11
+[PROGRESS] 100% - ALL DONE
+
+ONE CLICK BUILD SUCCESS: Wed 01/28/2026 13:56:12.15

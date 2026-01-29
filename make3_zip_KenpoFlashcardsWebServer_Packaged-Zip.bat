@@ -67,6 +67,26 @@ set "BUILD=%BUILD:,=%"
 set "BUILD=%BUILD:"=%"
 set "BUILD=%BUILD: =%"
 
+REM Optional: parse webserver_version/webserver_build for zip suffix
+set "WSVER="
+set "WSBUILD="
+for /f "tokens=1,* delims=:" %%A in ('findstr /i "\"webserver_version\"" "%VERJSON%"') do set "WSVER=%%B"
+for /f "tokens=1,* delims=:" %%A in ('findstr /i "\"webserver_build\"" "%VERJSON%"') do set "WSBUILD=%%B"
+
+REM Clean extracted values
+set "WSVER=%WSVER:,=%"
+set "WSVER=%WSVER:"=%"
+set "WSVER=%WSVER: =%"
+set "WSBUILD=%WSBUILD:,=%"
+set "WSBUILD=%WSBUILD:"=%"
+set "WSBUILD=%WSBUILD: =%"
+
+set "WSSUFFIX="
+if not "%WSVER%"=="" if not "%WSBUILD%"=="" set "WSSUFFIX=_ws%WSVER%-%WSBUILD%"
+>>"%LOG%" echo RAW_WSVER=%WSVER%
+>>"%LOG%" echo RAW_WSBUILD=%WSBUILD%
+>>"%LOG%" echo WSSUFFIX=%WSSUFFIX%
+
 >>"%LOG%" echo RAW_VER=%VER%
 >>"%LOG%" echo RAW_BUILD=%BUILD%
 
@@ -81,7 +101,7 @@ if "%BUILD%"=="" (
 )
 
 
-set "ZIPNAME=%PROJ%-v%VER% v%BUILD%.zip"
+set "ZIPNAME=%PROJ%-v%VER% v%BUILD%%WSSUFFIX%.zip"
 set "ZIPPATH=%BASE%\%ZIPNAME%"
 >>"%LOG%" echo ZIPPATH=%ZIPPATH%
 

@@ -22,5 +22,18 @@
     "createdAt": 1769270478,
     "updatedAt": 1769547768,
     "logoPath": null
+  },
+  {
+    "id": "deck_48b02b4e",
+    "name": "State capital names",
+    "description": "State capitals and its state",
+    "isDefault": false,
+    "isBuiltIn": false,
+    "sourceFile": null,
+    "cardCount": 0,
+    "ownerId": "1cc70e61cd9e",
+    "createdBy": "1cc70e61cd9e",
+    "createdAt": 1769634257,
+    "updatedAt": 1769634257
   }
 ]

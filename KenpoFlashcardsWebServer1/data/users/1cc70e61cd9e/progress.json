@@ -3,7 +3,7 @@
     "all": {
       "randomize": false,
       "link_randomize_study_tabs": false,
-      "randomize_unlearned": false,
+      "randomize_unlearned": true,
       "randomize_unsure": false,
       "randomize_learned_study": false,
       "show_group_label": true,
@@ -26,12 +26,11 @@
       "speech_rate": 1,
       "speech_voice": "",
       "show_breakdown_on_definition": false,
-      "auto_speak_on_card_change": false,
-      "speak_definition_on_flip": false,
+      "auto_speak_on_card_change": true,
+      "speak_definition_on_flip": true,
       "activeDeckId": "kenpo",
       "randomize_custom_set": false,
-      "reflect_status_in_main": false,
-      "speak_pronunciation_only": false
+      "reflect_status_in_main": false
     },
     "groups": {},
     "custom_set": [
@@ -826,6 +825,5 @@
   "2d0f726460fa4009": {
     "status": "learned",
     "updated_at": "2026-01-24 15:37:39"
-  },
-  "__last_sync__": 1769615292
+  }
 }

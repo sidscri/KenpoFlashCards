@@ -2815,6 +2815,20 @@ def android_auth_required(f):
     return decorated
 
 
+
+
+def android_admin_required(f):
+    """Decorator for routes that require Android token auth AND admin user."""
+    from functools import wraps
+    @wraps(f)
+    @android_auth_required
+    def decorated(*args, **kwargs):
+        username = (request.android_user or {}).get('username', '')
+        if not _is_admin_user(username):
+            return jsonify({'error': 'admin_required'}), 403
+        return f(*args, **kwargs)
+    return decorated
+
 @app.post("/api/sync/login")
 def api_android_login():
     """Android app login endpoint.
@@ -3264,6 +3278,122 @@ def api_admin_status():
         'username': username,
         'hasApiKeys': bool(_load_encrypted_api_keys()) if is_admin else None
     })
+
+
+
+# ===============================
+# ANDROID TOKEN ADMIN ROUTES (GEN8)
+# Namespace: /api/sync/admin/...
+# ===============================
+
+@app.get("/api/sync/admin/deck-config")
+@android_admin_required
+def api_sync_admin_get_deck_config():
+    """Token-admin: get global deck config."""
+    return jsonify(_load_deck_config())
+
+
+@app.post("/api/sync/admin/deck-config")
+@android_admin_required
+def api_sync_admin_set_deck_config():
+    """Token-admin: set global deck config."""
+    data = request.get_json(force=True, silent=True) or {}
+    cfg = _load_deck_config()
+    if "newUsersGetBuiltInDecks" in data:
+        cfg["newUsersGetBuiltInDecks"] = bool(data.get("newUsersGetBuiltInDecks"))
+    if "allowNonAdminDeckEdits" in data:
+        cfg["allowNonAdminDeckEdits"] = bool(data.get("allowNonAdminDeckEdits"))
+    if "builtInDecks" in data and isinstance(data.get("builtInDecks"), list):
+        cfg["builtInDecks"] = [str(x) for x in data.get("builtInDecks") if str(x).strip()]
+    _save_deck_config(cfg)
+    username = (request.android_user or {}).get("username", "")
+    log_activity("info", "Deck config updated via Android token admin", username)
+    return jsonify({"success": True, "config": cfg})
+
+
+@app.post("/api/sync/admin/deck-invite-code")
+@android_admin_required
+def api_sync_admin_create_invite_code():
+    """Token-admin: create invite code for a deck."""
+    data = request.get_json(force=True, silent=True) or {}
+    deck_id = str(data.get("deckId") or "").strip()
+    if not deck_id:
+        return jsonify({"error": "deckId required"}), 400
+
+    access = _load_deck_access()
+    code = None
+    for _ in range(50):
+        c = uuid.uuid4().hex[:8].upper()
+        if c not in access.get("inviteCodes", {}):
+            code = c
+            break
+    if not code:
+        return jsonify({"error": "Could not generate code"}), 500
+
+    access.setdefault("inviteCodes", {})[code] = {"deckId": deck_id, "createdAt": int(time.time()), "uses": 0}
+    _save_deck_access(access)
+
+    username = (request.android_user or {}).get("username", "")
+    log_activity("info", f"Invite code {code} created for deck {deck_id} via Android token admin", username)
+    return jsonify({"success": True, "code": code, "deckId": deck_id})
+
+
+@app.delete("/api/sync/admin/deck-invite-code/<code>")
+@android_admin_required
+def api_sync_admin_delete_invite_code(code: str):
+    """Token-admin: delete invite code."""
+    code = str(code or "").strip()
+    if not code:
+        return jsonify({"error": "code required"}), 400
+    access = _load_deck_access()
+    if code in access.get("inviteCodes", {}):
+        del access["inviteCodes"][code]
+        _save_deck_access(access)
+    username = (request.android_user or {}).get("username", "")
+    log_activity("info", f"Invite code {code} deleted via Android token admin", username)
+    return jsonify({"success": True})
+
+
+@app.post("/api/sync/redeem-invite-code")
+@android_auth_required
+def api_sync_redeem_invite_code():
+    """Token-user: redeem invite code to unlock deck."""
+    uid = request.android_uid
+    data = request.get_json(force=True, silent=True) or {}
+    code = str(data.get("code", "")).strip()
+    if not code:
+        return jsonify({"error": "code required"}), 400
+
+    access = _load_deck_access()
+    if code not in access.get("inviteCodes", {}):
+        return jsonify({"error": "Invalid invite code"}), 404
+
+    code_data = access["inviteCodes"][code]
+    deck_id = code_data.get("deckId")
+    if not deck_id:
+        return jsonify({"error": "Invalid invite code"}), 400
+
+    user_unlocks = access.get("userUnlocks", {}).get(uid, [])
+    if deck_id in user_unlocks:
+        return jsonify({"error": "Deck already unlocked"}), 400
+
+    access.setdefault("userUnlocks", {}).setdefault(uid, [])
+    access["userUnlocks"][uid].append(deck_id)
+    access["inviteCodes"][code]["uses"] = int(code_data.get("uses", 0)) + 1
+    _save_deck_access(access)
+
+    decks = _load_decks(include_all=True)
+    deck_name = deck_id
+    for d in decks:
+        if d.get("id") == deck_id:
+            deck_name = d.get("name", deck_id)
+            break
+
+    username = (request.android_user or {}).get("username", "")
+    log_activity("info", f"User {username} redeemed code {code} for deck {deck_name} via Android token", username)
+
+    return jsonify({"success": True, "deckId": deck_id, "deckName": deck_name})
+
 
 
 @app.get("/api/admin/users")

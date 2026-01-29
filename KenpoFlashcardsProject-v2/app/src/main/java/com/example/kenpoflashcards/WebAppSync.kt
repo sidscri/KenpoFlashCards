@@ -824,3 +824,203 @@ object WebAppSync {
  *   ...
  * }
  */
+
+
+    // =========================
+    // GEN8 Token Admin Endpoints
+    // =========================
+    suspend fun syncFetchAdminStatus(baseUrl: String, token: String): JSONObject = withContext(Dispatchers.IO) {
+        val url = URL("${baseUrl.trimEnd('/')}/api/admin/status")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "GET"
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+        val code = conn.responseCode
+        val text = (if (code in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText()
+        JSONObject(text)
+    }
+
+    suspend fun syncRedeemInviteCode(baseUrl: String, token: String, inviteCode: String): JSONObject = withContext(Dispatchers.IO) {
+        val url = URL("${baseUrl.trimEnd('/')}/api/sync/redeem-invite-code")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("Content-Type", "application/json")
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.doOutput = true
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+        val payload = JSONObject().put("code", inviteCode)
+        conn.outputStream.use { it.write(payload.toString().toByteArray()) }
+        val code = conn.responseCode
+        val text = (if (code in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText()
+        JSONObject(text)
+    }
+
+    suspend fun syncAdminGetDeckConfig(baseUrl: String, token: String): JSONObject = withContext(Dispatchers.IO) {
+        val url = URL("${baseUrl.trimEnd('/')}/api/sync/admin/deck-config")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "GET"
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+        val code = conn.responseCode
+        val text = (if (code in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText()
+        JSONObject(text)
+    }
+
+    suspend fun syncAdminSetDeckConfig(baseUrl: String, token: String, config: JSONObject): JSONObject = withContext(Dispatchers.IO) {
+        val url = URL("${baseUrl.trimEnd('/')}/api/sync/admin/deck-config")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("Content-Type", "application/json")
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.doOutput = true
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+        conn.outputStream.use { it.write(config.toString().toByteArray()) }
+        val code = conn.responseCode
+        val text = (if (code in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText()
+        JSONObject(text)
+    }
+
+    suspend fun syncAdminCreateInviteCode(baseUrl: String, token: String, deckId: String): JSONObject = withContext(Dispatchers.IO) {
+        val url = URL("${baseUrl.trimEnd('/')}/api/sync/admin/deck-invite-code")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("Content-Type", "application/json")
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.doOutput = true
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+        val payload = JSONObject().put("deckId", deckId)
+        conn.outputStream.use { it.write(payload.toString().toByteArray()) }
+        val code = conn.responseCode
+        val text = (if (code in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText()
+        JSONObject(text)
+    }
+
+    suspend fun syncAdminDeleteInviteCode(baseUrl: String, token: String, codeToDelete: String): JSONObject = withContext(Dispatchers.IO) {
+        val url = URL("${baseUrl.trimEnd('/')}/api/sync/admin/deck-invite-code/${codeToDelete}")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "DELETE"
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+        val code = conn.responseCode
+        val text = (if (code in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText()
+        JSONObject(text)
+    }
+
+    // Option2 admin endpoints
+    suspend fun syncAdminGetUsers(baseUrl: String, token: String): JSONObject = withContext(Dispatchers.IO) {
+        val url = URL("${baseUrl.trimEnd('/')}/api/sync/admin/users")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "GET"
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+        val code = conn.responseCode
+        val text = (if (code in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText()
+        JSONObject(text)
+    }
+
+    suspend fun syncAdminGetStats(baseUrl: String, token: String): JSONObject = withContext(Dispatchers.IO) {
+        val url = URL("${baseUrl.trimEnd('/')}/api/sync/admin/stats")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "GET"
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+        val code = conn.responseCode
+        val text = (if (code in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText()
+        JSONObject(text)
+    }
+
+    suspend fun syncAdminGetLogs(baseUrl: String, token: String, type: String = "all", limit: Int = 200): JSONObject = withContext(Dispatchers.IO) {
+        val url = URL("${baseUrl.trimEnd('/')}/api/sync/admin/logs?type=${type}&limit=${limit}")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "GET"
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+        val code = conn.responseCode
+        val text = (if (code in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText()
+        JSONObject(text)
+    }
+
+    suspend fun syncAdminClearLogs(baseUrl: String, token: String, type: String = "all"): JSONObject = withContext(Dispatchers.IO) {
+        val url = URL("${baseUrl.trimEnd('/')}/api/sync/admin/logs/clear")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("Content-Type", "application/json")
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.doOutput = true
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+        val payload = JSONObject().put("type", type)
+        conn.outputStream.use { it.write(payload.toString().toByteArray()) }
+        val code = conn.responseCode
+        val text = (if (code in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText()
+        JSONObject(text)
+    }
+
+    suspend fun syncAdminGetUserDeckAccess(baseUrl: String, token: String, userId: String): JSONObject = withContext(Dispatchers.IO) {
+        val url = URL("${baseUrl.trimEnd('/')}/api/sync/admin/user/${userId}/deck-access")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "GET"
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+        val code = conn.responseCode
+        val text = (if (code in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText()
+        JSONObject(text)
+    }
+
+    suspend fun syncAdminSetUserDeckAccess(baseUrl: String, token: String, userId: String, unlockedDecks: List<String>, builtInDisabled: Boolean): JSONObject = withContext(Dispatchers.IO) {
+        val url = URL("${baseUrl.trimEnd('/')}/api/sync/admin/user/${userId}/deck-access")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("Content-Type", "application/json")
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.doOutput = true
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+        val payload = JSONObject().put("unlockedDecks", JSONArray(unlockedDecks)).put("builtInDisabled", builtInDisabled)
+        conn.outputStream.use { it.write(payload.toString().toByteArray()) }
+        val code = conn.responseCode
+        val text = (if (code in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText()
+        JSONObject(text)
+    }
+
+    suspend fun syncAdminUpdateUser(baseUrl: String, token: String, userId: String, isAdmin: Boolean): JSONObject = withContext(Dispatchers.IO) {
+        val url = URL("${baseUrl.trimEnd('/')}/api/sync/admin/user/update")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("Content-Type", "application/json")
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.doOutput = true
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+        val payload = JSONObject().put("userId", userId).put("isAdmin", isAdmin)
+        conn.outputStream.use { it.write(payload.toString().toByteArray()) }
+        val code = conn.responseCode
+        val text = (if (code in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText()
+        JSONObject(text)
+    }
+
+    suspend fun syncAdminResetPassword(baseUrl: String, token: String, userId: String): JSONObject = withContext(Dispatchers.IO) {
+        val url = URL("${baseUrl.trimEnd('/')}/api/sync/admin/user/reset_password")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("Content-Type", "application/json")
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.doOutput = true
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+        val payload = JSONObject().put("userId", userId)
+        conn.outputStream.use { it.write(payload.toString().toByteArray()) }
+        val code = conn.responseCode
+        val text = (if (code in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText()
+        JSONObject(text)
+    }

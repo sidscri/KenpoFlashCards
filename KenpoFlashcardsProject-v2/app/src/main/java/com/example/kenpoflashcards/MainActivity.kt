@@ -1,5 +1,7 @@
 package com.example.kenpoflashcards
 
+private const val GEN8_FULL_ADMIN_UI: Boolean = false
+
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
@@ -373,6 +375,7 @@ fun StudyScreen(nav: NavHostController, repo: Repository, statusFilter: CardStat
     val customSet by repo.customSetFlow().collectAsState(initial = emptySet())
     val settings by repo.settingsAllFlow().collectAsState(initial = StudySettings())
     val adminSettings by repo.adminSettingsFlow().collectAsState(initial = AdminSettings())
+    LaunchedEffect(Unit) { repo.refreshAdminStatus() }
     val groups = remember(allCards) { allCards.map { it.group }.distinct().sorted() }
     var search by remember { mutableStateOf("") }
     var searchExpanded by remember { mutableStateOf(false) }
@@ -516,6 +519,7 @@ fun LearnedScreen(nav: NavHostController, repo: Repository) {
     val customSet by repo.customSetFlow().collectAsState(initial = emptySet())
     val settings by repo.settingsAllFlow().collectAsState(initial = StudySettings())
     val adminSettings by repo.adminSettingsFlow().collectAsState(initial = AdminSettings())
+    LaunchedEffect(Unit) { repo.refreshAdminStatus() }
     val groups = remember(allCards) { allCards.map { it.group }.distinct().sorted() }
     var viewMode by remember { mutableStateOf(LearnedViewMode.LIST) }
     var search by remember { mutableStateOf("") }
@@ -669,6 +673,7 @@ fun AllCardsScreen(nav: NavHostController, repo: Repository) {
     val customSet by repo.customSetFlow().collectAsState(initial = emptySet())
     val settings by repo.settingsAllFlow().collectAsState(initial = StudySettings())
     val adminSettings by repo.adminSettingsFlow().collectAsState(initial = AdminSettings())
+    LaunchedEffect(Unit) { repo.refreshAdminStatus() }
     var search by remember { mutableStateOf("") }
     var searchExpanded by remember { mutableStateOf(false) }
     var showBreakdown by remember { mutableStateOf(false) }
@@ -759,6 +764,7 @@ fun CustomSetScreen(nav: NavHostController, repo: Repository) {
     val customSetStatus by repo.customSetStatusFlow().collectAsState(initial = emptyMap())
     val settings by repo.settingsAllFlow().collectAsState(initial = StudySettings())
     val adminSettings by repo.adminSettingsFlow().collectAsState(initial = AdminSettings())
+    LaunchedEffect(Unit) { repo.refreshAdminStatus() }
     var search by remember { mutableStateOf("") }
     var searchExpanded by remember { mutableStateOf(false) }
     var showFront by remember { mutableStateOf(true) }
@@ -1085,6 +1091,7 @@ fun SettingsScreen(nav: NavHostController, repo: Repository) {
     val scope = rememberCoroutineScope()
     val settings by repo.settingsAllFlow().collectAsState(initial = StudySettings())
     val adminSettings by repo.adminSettingsFlow().collectAsState(initial = AdminSettings())
+    LaunchedEffect(Unit) { repo.refreshAdminStatus() }
     val tts = remember { TtsHelper(context) }
     DisposableEffect(Unit) { onDispose { tts.shutdown() } }
     val csvLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? -> if (uri == null) return@rememberLauncherForActivityResult; scope.launch { val imported = withContext(Dispatchers.IO) { context.contentResolver.openInputStream(uri)?.use { CsvImport.parseCsv(it.bufferedReader()) } ?: emptyList() }; if (imported.isNotEmpty()) repo.replaceCustomCards(imported) } }
@@ -1216,9 +1223,10 @@ private fun SettingToggle(label: String, checked: Boolean, onCheckedChange: (Boo
 fun AdminScreen(nav: NavHostController, repo: Repository) {
     val scope = rememberCoroutineScope()
     val adminSettings by repo.adminSettingsFlow().collectAsState(initial = AdminSettings())
+    LaunchedEffect(Unit) { repo.refreshAdminStatus() }
     
-    // Simple admin check - use default admins list which includes "sidscri"
-    val isAdmin = adminSettings.username.isNotBlank() && 
+        // Admin status is server-sourced (token) and stored in AdminSettings.isAdmin
+    val isAdmin = adminSettings.isAdmin
         adminSettings.username.trim().lowercase() in setOf("sidscri")
     
     var chatGptKey by remember(adminSettings) { mutableStateOf(adminSettings.chatGptApiKey) }
@@ -1229,6 +1237,7 @@ fun AdminScreen(nav: NavHostController, repo: Repository) {
 
     var statusMessage by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
+    var redeemCode by remember { mutableStateOf("") }
     var showChatGptModelDropdown by remember { mutableStateOf(false) }
     var showGeminiModelDropdown by remember { mutableStateOf(false) }
     
@@ -1268,7 +1277,150 @@ fun AdminScreen(nav: NavHostController, repo: Repository) {
             Spacer(Modifier.height(4.dp))
             Text("API keys are encrypted and shared between Android app and web server.", color = DarkMuted, fontSize = 11.sp)
             
-            Spacer(Modifier.height(20.dp)); HorizontalDivider(color = DarkBorder); Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp)); HorizontalDivider(color = DarkBorder); 
+            // =========================
+            // GEN8: Deck Admin (Server)
+            // =========================
+            var adminTab by remember { mutableStateOf(0) }
+            var deckCfgLoaded by remember { mutableStateOf(false) }
+            var newUsersGetBuiltIn by remember { mutableStateOf(true) }
+            var allowNonAdminEdits by remember { mutableStateOf(true) }
+            var builtInDecks by remember { mutableStateOf(setOf<String>()) }
+            var inviteDeckId by remember { mutableStateOf("kenpo") }
+            var inviteCodeResult by remember { mutableStateOf("") }
+
+            if (isAdmin) {
+                Spacer(Modifier.height(16.dp))
+                Text("Deck Admin (Server)", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                Spacer(Modifier.height(8.dp))
+
+                Button(onClick = {
+                    try {
+                        val url = adminSettings.webAppUrl.trimEnd('/') + "/admin"
+                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                        context.startActivity(intent)
+                    } catch (_: Exception) {}
+                }, modifier = Modifier.fillMaxWidth()) { Text("Open Web Admin") }
+
+                Spacer(Modifier.height(12.dp))
+
+                TabRow(selectedTabIndex = adminTab, containerColor = DarkPanel) {
+                    Tab(selected = adminTab == 0, onClick = { adminTab = 0 }) { Text("Decks", modifier = Modifier.padding(12.dp), fontSize = 12.sp) }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                when (adminTab) {
+                    0 -> {
+                        if (!deckCfgLoaded) {
+                            LaunchedEffect("loadDeckCfg") {
+                                try {
+                                    val cfg = repo.adminGetDeckConfig()
+                                    newUsersGetBuiltIn = cfg.optBoolean("newUsersGetBuiltInDecks", true)
+                                    allowNonAdminEdits = cfg.optBoolean("allowNonAdminDeckEdits", true)
+                                    val arr = cfg.optJSONArray("builtInDecks") ?: org.json.JSONArray()
+                                    val sset = mutableSetOf<String>()
+                                    for (i in 0 until arr.length()) sset.add(arr.optString(i))
+                                    builtInDecks = sset
+                                } catch (_: Exception) {
+                                } finally {
+                                    deckCfgLoaded = true
+                                }
+                            }
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Checkbox(checked = newUsersGetBuiltIn, onCheckedChange = { newUsersGetBuiltIn = it })
+                            Text("New users get built-in decks", color = Color.White, fontSize = 12.sp)
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Checkbox(checked = allowNonAdminEdits, onCheckedChange = { allowNonAdminEdits = it })
+                            Text("Allow non-admin deck edits", color = Color.White, fontSize = 12.sp)
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+                        Text("Built-in Decks", color = DarkMuted, fontSize = 12.sp)
+                        decks.forEach { d ->
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                val checked = builtInDecks.contains(d.id)
+                                Checkbox(checked = checked, onCheckedChange = {
+                                    builtInDecks = if (it) builtInDecks + d.id else builtInDecks - d.id
+                                })
+                                Text(d.name + " (" + d.id + ")", color = Color.White, fontSize = 12.sp)
+                            }
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+                        Button(onClick = {
+                            scope.launch {
+                                try {
+                                    val cfg = org.json.JSONObject()
+                                        .put("newUsersGetBuiltInDecks", newUsersGetBuiltIn)
+                                        .put("allowNonAdminDeckEdits", allowNonAdminEdits)
+                                        .put("builtInDecks", org.json.JSONArray(builtInDecks.toList()))
+                                    val resp = repo.adminSetDeckConfig(cfg)
+                                    statusMessage = if (resp.optBoolean("success", false)) "Saved deck config." else resp.optString("error", "Save failed")
+                                } catch (e: Exception) {
+                                    statusMessage = "Save error: ${e.message}"
+                                }
+                            }
+                        }, modifier = Modifier.fillMaxWidth()) { Text("Save Deck Config") }
+
+                        Spacer(Modifier.height(16.dp))
+                        Text("Invite Code Generator", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Spacer(Modifier.height(8.dp))
+
+                        var expanded by remember { mutableStateOf(false) }
+                        ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
+                            OutlinedTextField(
+                                value = inviteDeckId,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Deck ID") },
+                                modifier = Modifier.menuAnchor().fillMaxWidth()
+                            )
+                            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                decks.forEach { d ->
+                                    DropdownMenuItem(text = { Text("${d.name} (${d.id})") }, onClick = {
+                                        inviteDeckId = d.id
+                                        expanded = false
+                                    })
+                                }
+                            }
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+                        Button(onClick = {
+                            scope.launch {
+                                try {
+                                    val resp = repo.adminCreateInviteCode(inviteDeckId)
+                                    inviteCodeResult = if (resp.optBoolean("success", false)) resp.optString("code", "") else resp.optString("error", "Failed")
+                                } catch (e: Exception) {
+                                    inviteCodeResult = "Error: ${e.message}"
+                                }
+                            }
+                        }, modifier = Modifier.fillMaxWidth()) { Text("Generate Invite Code") }
+
+                        if (inviteCodeResult.isNotBlank()) {
+                            Spacer(Modifier.height(8.dp))
+                            Card(colors = CardDefaults.cardColors(containerColor = DarkPanel), modifier = Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Text("Code: " + inviteCodeResult, color = Color.White)
+                                    Spacer(Modifier.height(6.dp))
+                                    Button(onClick = {
+                                        try {
+                                            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                            cm.setPrimaryClip(android.content.ClipData.newPlainText("InviteCode", inviteCodeResult))
+                                        } catch (_: Exception) {}
+                                    }) { Text("Copy") }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+Spacer(Modifier.height(16.dp))
             
             // ChatGPT API Section
             Text("ChatGPT API", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
@@ -1570,11 +1722,13 @@ private fun FeatureItem(emoji: String, title: String, description: String) {
 fun LoginScreen(nav: NavHostController, repo: Repository) {
     val scope = rememberCoroutineScope()
     val adminSettings by repo.adminSettingsFlow().collectAsState(initial = AdminSettings())
+    LaunchedEffect(Unit) { repo.refreshAdminStatus() }
     var serverUrl by remember(adminSettings) { mutableStateOf(adminSettings.webAppUrl.ifBlank { WebAppSync.DEFAULT_SERVER_URL }) }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var statusMessage by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
+    var redeemCode by remember { mutableStateOf("") }
     var isFirstLogin by remember { mutableStateOf(false) }
     
     val isAdmin = AdminUsers.isAdmin(adminSettings.username)
@@ -1719,8 +1873,10 @@ fun LoginScreen(nav: NavHostController, repo: Repository) {
 fun SyncProgressScreen(nav: NavHostController, repo: Repository) {
     val scope = rememberCoroutineScope()
     val adminSettings by repo.adminSettingsFlow().collectAsState(initial = AdminSettings())
+    LaunchedEffect(Unit) { repo.refreshAdminStatus() }
     var statusMessage by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
+    var redeemCode by remember { mutableStateOf("") }
     var showAiPicker by remember { mutableStateOf(false) }
     val availableAi = remember(adminSettings) { repo.getAvailableAiServices(adminSettings) }
     
@@ -1982,13 +2138,15 @@ fun ManageDecksScreen(nav: NavHostController, repo: Repository) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val adminSettings by repo.adminSettingsFlow().collectAsState(initial = AdminSettings())
+    LaunchedEffect(Unit) { repo.refreshAdminStatus() }
     val decks by repo.decksFlow().collectAsState(initial = listOf(StudyDeck.KENPO_DEFAULT))
     val deckSettings by repo.deckSettingsFlow().collectAsState(initial = DeckSettings())
     val userCards by repo.userCardsFlow().collectAsState(initial = emptyList())
     
-    var selectedTab by remember { mutableStateOf(0) }  // 0=Switch, 1=Add Cards, 2=Create Deck
+    var selectedTab by remember { mutableStateOf(0) }  // 0=Switch, 1=Add Cards, 2=Create Deck, 3=Redeem
     var statusMessage by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
+    var redeemCode by remember { mutableStateOf("") }
     
     // Add Card form state
     var newTerm by remember { mutableStateOf("") }

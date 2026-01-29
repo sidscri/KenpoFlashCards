@@ -1,6 +1,31 @@
-admin force of password refresh didnt actually change to 123456789.  I tested using test user, in admin I rset test password.  I logged out as admin then logged in as test and 123456789, but kept saying incorrect password.
+I want to add in make3_zip_KenpoFlashcardsWebServer_Packaged-Zip.bat if version.json contains "webserver_version": "8.0.2",
+  "webserver_build": 47, and _ws%webserver_version%-%webserver_build% to the zip
 
-Wish the new updated KenpoFlashcardsWebServer_Packaged changelog and readme more closely resembled the add, fix, changes, simular to what in the KenpoFlashcardsWebServer changelog add, fix, changes were.
+
+As suggested, please create a migration checklist.  Now that both ends apps are working well together I need a tool to push updates to android app in the future.
+
+I want kenpo and spanish to be owned by sidscri, only kenpo to have built-in flagged, spanish will just be as it is a user created deck that no other user can access, unless I give it to them as an admin. Where did the the edit decks button go on spanish, guess it didnt show since I couldnt make me the owner.  Same goes for built-in settings and user deck access, no decks are showing up in drop downs.  &&Fix1.png, fix2.png&&
+
+admin force of password refresh for john smith, he logged in using 123456789, but it did not ask for a force a password change, before logging in.
+
+In "Create New Deck" section I want a method of adding cards to be added right below Description.  After creating a new deck and with that option selected it will go to that methods page ie. Keyword, Photo, Document.  If keyword is chosen it will auto search for max of 25 cards using deck name and description., the other methods will open thier photo or document upload window. Once added, I want the search keyword cleared and max cards to default to 25. I noticed after sucessfully adding 51 state capitals, the Search keywords and max cards persisted.
+
+In Admin>System page>"server information"> application says undifined, "version" is 4.0.0 (build 12), Release is -
+
+verifi tht logs can be made to show in Admin>logs page>"server logs"> App Logs, Error Logs, User Activity (only logs)
+
+In admin>overview>"Total Users" to show general info about the users, >"Study Deck" to show all decks and their info.  For those and the other >"Total Cards", >"Breakdowns" lets make it a fun experience to look at when clicked on.
+
+
+##tool##
+Wish the new updated KenpoFlashcardsWebServer_Packaged changelog and readme more closely resembled the add, fix, changes, simular to whats in the KenpoFlashcardsWebServer changelogs add, fix, changes.
+
+##Package##
+Old icons are still showing up in desktop shortcut(in properties the new are in change icon) and showing in task manager processes &&fix.3.png&&
+
+Why are there always two processes running of the same name.
+
+
 
 
 I unistalled the program but nothing got uninstalled, the service is still running. tray still present, desktop shortcut still there, still shows up in recently added in start, still shows in program files, but 

@@ -5,7 +5,7 @@
 
 Flask-based web application providing sync API and web UI for Advanced Flashcards WebApp.
 
-**Current Version:** v8.0.1 (build 46)  
+**Current Version:** v8.0.2 (build 47)  
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -307,7 +307,7 @@ Should return JSON with `version`, `term_to_id`, `cards`
 ```
 http://localhost:8009/api/version
 ```
-Should return `{"version": "8.0.1", "build": 46, ...}`
+Should return `{"version": "8.0.2", "build": 47, ...}`
 
 ### 3. Test Admin Users Endpoint
 ```
@@ -350,6 +350,7 @@ Interactive page with tabbed sections:
 
 | Version | Build | Key Changes |
 |---------|-------|-------------|
+| **8.0.2** | 47 | Minor upgrade: deck ownership (user decks private by default) + admin per-user deck sharing (read-only); Fix: admin password reset sets `123456789` reliably; Includes deck logo persistence/isolation + refresh fixes |
 | **8.0.1** | 46 | Fixed deck logos: per-deck persistence/isolation, refresh correctness, deck list icons, header logo sizing, default deck refresh fix |
 | **8.0.0** | 45 | Major rebrand to Advanced Flashcards WebApp; WebApp favicon/icons path; deck logo support |
 | **7.3.0** | 44 | Deck access management system, invite codes, admin dashboard - decks tab, deck access types displayed, clear default deck |

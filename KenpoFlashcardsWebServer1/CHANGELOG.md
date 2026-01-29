@@ -15,6 +15,22 @@ The format is simple and practical:
 
 ---
 
+
+## 8.0.2 (build 47) — 2026-01-28
+
+### Changed
+- **Deck ownership is enforced**: user-created study decks are now unique to the creating user and are no longer visible/editable by other users unless explicitly shared by an admin.
+
+### Added
+- **Admin per-user sharing controls**: in **Admin → Users → Edit User**, admins can now grant/revoke access to *their own* decks for that specific user (shows “Their decks” and “Your decks”).
+
+### Fixed
+- **Admin “Reset Password” now works**: reset uses a login-compatible password hash, so the forced default `123456789` login is accepted.
+- **Deck card storage for shared decks**: cards for user-created decks are stored per-deck (not per-user) so shared decks show consistent content for everyone with access.
+- **Safety + permissions**: only the deck owner/admin can edit/delete a user-created deck or modify cards in that deck.
+
+---
+
 ## 8.0.1 (build 46) — 2026-01-27
 
 ### Added

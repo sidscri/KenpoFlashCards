@@ -100,6 +100,7 @@ data class AdminSettings(
     val username: String = "",
     val isLoggedIn: Boolean = false,
     val lastSyncTime: Long = 0,
+    val isAdmin: Boolean = false,
     
     // ChatGPT API for breakdown autofill
     val chatGptApiKey: String = "",

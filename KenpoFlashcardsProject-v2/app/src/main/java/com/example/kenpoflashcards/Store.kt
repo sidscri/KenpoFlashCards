@@ -379,7 +379,7 @@ private fun decodeProgressEntries(raw: String): Map<String, ProgressEntry> {
 
     private fun encodeAdminSettings(s: AdminSettings): String {
         val o = JSONObject()
-        o.put("webAppUrl", s.webAppUrl); o.put("authToken", s.authToken); o.put("username", s.username); o.put("isLoggedIn", s.isLoggedIn); o.put("lastSyncTime", s.lastSyncTime)
+        o.put("webAppUrl", s.webAppUrl); o.put("authToken", s.authToken); o.put("username", s.username); o.put("isLoggedIn", s.isLoggedIn); o.put("lastSyncTime", s.lastSyncTime); o.put("isAdmin", s.isAdmin)
         o.put("chatGptApiKey", s.chatGptApiKey); o.put("chatGptEnabled", s.chatGptEnabled); o.put("chatGptModel", s.chatGptModel)
         o.put("geminiApiKey", s.geminiApiKey); o.put("geminiEnabled", s.geminiEnabled); o.put("geminiModel", s.geminiModel)
         o.put("autoPullOnLogin", s.autoPullOnLogin); o.put("autoPushOnChange", s.autoPushOnChange); o.put("pendingSync", s.pendingSync)
@@ -466,7 +466,20 @@ private fun decodeProgressEntries(raw: String): Map<String, ProgressEntry> {
     /**
      * Add a new user-created deck
      */
-    suspend fun addDeck(deck: StudyDeck) {
+    
+    /**
+     * Replace local deck list with server-authoritative list.
+     * Stores all decks except the built-in kenpo default.
+     */
+    suspend fun replaceDecksFromServer(decks: List<StudyDeck>) {
+        context.dataStore.edit { prefs ->
+            val arr = JSONArray()
+            decks.filter { it.id != "kenpo" }.forEach { arr.put(encodeDeck(it)) }
+            prefs[KEY_DECKS_JSON] = arr.toString()
+        }
+    }
+
+suspend fun addDeck(deck: StudyDeck) {
         context.dataStore.edit { prefs ->
             val raw = prefs[KEY_DECKS_JSON] ?: "[]"
             val arr = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
@@ -583,6 +596,7 @@ private fun decodeProgressEntries(raw: String): Map<String, ProgressEntry> {
         o.put("isDefault", deck.isDefault); o.put("isBuiltIn", deck.isBuiltIn)
         deck.sourceFile?.let { o.put("sourceFile", it) }
         o.put("cardCount", deck.cardCount); o.put("createdAt", deck.createdAt); o.put("updatedAt", deck.updatedAt)
+        deck.logoPath?.let { o.put("logoPath", it) }
         return o
     }
 
@@ -596,7 +610,8 @@ private fun decodeProgressEntries(raw: String): Map<String, ProgressEntry> {
             sourceFile = o.optString("sourceFile", null)?.takeIf { it.isNotBlank() },
             cardCount = o.optInt("cardCount", 0),
             createdAt = o.optLong("createdAt", 0),
-            updatedAt = o.optLong("updatedAt", 0)
+            updatedAt = o.optLong("updatedAt", 0),
+            logoPath = o.optString("logoPath", null)?.takeIf { it.isNotBlank() }
         )
     }
 

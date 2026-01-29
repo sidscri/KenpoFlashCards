@@ -8,9 +8,10 @@
     },
     "94b9dd732eef": {
       "username": "John Smith",
-      "password_hash": "scrypt:32768:8:1$OvI4dXxBwBuyzvST$cfeeed6b7a0ad760173742d37e7e8580018b49799c12e7bfaa707b3897aa90c22bd6d8605e36fb38199aa75f253db3c98416d7a9e9830fa8d9603bb56f4f5353",
+      "password_hash": "scrypt:32768:8:1$8Ju3XMHR65J6cyKW$e49823dc5d84e2a582ecc27a050ec0eec34976a16106080bea5e8a44332641a74a0760d6c1b1424b94080d05fc59346e45ca085eb8534348aed67f085b2c89e3",
       "display_name": "John Smith",
-      "created_at": "2026-01-06 11:30:10"
+      "created_at": "2026-01-06 11:30:10",
+      "password_reset_required": true
     },
     "d58abe158e91": {
       "username": "Kaijenkins",
@@ -26,15 +27,10 @@
     },
     "54af05fa7c22": {
       "username": "Yes",
-      "password_hash": "scrypt:32768:8:1$KtbXVE6zDchS07UV$c9252d26c968dccdc9b2377252d9e4316ce6539aac6c9419fb7dab263d72e6a1adeddcdb27b0a23b12655d99d7a08b69a31194c87b7f303268e22ac9ea0b5fab",
+      "password_hash": "scrypt:32768:8:1$t4299stMj2N8x7c6$e84ea3ce273a25b1a9a4dc0a19b91959de9dd6ee87df97bea07d12350af27c7d5fc8073c4578cf3982ffe72bf355cc5fb335c8bc627e207975ff78ef5e5dd754",
       "display_name": "Hudson Doran",
-      "created_at": "2026-01-09 10:42:18"
-    },
-    "d9f4a6cb0862": {
-      "username": "test",
-      "password_hash": "scrypt:32768:8:1$EbqDYpXwPiazdvb6$7318cfb075bd352e5cbdcb0f469d736e40f04d6d02e8eb2b80f0cc993d0a54b3c962d07379c200cfad8dbdb3b06764a56885b0942dad88e0244048cba2f97f31",
-      "display_name": "test",
-      "created_at": "2026-01-28 01:54:19"
+      "created_at": "2026-01-09 10:42:18",
+      "password_reset_required": true
     }
   }
 }

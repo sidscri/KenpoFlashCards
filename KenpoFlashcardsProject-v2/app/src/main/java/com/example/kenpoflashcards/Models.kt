@@ -29,7 +29,8 @@ data class StudyDeck(
     val sourceFile: String?,     // For built-in decks: asset filename (e.g., "kenpo_words.json")
     val cardCount: Int,          // Number of cards in deck
     val createdAt: Long,         // Unix timestamp
-    val updatedAt: Long          // Unix timestamp
+    val updatedAt: Long,         // Unix timestamp
+    val logoPath: String? = null // Optional server logo path
 ) {
     companion object {
         // Default Kenpo deck - built-in and cannot be deleted

@@ -1,0 +1,104 @@
+Fix (best): add an alias route that matches the UI exactly and Also add POST (so Save will work)
+
+TWO SEPERATE SCRIPTS TO BE ADDS\ED
+
+In app.py, add this near your other /api/admin/... routes, then restart the server:
+
+
+from flask import request, jsonify
+
+@app.get("/api/admin/user/deck_access")
+def api_admin_user_deck_access_get():
+    """
+    UI calls: /api/admin/user/deck_access?user_id=XXXX
+    Return deck access data for the Edit User modal.
+    """
+    target_user_id = (request.args.get("user_id") or "").strip()
+    if not target_user_id:
+        return jsonify({"error": "missing user_id"}), 400
+
+    # If you already implemented a newer handler (recommended), call it here:
+    # return api_admin_get_user_deck_access(target_user_id)
+
+    # --- Otherwise, implement the logic directly here (minimal safe response) ---
+    # IMPORTANT: Adjust these helper names to what your app.py already uses.
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+
+    me = _get_user(uid) or {}
+    if not _is_admin_user(me.get("username", "")):
+        return jsonify({"error": "admin_required"}), 403
+
+    decks_all = _load_decks(include_all=True)
+
+    # decks the target user owns
+    owned = []
+    for d in decks_all:
+        if d.get("isBuiltIn"):
+            continue
+        if _deck_owner_id(d) == target_user_id:
+            owned.append({"id": d.get("id"), "name": d.get("name", d.get("id"))})
+
+    # decks the current admin owns (these are the ones you can grant/revoke)
+    admin_decks = []
+    for d in decks_all:
+        if d.get("isBuiltIn"):
+            continue
+        if _deck_owner_id(d) == uid:
+            admin_decks.append({"id": d.get("id"), "name": d.get("name", d.get("id"))})
+
+    access = _load_deck_access()
+    granted = set((access.get("userUnlocks", {}) or {}).get(target_user_id, []) or [])
+    granted_admin = [d["id"] for d in admin_decks if d["id"] in granted]
+
+    return jsonify({
+        "userId": target_user_id,
+        "ownedDecks": owned,
+        "adminDecks": admin_decks,
+        "grantedAdminDecks": granted_admin
+    })
+
+
+
+
+Your modal likely posts back to the same endpoint. Add this too:
+
+@app.post("/api/admin/user/deck_access")
+def api_admin_user_deck_access_set():
+    target_user_id = (request.args.get("user_id") or "").strip()
+    if not target_user_id:
+        return jsonify({"error": "missing user_id"}), 400
+
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "login_required"}), 401
+
+    me = _get_user(uid) or {}
+    if not _is_admin_user(me.get("username", "")):
+        return jsonify({"error": "admin_required"}), 403
+
+    data = request.get_json(silent=True) or {}
+    desired = data.get("grantedAdminDecks", [])
+    if not isinstance(desired, list):
+        return jsonify({"error": "grantedAdminDecks must be a list"}), 400
+    desired = [str(x) for x in desired if str(x).strip()]
+
+    decks_all = _load_decks(include_all=True)
+    admin_deck_ids = set(
+        d.get("id") for d in decks_all
+        if (not d.get("isBuiltIn")) and (_deck_owner_id(d) == uid)
+    )
+    desired = [d for d in desired if d in admin_deck_ids]
+
+    access = _load_deck_access()
+    unlocks = access.setdefault("userUnlocks", {})
+    existing = set(unlocks.get(target_user_id, []) or [])
+
+    # preserve any non-admin deck unlocks; only manage the subset owned by this admin
+    preserved = set([d for d in existing if d not in admin_deck_ids])
+    unlocks[target_user_id] = sorted(list(preserved.union(set(desired))))
+
+    _save_deck_access(access)
+    return jsonify({"success": True, "grantedAdminDecks": desired})
+

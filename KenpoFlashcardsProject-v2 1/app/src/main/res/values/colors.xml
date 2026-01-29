@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark theme colors from web app -->
+    <color name="bg_dark">#0F1217</color>
+    <color name="panel_dark">#151A22</color>
+    <color name="panel2_dark">#11161F</color>
+    <color name="border_dark">#2B3140</color>
+    <color name="text_dark">#EAEEF7</color>
+    <color name="muted_dark">#B7C0D4</color>
+    
+    <!-- Accent colors -->
+    <color name="accent_good">#12311F</color>
+    <color name="accent_good_border">#1D5A35</color>
+    <color name="accent_danger">#321313</color>
+    <color name="accent_danger_border">#6E2222</color>
+    <color name="accent_primary">#1F6FEB</color>
+    
+    <!-- Launcher icon background (REQUIRED) -->
+    <color name="ic_launcher_background">#0F1217</color>
+    
+    <!-- Legacy compatibility -->
+    <color name="purple_200">#1F6FEB</color>
+    <color name="purple_500">#1F6FEB</color>
+    <color name="purple_700">#1564D9</color>
+    <color name="teal_200">#1D5A35</color>
+    <color name="teal_700">#12311F</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>
