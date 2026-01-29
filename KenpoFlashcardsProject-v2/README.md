@@ -7,7 +7,7 @@ An Android flash-card app designed to help students of **American Kenpo Karate**
 
 This app focuses on **active recall**, **progress tracking**, and **organized learning**, making it ideal for beginners through advanced practitioners.
 
-**Current Version:** v5.3.1 (build 36)
+**Current Version:** v5.4.0 (build 37)
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -201,6 +201,7 @@ app/src/main/
 
 | Version | Code | Key Changes |
 |---------|------|-------------|
+| **5.4.0** | 37 | GEN8: Token-admin deck config + invite/redeem codes, server-sourced admin status, deck logo support |
 | **5.3.1** | 36 | Changed icons and logos from Kenpo to Advanced Flashcards |
 | **5.2.0** | 34 | Updated server data paths for Windows installer location |
 | **5.1.1** | 33 | Deck switching fix, user cards in deck, AI toggles in Settings, file upload feedback |
@@ -224,6 +225,31 @@ app/src/main/
 | **3.0.1** | — | Custom sets, Sort modes, Group filtering |
 | **2.0.0** | — | Three-state progress, Term breakdowns, Dark theme |
 | **1.0.0** | — | Basic flashcards, Got It tracking |
+
+
+
+## v5.4.0 (v37) – GEN8 parity with WebServer admin generation
+
+This release updates the Android app to a newer “generation” of the WebServer admin experience **without redesigning the app UI**.
+
+### What changed (high-level)
+- **Deck access via invite codes**
+  - New **Redeem** tab in Manage Decks to unlock decks from the server.
+  - After redeeming, the app performs an **authoritative deck pull** and can switch to the newly unlocked deck.
+- **Server-sourced admin state**
+  - Admin status is pulled from the server (`/api/admin/status`) and stored as **AdminSettings.isAdmin**.
+- **Deck admin controls (server-backed)**
+  - Admin screen adds a **Deck Admin (Server)** section:
+    - Edit & save deck config (built-in deck list and related toggles)
+    - Generate invite codes for decks
+    - Quick link to open the full Web Admin page in a browser
+- **Deck logo support**
+  - Deck model supports optional **logoPath** when returned by the server.
+
+### Server requirements (GEN8)
+To use these GEN8 features, your WebServer must expose token-based endpoints for the Android client under:
+- `/api/sync/admin/...` (admin token required)
+- `/api/sync/redeem-invite-code` (user token)
 
 See [CHANGELOG.md](CHANGELOG.md) for full details.
 

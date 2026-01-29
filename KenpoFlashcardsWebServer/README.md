@@ -5,7 +5,7 @@
 
 Flask-based web application providing sync API and web UI for Advanced Flashcards WebApp.
 
-**Current Version:** v8.0.2 (build 47)  
+**Current Version:** v8.1.0 (build 48)  
 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -113,6 +113,11 @@ Open: `http://localhost:8009`
 | `/api/breakdowns` | POST | Save breakdown (admin only) |
 
 ### Admin (Token Required)
+| `/api/sync/admin/deck-config` | GET/POST | **GEN8** deck access global config (admin token) |
+| `/api/sync/admin/deck-invite-code` | POST | **GEN8** generate invite codes (admin token) |
+| `/api/sync/admin/deck-invite-code/<code>` | DELETE | **GEN8** revoke invite codes (admin token) |
+| `/api/sync/redeem-invite-code` | POST | **GEN8** redeem invite code (user token) |
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/admin/apikeys` | GET | Get encrypted API keys (admin) |
@@ -307,7 +312,7 @@ Should return JSON with `version`, `term_to_id`, `cards`
 ```
 http://localhost:8009/api/version
 ```
-Should return `{"version": "8.0.2", "build": 47, ...}`
+Should return `{"version": "8.1.0", "build": 48, ...}`
 
 ### 3. Test Admin Users Endpoint
 ```
@@ -317,6 +322,27 @@ Should return `{"admin_usernames": ["sidscri"]}`
 
 ### 4. Check Data Files
 Confirm `data/helper.json` and `data/admin_users.json` exist on disk.
+
+---
+
+## 🛠️ Troubleshooting (v8.1.0+)
+
+### Sync → Pull shows 500 Internal Server Error
+Older progress data may contain non-numeric `updated_at` values (for example `"None"`, empty strings, or timestamps).  
+In **v8.1.0 v48**, the server safely parses `updated_at` so **Pull will not crash**.
+
+If you're running an older server version:
+- Open `data/users/<user_id>/progress.json`
+- Replace any bad `"updated_at"` values with `0`
+
+### Admin → Users → Edit User → Deck Access shows “Not Found” then “Failed to load”
+This happens when the Admin Dashboard front-end calls a route that the server doesn't have.  
+v8.1.0 v48 includes the required endpoint:
+
+- `GET /api/admin/user/deck_access?user_id=<id>` (load)
+- `POST /api/admin/user/deck_access?user_id=<id>` (save)
+
+If you still see this on v8.1.0+, open DevTools → Network and confirm the request is returning **200** (not 404).
 
 ---
 
@@ -350,6 +376,7 @@ Interactive page with tabbed sections:
 
 | Version | Build | Key Changes |
 |---------|-------|-------------|
+| **8.1.0** | 48 | Fix: Sync Pull no longer crashes on bad `updated_at`; Fix: Admin Edit User deck access loads/saves via `/api/admin/user/deck_access`; UI: header/logo alignment stability |
 | **8.0.2** | 47 | Minor upgrade: deck ownership (user decks private by default) + admin per-user deck sharing (read-only); Fix: admin password reset sets `123456789` reliably; Includes deck logo persistence/isolation + refresh fixes |
 | **8.0.1** | 46 | Fixed deck logos: per-deck persistence/isolation, refresh correctness, deck list icons, header logo sizing, default deck refresh fix |
 | **8.0.0** | 45 | Major rebrand to Advanced Flashcards WebApp; WebApp favicon/icons path; deck logo support |

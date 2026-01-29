@@ -1,7 +1,0 @@
-{
-  "name": "Advanced Flashcards WebAppServer",
-  "version": "8.0.2",
-  "build": 47,
-  "released": "2026-01-28",
-  "notes": "Minor: deck ownership + admin sharing controls; Fix: admin password reset now sets login-compatible hash (default 123456789)."
-}

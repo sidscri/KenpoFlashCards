@@ -2,8 +2,8 @@
 
 A Windows **installer** build of the Advanced Flashcards WebApp Server + Tray Launcher.
 
-- **Packaged Version:** **v4.1.0 (build 13)**
-- **Bundled Web Server:** **v8.1.0 (build 48)**
+- **Packaged Version:** **v4.0.0 (build 12)**
+- **Bundled Web Server:** **v8.0.2 (build 47)**
 
 ## What you get
 
@@ -13,15 +13,6 @@ A Windows **installer** build of the Advanced Flashcards WebApp Server + Tray La
 - **Configurable network binding** - access from localhost, LAN, or Tailscale.
 - **Upgrade Tool** to safely sync future web server updates without damaging packaging files.
 
-
-## What's new in v4.1.0 (build 13)
-
-- **Bundled Web Server updated to v8.1.0 (build 48)** (from v8.0.2 build 47), bringing:
-  - **Added GEN8 Token Admin Namespace for Android
--**
-  - **Invite code redemption** — invite-code` (user token required).
-  - **Docs updates**
-  - **Admin per-user sharing controls**
 
 ## What's new in v4.0.0 (build 12)
 

@@ -2,16 +2,6 @@
 
 All notable changes to the Windows packaged/installer distribution are documented here.
 
-## v4.1.0 (build 13) — 2026-01-28
-
-### Changed
-- **Updated bundled Web Server to v8.1.0 (build 48)** (from v8.0.2 build 47), including:
-  - **Added GEN8 Token Admin Namespace for Android
--**
-  - **Invite code redemption**
-  - **Docs updates**
-  - **Admin per-user sharing controls**
-
 ## v4.0.0 (build 12) — 2026-01-28
 
 ### Changed

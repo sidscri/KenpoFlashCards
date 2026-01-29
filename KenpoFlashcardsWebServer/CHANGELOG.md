@@ -15,19 +15,41 @@ The format is simple and practical:
 
 ---
 
+## 8.1.0 (build 48) — 2026-01-28
+
+### Added
+- **Added GEN8 Token Admin Namespace for Android
+- **Token admin endpoints** for deck access management under `/api/sync/admin/...` (admin token required).
+- **Invite code redemption** endpoint for Android: `POST /api/sync/redeem-invite-code` (user token required).
+- **Docs updates**: README now explicitly documents the token admin namespace and invite flow for Android parity.
+- **Admin per-user sharing controls**: in **Admin → Users → Edit User**, admins can now grant/revoke access to *their own* decks for that specific user (shows “Their decks” and “Your decks”).
+
+### Fixes
+- **Fixed Sync → Pull returning 500 Internal Server Error when user progress data contained non-numeric updated_at values (e.g., "None", empty strings, timestamps). Pull now safely parses/normalizes updated_at and will not crash.
+- **Fixed Admin → Users → Edit User → Deck Access failing to load (brief “Not Found” then “Failed to load”) by adding the missing API route:
+- **GET /api/admin/user/deck_access?user_id=<id>
+- **POST /api/admin/user/deck_access?user_id=<id>
+This restores loading and saving deck grant/revoke access lists.
+
+### Changed
+- **Improved header layout stability by preventing the deck logo/user area from shifting when title text or “Cards loaded” changes.
+- **Optional: adjusted deck logo vertical alignment to better line up with the “User:” badge.
+
+---
+
 
 ## 8.0.2 (build 47) — 2026-01-28
 
 ### Changed
 - **Deck ownership is enforced**: user-created study decks are now unique to the creating user and are no longer visible/editable by other users unless explicitly shared by an admin.
 
-### Added
-- **Admin per-user sharing controls**: in **Admin → Users → Edit User**, admins can now grant/revoke access to *their own* decks for that specific user (shows “Their decks” and “Your decks”).
-
 ### Fixed
 - **Admin “Reset Password” now works**: reset uses a login-compatible password hash, so the forced default `123456789` login is accepted.
 - **Deck card storage for shared decks**: cards for user-created decks are stored per-deck (not per-user) so shared decks show consistent content for everyone with access.
 - **Safety + permissions**: only the deck owner/admin can edit/delete a user-created deck or modify cards in that deck.
+
+### Notes
+- This release carries forward the **v8.0.2 (build 47)** deck ownership enforcement + admin sharing fixes.
 
 ---
 
@@ -49,6 +71,7 @@ The format is simple and practical:
 - **Immediate logo updates**: added cache-busting on deck logo URLs so newly-uploaded images show right after Save.
 
 ---
+
 ## 8.0.0 (build 45) — 2026-01-27
 
 ### Added

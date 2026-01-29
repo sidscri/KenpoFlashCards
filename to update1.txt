@@ -1,5 +1,5 @@
 I want to add in make3_zip_KenpoFlashcardsWebServer_Packaged-Zip.bat if version.json contains "webserver_version": "8.0.2",
-  "webserver_build": 47, and _ws%webserver_version%-%webserver_build% to the zip
+  "webserver_build": 47, add "_ws%webserver_version%-%webserver_build%" to the zip name
 
 
 As suggested, please create a migration checklist.  Now that both ends apps are working well together I need a tool to push updates to android app in the future.
